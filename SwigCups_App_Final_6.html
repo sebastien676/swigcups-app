@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swig Cups</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0E6655;--teal-d:#085041;--teal-l:#D1F2EB;
+  --green:#1E8449;--green-l:#D5F5E3;
+  --blue:#1F4E79;--blue-l:#D6EAF8;
+  --red:#C0392B;--red-l:#FADBD8;
+  --orange:#D35400;--orange-l:#FDEBD0;
+  --yellow:#FEF9E7;--yellow-m:#F9E79F;
+  --purple:#4A235A;--purple-l:#E8DAEF;
+  --gray:#F2F3F4;--gray-d:#888;
+  --text:#1a1a1a;--text-s:#666;--text-xs:#999;
+  --border:#e0e0e0;--bg:#f7f8fa;--white:#fff;
+  --radius:10px;--radius-sm:6px;
+  --shadow:0 1px 3px rgba(0,0,0,0.08);
+  /* size colours */
+  --c500:{background:#E8F5E9;color:#1B5E20;border:#43A047};
+  --c330:{background:#FFFDE7;color:#E65100;border:#FDD835};
+  --c250:{background:#E3F2FD;color:#0D47A1;border:#1E88E5};
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bg);min-height:100vh}
+
+/* LOGIN */
+#login-wrap{position:fixed;inset:0;background:#0E6655;display:flex;align-items:center;justify-content:center;z-index:99999}
+.login-card{background:#fff;border-radius:16px;padding:32px;width:300px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.2);position:relative;z-index:100000}
+.login-card h1{font-size:22px;font-weight:700;color:#0E6655;margin:8px 0 4px}
+.login-card p{font-size:13px;color:#666;margin-bottom:20px}
+
+/* APP SHELL */
+#app{display:none}
+.topbar{background:var(--teal);color:#fff;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100}
+.topbar h1{font-size:16px;font-weight:600}
+.topbar .role-tag{font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:20px}
+.nav{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;position:sticky;top:52px;z-index:99}
+.nav button{flex-shrink:0;padding:12px 14px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text-s);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.nav button.active{color:var(--teal);border-bottom-color:var(--teal)}
+.nav button:hover:not(.active){background:var(--gray)}
+.abadge{background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px}
+.section{display:none;padding:16px;max-width:960px;margin:0 auto}
+.section.active{display:block}
+
+/* COMPONENTS */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:12px;font-weight:700;color:var(--text-s);text-transform:uppercase;letter-spacing:0.5px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.metric{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.metric .lbl{font-size:11px;color:var(--text-s);margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:0.3px}
+.metric .val{font-size:24px;font-weight:700;color:var(--text)}
+.metric .sub{font-size:11px;color:var(--text-xs);margin-top:4px}
+.metric.red .val{color:var(--red)}
+.metric.grn .val{color:var(--green)}
+.metric.org .val{color:var(--orange)}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:11px;font-weight:700;color:var(--text-s);text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap}
+.tbl td{padding:9px 10px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#fafafa}
+.tbl .num{text-align:right;font-weight:500}
+
+/* PILLS */
+.pill{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:12px;white-space:nowrap}
+.pill.ok{background:var(--green-l);color:#0B5E2F}
+.pill.low{background:var(--red-l);color:#7B241C}
+.pill.warn{background:var(--yellow-m);color:#7D6608}
+.pill.pending{background:var(--blue-l);color:#1A3A5C}
+.pill.delivered{background:var(--green-l);color:#0B5E2F}
+.pill.notdel{background:var(--red-l);color:#7B241C}
+.pill.progress{background:var(--blue-l);color:#1A3A5C}
+.pill.scheduled{background:var(--yellow-m);color:#7D6608}
+.pill.done{background:var(--green-l);color:#0B5E2F}
+.pill.partial{background:var(--orange-l);color:#784212}
+
+/* STOCK BAR */
+.bar{width:70px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;display:inline-block}
+.bar-f{height:100%;border-radius:3px}
+
+/* CALENDAR */
+.cal-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.cal-hdr{background:var(--purple);color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.cal-hdr h3{font-size:14px;font-weight:600}
+.cal-nav button{background:rgba(255,255,255,0.2);border:none;color:#fff;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;margin-left:6px}
+.cal-nav button:hover{background:rgba(255,255,255,0.35)}
+.cal-grid{display:grid;grid-template-columns:50px repeat(6,1fr);gap:1px;background:var(--border)}
+.cal-day-hdr{background:var(--gray);text-align:center;padding:8px 4px}
+.cal-day-hdr .dn{font-size:10px;font-weight:700;color:var(--text-s);text-transform:uppercase}
+.cal-day-hdr .dd{font-size:20px;font-weight:700;color:var(--text)}
+.cal-day-hdr .dm{font-size:10px;color:var(--text-xs)}
+.cal-day-hdr.today{background:var(--teal-l)}
+.cal-day-hdr.today .dd{color:var(--teal)}
+.cal-lbl{background:var(--gray);display:flex;align-items:flex-start;justify-content:flex-end;padding:6px 4px;font-size:10px;color:var(--text-xs)}
+.cal-cell{background:#fff;min-height:110px;padding:4px;position:relative}
+.cal-cell.today{background:#F8FFFE}
+.cal-cell.drag-over{outline:2px dashed #43A047;outline-offset:-2px;background:#F1F8F1}
+.cal-event{padding:5px 7px;border-radius:6px;margin-bottom:3px;font-size:11px;font-weight:500;cursor:pointer;line-height:1.3;user-select:none}
+.cal-event:hover{filter:brightness(0.92)}
+.cal-event.s500{background:#E8F5E9;color:#1B5E20;border-left:3px solid #43A047}
+.cal-event.s330{background:#FFFDE7;color:#E65100;border-left:3px solid #FDD835}
+.cal-event.s250{background:#E3F2FD;color:#0D47A1;border-left:3px solid #1E88E5}
+.cal-event.sdone{background:#F5F5F5;color:#9E9E9E;border-left:3px solid #BDBDBD;text-decoration:line-through;opacity:0.6}
+.cal-event.dragging{opacity:0.3}
+.cal-event .ec{font-weight:600;font-size:11px}
+.cal-event .ed{font-size:10px;opacity:0.75;margin-top:1px}
+.cal-legend{display:flex;gap:14px;padding:10px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--text-s)}
+.cal-legend span{display:flex;align-items:center;gap:4px}
+.cal-dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+.cal-add-btn{width:100%;margin-top:3px;background:transparent;border:1px dashed #ccc;border-radius:4px;padding:3px;font-size:10px;color:#bbb;cursor:pointer;text-align:center;display:none}
+.cal-cell:hover .cal-add-btn{display:block}
+.cal-add-btn:hover{border-color:var(--teal);color:var(--teal)}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.form-grid.g3{grid-template-columns:1fr 1fr 1fr}
+.fgroup{display:flex;flex-direction:column;gap:4px}
+.fgroup label{font-size:11px;font-weight:700;color:var(--text-s);text-transform:uppercase;letter-spacing:0.3px}
+input,select,textarea{font-size:13px;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);width:100%;font-family:inherit;color:var(--text);background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,102,85,0.1)}
+.btn{padding:9px 16px;border-radius:var(--radius-sm);border:none;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.btn-p{background:var(--teal);color:#fff}.btn-p:hover{background:var(--teal-d)}
+.btn-s{background:#fff;color:var(--text);border:1px solid var(--border)}.btn-s:hover{background:var(--gray)}
+.btn-d{background:var(--red-l);color:var(--red);border:1px solid var(--red)}.btn-d:hover{background:var(--red);color:#fff}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-full{width:100%;justify-content:center}
+.btn-add{background:transparent;color:var(--teal);border:1.5px dashed var(--teal);border-radius:var(--radius-sm);padding:10px;width:100%;font-size:13px;font-weight:500;cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-add:hover{background:var(--teal-l)}
+.panel{display:none;background:var(--gray);border-radius:var(--radius);padding:16px;margin-top:8px;border:1px solid var(--border)}
+.panel.open{display:block}
+.panel h3{font-size:13px;font-weight:600;margin-bottom:14px}
+.hint{font-size:12px;color:var(--teal);font-weight:500;margin-top:4px}
+.form-actions{display:flex;gap:8px;margin-top:12px}
+
+/* MODAL */
+.overlay{visibility:hidden;pointer-events:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px}
+.overlay.open{visibility:visible;pointer-events:all}
+.modal{background:#fff;border-radius:var(--radius);padding:20px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.2)}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-hdr h3{font-size:15px;font-weight:700;color:var(--teal)}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-s);line-height:1;padding:0}
+.modal-row{display:flex;gap:8px;margin-bottom:8px;font-size:13px;align-items:flex-start}
+.modal-lbl{font-weight:600;color:var(--text-s);min-width:90px;font-size:12px}
+.esection{font-size:11px;font-weight:700;color:var(--text-s);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.modal-actions{display:flex;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+
+/* PRINT JOBS (Warda) */
+.pjob{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s}
+.pjob:hover{border-color:#aaa}
+.pjob.s500{border-left:4px solid #43A047}
+.pjob.s330{border-left:4px solid #FDD835}
+.pjob.s250{border-left:4px solid #1E88E5}
+.pjob.done{border-left:4px solid #BDBDBD;background:#F9F9F9;opacity:0.7}
+.pjob .check{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;transition:all .15s}
+.pjob.done .check{background:var(--green);border-color:var(--green);color:#fff}
+.pjob .jinfo{flex:1}
+.pjob .jclient{font-weight:600;font-size:14px}
+.pjob .jdetail{font-size:12px;color:var(--text-s);margin-top:2px}
+.pjob .jqty{font-weight:700;font-size:15px;color:var(--teal);white-space:nowrap;text-align:right}
+.pjob .jwaste{font-size:11px;color:var(--text-xs)}
+.week-hdr{font-size:11px;font-weight:700;color:var(--teal);background:var(--teal-l);padding:5px 12px;border-radius:20px;display:inline-block;margin:14px 0 8px}
+.prog-bar{height:4px;background:var(--border);border-radius:2px;margin-bottom:12px;overflow:hidden}
+.prog-bar-f{height:100%;background:var(--green);border-radius:2px;transition:width .4s}
+
+/* ORDER CARD */
+.ocard{background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start}
+.ocard .oinfo{flex:1}
+.ocard .oclient{font-weight:600;font-size:14px}
+.ocard .odetail{font-size:12px;color:var(--text-s);margin-top:3px;line-height:1.6}
+.ocard .oright{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+
+/* ALERT */
+.alert-item{border-left:3px solid var(--red);background:var(--red-l);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 14px;margin-bottom:8px}
+.alert-item h4{font-size:12px;font-weight:600;color:var(--red);margin-bottom:3px}
+.alert-item p{font-size:12px;color:var(--text-s);line-height:1.5}
+.alert-item.warn{border-color:var(--orange);background:var(--orange-l)}
+.alert-item.warn h4{color:var(--orange)}
+.alert-item.info{border-color:var(--blue);background:var(--blue-l)}
+.alert-item.info h4{color:var(--blue)}
+.alert-item.ok{border-color:var(--green);background:var(--green-l)}
+.alert-item.ok h4{color:var(--green)}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:#fff;padding:12px 18px;border-radius:var(--radius);font-size:13px;z-index:9999;opacity:0;transform:translateY(10px);transition:all .3s;max-width:300px;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.tok{background:var(--green)}
+.toast.terr{background:var(--red)}
+
+/* LOADING */
+.loading{text-align:center;padding:40px;color:var(--text-s)}
+.sp{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* CHART */
+.chart-wrap{position:relative;width:100%;height:250px;margin-top:8px}
+
+@media(max-width:600px){
+  .metrics{grid-template-columns:1fr 1fr}
+  .form-grid,.form-grid.g3{grid-template-columns:1fr}
+  .tbl{font-size:12px}
+  .tbl th,.tbl td{padding:7px 6px}
+  .section{padding:12px}
+  .nav button{padding:10px 12px;font-size:12px}
+  .ocard{flex-direction:column}
+}
+
+/* ALERTS */
+.alert-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow);transition:all .2s}
+.alert-card.resolved{opacity:0.5;border-color:#ddd}
+.alert-card .alert-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.alert-card .alert-title{font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px}
+.alert-card .alert-body{font-size:12px;color:var(--text-s);line-height:1.6;margin-bottom:10px}
+.alert-card .alert-note{font-size:12px;background:var(--yellow);border-radius:4px;padding:6px 10px;margin-bottom:10px;color:var(--text-s)}
+.alert-card .alert-actions{display:flex;gap:6px;flex-wrap:wrap}
+.alert-card.resolved .alert-title{text-decoration:line-through;color:var(--text-xs)}
+.alert-type-red{border-left:4px solid var(--red)}
+.alert-type-orange{border-left:4px solid var(--orange)}
+.alert-type-blue{border-left:4px solid var(--blue)}
+.alert-type-green{border-left:4px solid var(--green)}
+.alert-note-input{width:100%;font-size:12px;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;margin-bottom:6px;display:none}
+.alert-note-input.open{display:block}
+
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-wrap" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0E6655;display:flex;align-items:center;justify-content:center;z-index:999999">
+  <div style="background:#fff;border-radius:16px;padding:32px;width:280px;text-align:center">
+    <div style="font-size:48px">🥤</div>
+    <div style="font-size:20px;font-weight:700;color:#0E6655;margin:8px 0 4px">Swig Cups</div>
+    <div style="font-size:13px;color:#888;margin-bottom:20px">Stock & Print Manager</div>
+    <input id="pw" type="password" placeholder="Password"
+      style="width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:16px;text-align:center;margin-bottom:12px;box-sizing:border-box"
+      onkeydown="if(event.key==='Enter'){doLogin()}">
+    <div id="signin-btn"
+      style="width:100%;padding:14px;background:#0E6655;color:#fff;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;user-select:none"
+      onclick="doLogin()"
+      onmousedown="this.style.background='#085041'"
+      onmouseup="this.style.background='#0E6655'">
+      Sign in
+    </div>
+    <div id="login-err" style="color:red;font-size:12px;margin-top:8px;display:none">Wrong password</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <h1>🥤 Swig Cups</h1>
+    <span class="role-tag" id="role-tag">Owner</span>
+  </div>
+  <nav class="nav" id="main-nav">
+    <button class="active" onclick="showTab('stock',this)">📦 Stock</button>
+    <button onclick="showTab('chart',this)">📊 Chart</button>
+    <button onclick="showTab('pos',this)" id="btn-pos">📋 Orders</button>
+    <button onclick="showTab('jobs',this)" id="btn-jobs">📝 Jobs</button>
+    <button onclick="showTab('print',this)">🖨️ Print</button>
+    <button onclick="showTab('cal',this)">📅 Calendar</button>
+    <button onclick="showTab('myjobs',this)" id="btn-myjobs" style="display:none">✅ My Jobs</button>
+    <button onclick="showTab('alerts',this)">🚨 Alerts <span class="abadge" id="abadge">!</span></button>
+  </nav>
+
+  <!-- STOCK -->
+  <div id="tab-stock" class="section active">
+    <div class="metrics" id="stock-metrics"><div class="loading"><div class="sp"></div>Loading...</div></div>
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Stock by product</span><button class="btn btn-s btn-sm" onclick="loadStock()">↻</button></div>
+      <div id="stock-tbl"><div class="loading"><div class="sp"></div></div></div>
+    </div>
+    <button class="btn-add" id="btn-add-delivery" style="display:none" onclick="togglePanel('p-delivery')">+ Record delivery</button>
+    <div class="panel" id="p-delivery">
+      <h3>New delivery from Africa Plastics</h3>
+      <div class="form-grid">
+        <div class="fgroup"><label>Date</label><input type="date" id="d-date" value="2026-06-06"></div>
+        <div class="fgroup"><label>Reference (Ronald #)</label><input type="text" id="d-ref" placeholder="e.g. Ronald #66"></div>
+      </div>
+      <div class="form-grid g3">
+        <div class="fgroup"><label>Product</label><select id="d-prod">
+          <option>500ml Frosted cups</option><option>500ml Black cups</option><option>500ml Red cups</option>
+          <option>500ml Pink cups</option><option>500ml White cups</option><option>500ml Purple cups</option>
+          <option>500ml Blue cups</option><option>500ml Yellow cups</option>
+          <option>330ml Frosted cups</option><option>330ml Red cups</option><option>330ml Yellow cups</option>
+        </select></div>
+        <div class="fgroup"><label>Boxes</label><input type="number" id="d-boxes" placeholder="e.g. 28" oninput="calcDelivery()"></div>
+        <div class="fgroup"><label>Units/box</label><input type="number" id="d-ubox" placeholder="350" oninput="calcDelivery()"></div>
+      </div>
+      <div class="hint" id="d-calc">Total: — units</div>
+      <div class="fgroup" style="margin-top:8px"><label>PO / Notes</label><input type="text" id="d-notes" placeholder="e.g. PO-362 COMPLETE"></div>
+      <div class="form-actions">
+        <button class="btn btn-p btn-full" onclick="saveDelivery()">Save delivery</button>
+        <button class="btn btn-s" onclick="togglePanel('p-delivery')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div id="tab-chart" class="section">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Stock levels — current vs end of week</span></div>
+
+      <div class="chart-wrap"><canvas id="stockChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">End-of-week projection</span></div>
+      <table class="tbl" id="eow-tbl"><tr><td class="loading">Loading...</td></tr></table>
+    </div>
+  </div>
+
+  <!-- PURCHASE ORDERS -->
+  <div id="tab-pos" class="section">
+    <div class="metrics" id="po-summary" style="margin-bottom:14px"></div>
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Purchase orders — Africa Plastics</span><button class="btn btn-s btn-sm" onclick="loadPOs()">↻</button></div>
+      <div id="po-list"><div class="loading"><div class="sp"></div></div></div>
+    </div>
+  </div>
+
+  <!-- JOBS (Order intake) -->
+  <div id="tab-jobs" class="section">
+    <div class="metrics" id="jobs-metrics">
+      <div class="metric"><div class="lbl">Total</div><div class="val" id="jm-total">—</div><div class="sub">this month</div></div>
+      <div class="metric grn"><div class="lbl">Confirmed</div><div class="val" id="jm-conf">—</div><div class="sub">ready to print</div></div>
+      <div class="metric org"><div class="lbl">In progress</div><div class="val" id="jm-prog">—</div><div class="sub">at Blink</div></div>
+      <div class="metric"><div class="lbl">Done</div><div class="val" id="jm-done">—</div><div class="sub">completed</div></div>
+    </div>
+    <button class="btn-add" id="btn-add-job" style="display:none" onclick="togglePanel('p-job');this.style.display='none'">+ Add new client order</button>
+    <div class="panel" id="p-job">
+      <h3>New client order</h3>
+      <div class="form-grid g3">
+        <div class="fgroup"><label>Client ★</label><input type="text" id="j-client" placeholder="e.g. Heineken"></div>
+        <div class="fgroup"><label>Date received</label><input type="date" id="j-date" value="2026-06-06"></div>
+        <div class="fgroup"><label>Delivery date</label><input type="date" id="j-delivery"></div>
+      </div>
+      <div class="form-grid g3">
+        <div class="fgroup"><label>Cup size ★</label><select id="j-size"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
+        <div class="fgroup"><label>Cup colour ★</label><select id="j-colour"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option></select></div>
+        <div class="fgroup"><label>Qty ★</label><input type="number" id="j-qty" placeholder="e.g. 2000" oninput="calcJob()"></div>
+      </div>
+      <div class="form-grid g3">
+        <div class="fgroup"><label># Print colours</label><select id="j-ncols"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+        <div class="fgroup"><label>Print colour(s)</label><input type="text" id="j-pcols" placeholder="e.g. White, Gold"></div>
+        <div class="fgroup"><label>Artwork</label><select id="j-art"><option>New</option><option>Existing</option><option>Client to send</option><option>TBC</option></select></div>
+      </div>
+      <div class="hint" id="j-calc">Stock needed: —</div>
+      <div class="fgroup" style="margin-top:8px"><label>Notes</label><input type="text" id="j-notes" placeholder="Special instructions..."></div>
+      <div class="form-actions">
+        <button class="btn btn-p btn-full" onclick="saveJob()">Save order</button>
+        <button class="btn btn-s" onclick="togglePanel('p-job');document.getElementById('btn-add-job').style.display='flex'">Cancel</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-hdr"><span class="card-title">All orders</span><button class="btn btn-s btn-sm" onclick="loadJobs()">↻</button></div>
+      <div id="jobs-list"><div class="loading"><div class="sp"></div></div></div>
+    </div>
+  </div>
+
+  <!-- PRINT (Warda view) -->
+  <div id="tab-print" class="section">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Print schedule — Blink Printing (Warda)</span><button class="btn btn-s btn-sm" onclick="loadPrint()">↻</button></div>
+      <div id="print-list"><div class="loading"><div class="sp"></div></div></div>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div id="tab-alerts" class="section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:700;color:var(--text)">🚨 Alerts & Actions</h2>
+      <button class="btn btn-s btn-sm" onclick="loadAlerts()">↻ Refresh</button>
+    </div>
+    <div id="alerts-wrap"><div class="loading"><div class="sp"></div></div></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div id="tab-cal" class="section">
+    <div class="metrics" id="cal-metrics">
+      <div class="metric"><div class="lbl">This week</div><div class="val" id="cm-tw">—</div><div class="sub">jobs</div></div>
+      <div class="metric"><div class="lbl">Units this week</div><div class="val" id="cm-units">—</div><div class="sub">to print</div></div>
+      <div class="metric"><div class="lbl">Next week</div><div class="val" id="cm-nw">—</div><div class="sub">scheduled</div></div>
+      <div class="metric"><div class="lbl">This month</div><div class="val" id="cm-month">—</div><div class="sub">total</div></div>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-hdr">
+        <div style="font-size:11px;opacity:0.8">Blink Printing — Warda</div>
+        <h3 id="cal-label">Loading...</h3>
+        <div class="cal-nav">
+          <button onclick="calNav(-1)">‹ Prev</button>
+          <button onclick="calNav(0)">Today</button>
+          <button onclick="calNav(1)">Next ›</button>
+        </div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-legend">
+        <span><span class="cal-dot" style="background:#E8F5E9;border-left:3px solid #43A047"></span>500ml</span>
+        <span><span class="cal-dot" style="background:#FFFDE7;border-left:3px solid #FDD835"></span>330ml</span>
+        <span><span class="cal-dot" style="background:#E3F2FD;border-left:3px solid #1E88E5"></span>250ml</span>
+        <span><span class="cal-dot" style="background:#F5F5F5;border-left:3px solid #BDBDBD"></span>Done</span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-hdr"><span class="card-title">Upcoming jobs</span></div>
+      <div id="cal-list"><div class="loading"><div class="sp"></div></div></div>
+    </div>
+  </div>
+
+  <!-- MY JOBS (Warda) -->
+  <div id="tab-myjobs" class="section">
+    <div class="metrics">
+      <div class="metric"><div class="lbl">Total</div><div class="val" id="wm-total">—</div><div class="sub">jobs</div></div>
+      <div class="metric grn"><div class="lbl">Done ✅</div><div class="val" id="wm-done">—</div></div>
+      <div class="metric org"><div class="lbl">Remaining</div><div class="val" id="wm-rem">—</div></div>
+      <div class="metric"><div class="lbl">Units done</div><div class="val" id="wm-units">—</div></div>
+    </div>
+    <div id="myjobs-list"><div class="loading"><div class="sp"></div></div></div>
+  </div>
+</div>
+
+<!-- EVENT DETAIL MODAL -->
+<div class="overlay" id="ev-overlay">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3 id="ev-title">Job details</h3>
+      <button class="modal-close" onclick="closeOverlay('ev-overlay')">×</button>
+    </div>
+    <div id="ev-body"></div>
+    <div class="modal-actions" id="ev-actions"></div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="ed-overlay">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3>✏️ Edit job</h3>
+      <button class="modal-close" onclick="closeOverlay('ed-overlay')">×</button>
+    </div>
+    <input type="hidden" id="ed-id">
+    <div class="esection">Client & Schedule</div>
+    <div class="form-grid">
+      <div class="fgroup"><label>Client ★</label><input type="text" id="ed-client"></div>
+      <div class="fgroup"><label>Week label</label><input type="text" id="ed-week" placeholder="e.g. W23"></div>
+    </div>
+    <div class="form-grid">
+      <div class="fgroup"><label>Week period</label><input type="text" id="ed-period" placeholder="e.g. 07/06-13/06"></div>
+      <div class="fgroup"><label>Print date (exact)</label><input type="date" id="ed-pdate"></div>
+    </div>
+    <div class="fgroup"><label>Delivery date</label><input type="date" id="ed-ddate"></div>
+    <div class="esection">Cup details</div>
+    <div class="form-grid g3">
+      <div class="fgroup"><label>Size ★</label><select id="ed-size"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
+      <div class="fgroup"><label>Colour ★</label><select id="ed-colour"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option></select></div>
+      <div class="fgroup"><label>Qty ★</label><input type="number" id="ed-qty" oninput="document.getElementById('ed-calc').textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"></div>
+    </div>
+    <div class="hint" id="ed-calc">Stock: —</div>
+    <div class="esection">Print details</div>
+    <div class="form-grid g3">
+      <div class="fgroup"><label># Colours</label><select id="ed-ncols"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+      <div class="fgroup"><label>Print colour(s)</label><input type="text" id="ed-pcols"></div>
+      <div class="fgroup"><label>Artwork</label><select id="ed-art"><option>New</option><option>Existing</option><option>Client to send</option><option>TBC</option></select></div>
+    </div>
+    <div class="esection">Status & Notes</div>
+    <div class="form-grid">
+      <div class="fgroup"><label>Status</label><select id="ed-status"><option>Scheduled</option><option>In progress</option><option>Done</option><option>On hold</option><option>Cancelled</option></select></div>
+      <div class="fgroup"><label>Print type</label><select id="ed-ptype"><option>Screen print</option><option>Digital</option><option>Foil</option><option>Mixed</option></select></div>
+    </div>
+    <div class="fgroup"><label>Notes</label><textarea id="ed-notes" rows="2"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-p btn-full" onclick="saveEdit()">💾 Save changes</button>
+      <button class="btn btn-d" onclick="deleteJob()">🗑️</button>
+      <button class="btn btn-s" onclick="closeOverlay('ed-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK ADD MODAL -->
+<div class="overlay" id="qa-overlay">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-hdr">
+      <h3>➕ Quick add job</h3>
+      <button class="modal-close" onclick="closeOverlay('qa-overlay')">×</button>
+    </div>
+    <div id="qa-week-info" style="font-size:12px;color:var(--teal);font-weight:600;margin-bottom:12px"></div>
+    <div class="fgroup" style="margin-bottom:10px"><label>Client ★</label><input type="text" id="qa-client" placeholder="Client name"></div>
+    <div class="form-grid g3">
+      <div class="fgroup"><label>Size</label><select id="qa-size"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
+      <div class="fgroup"><label>Colour</label><select id="qa-colour"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option></select></div>
+      <div class="fgroup"><label>Qty</label><input type="number" id="qa-qty" placeholder="2000"></div>
+    </div>
+    <div class="form-grid">
+      <div class="fgroup"><label>Print colour</label><input type="text" id="qa-pcol" placeholder="e.g. White"></div>
+      <div class="fgroup"><label>Print date</label><input type="date" id="qa-pdate"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-p btn-full" onclick="saveQuickAdd()">Save job</button>
+      <button class="btn btn-s" onclick="closeOverlay('qa-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL = 'https://pxelvqgqmazdsaqlsxyx.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZWx2cWdxbWF6ZHNhcWxzeHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1OTYzOTAsImV4cCI6MjA5NjE3MjM5MH0.xediho7kmpJXmYH5tMO_LyXPjx88229VrQ3M3L1zfqw';
+let db = null;
+function getDB() {
+  if(!db) db = supabase.createClient(SB_URL, SB_KEY);
+  return db;
+}
+
+// ── AUTH ──
+const USERS = {'swig2026':'owner','fred2026':'fred','warda2026':'warda'};
+const ROLE_LABELS = {owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
+const ROLE_TABS = {
+  owner:['stock','chart','pos','jobs','print','cal','alerts'],
+  fred:  ['stock','jobs','print','cal','alerts'],
+  warda:['myjobs','cal']
+};
+
+let currentRole = null;
+let dbPrints = [];
+let dbStock = [];
+let calWeekOffset = 0;
+let dragId = null;
+let qaWeekLabel = '';
+let qaPeriod = '';
+let chartInst = null;
+
+function doLogin() {
+  var pw = document.getElementById('pw').value.trim();
+  var role = USERS[pw];
+  if(!role) {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('pw').value = '';
+    return;
+  }
+  currentRole = role;
+  try { sessionStorage.setItem('swigRole', role); } catch(e) {}
+  document.getElementById('login-wrap').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  initRole(role);
+}
+
+function login() { doLogin(); }
+
+function initRole(role) {
+  document.getElementById('role-tag').textContent = ROLE_LABELS[role];
+  const allowed = ROLE_TABS[role];
+  const navBtns = document.querySelectorAll('.nav button');
+  const tabOrder = ['stock','chart','pos','jobs','print','cal','myjobs','alerts'];
+  navBtns.forEach((btn, i) => {
+    btn.style.display = allowed.includes(tabOrder[i]) ? '' : 'none';
+  });
+  if(role === 'owner' || role === 'fred') {
+    document.getElementById('btn-add-delivery').style.display = 'flex';
+    document.getElementById('btn-add-job').style.display = 'flex';
+  }
+  if(role === 'warda') {
+    showTab('myjobs', document.querySelector('.nav button'));
+  }
+  loadStock();
+  loadPOs();
+  loadPrint();
+  loadJobs();
+  getDB().channel('ps').on('postgres_changes',{event:'*',schema:'public',table:'print_schedule'},()=>{
+    loadPrint(); loadJobs(); renderCal(); renderCalList();
+  }).subscribe();
+}
+
+// Check session
+window.addEventListener('DOMContentLoaded', function() {
+  try {
+    var r = sessionStorage.getItem('swigRole');
+    if(r && USERS[Object.keys(USERS).find(function(k){return USERS[k]===r;})]) {
+      currentRole = r;
+      document.getElementById('login-wrap').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      initRole(r);
+    }
+  } catch(e) {}
+});
+
+// ── HELPERS ──
+function showTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(name==='chart') renderChart();
+  if(name==='cal') renderCal();
+  if(name==='alerts') loadAlerts();
+  if(name==='myjobs') loadMyJobs();
+}
+
+function togglePanel(id) { document.getElementById(id).classList.toggle('open'); }
+
+function closeOverlay(id) { 
+  const el = document.getElementById(id);
+  if(el) el.classList.remove('open'); 
+}
+
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show t'+type;
+  setTimeout(()=>el.className='toast', 2800);
+}
+
+function pill(s) {
+  const m = {ok:'ok',low:'low',warn:'warn',pending:'pending',Delivered:'delivered','Not delivered':'notdel',
+    Pending:'pending',Partial:'partial','In progress':'progress',Scheduled:'scheduled',Done:'done',Cancelled:'low'};
+  return `<span class="pill ${m[s]||'pending'}">${s}</span>`;
+}
+
+function sizeClass(size) {
+  return size==='500ml'?'s500':size==='330ml'?'s330':size==='250ml'?'s250':'s500';
+}
+
+// ── STOCK ──
+async function loadStock() {
+  const {data} = await getDB().from('stock').select('*').order('size').order('colour');
+  if(!data) return;
+  dbStock = data;
+  const LOW = 5000;
+  const total = data.reduce((s,p)=>s+Math.max(0,(p.total_received||0)-(p.total_outgoing||0)),0);
+  const lowC = data.filter(p=>{
+    const est=(p.total_received||0)-(p.total_outgoing||0);
+    return est>0&&est<LOW&&(p.product||'').toLowerCase().includes('frosted');
+  }).length;
+  const pendC = data.filter(p=>(p.total_received||0)===0).length;
+  document.getElementById('stock-metrics').innerHTML=`
+    <div class="metric grn"><div class="lbl">Total in stock</div><div class="val">${total.toLocaleString()}</div><div class="sub">units</div></div>
+    <div class="metric ${lowC>0?'red':'grn'}"><div class="lbl">Low stock (Frosted)</div><div class="val">${lowC}</div><div class="sub">below 5,000</div></div>
+    <div class="metric org"><div class="lbl">Pending POs</div><div class="val">${pendC}</div><div class="sub">awaiting delivery</div></div>
+    <div class="metric"><div class="lbl">Last update</div><div class="val" style="font-size:14px;padding-top:6px">Live</div></div>`;
+  const rows = data.map(p=>{
+    const est=Math.max(0,(p.total_received||0)-(p.total_outgoing||0));
+    const max=Math.max(p.total_ordered||1,est,1);
+    const pct=Math.min(100,Math.round(est/max*100));
+    const st=est===0?'pending':((p.product||'').includes('Frosted')&&est<LOW)?'low':est<LOW*2?'warn':'ok';
+    const bc=st==='ok'?'#0E6655':st==='warn'?'#D35400':'#E24B4A';
+    return `<tr>
+      <td><strong>${p.product}</strong></td>
+      <td style="color:var(--text-s)">${p.size}</td>
+      <td class="num">${est.toLocaleString()}</td>
+      <td class="num" style="color:var(--text-s)">${p.physical_stock!=null?p.physical_stock.toLocaleString():'—'}</td>
+      <td><div class="bar"><div class="bar-f" style="width:${pct}%;background:${bc}"></div></div></td>
+      <td>${pill(st)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('stock-tbl').innerHTML=`<table class="tbl">
+    <thead><tr><th>Product</th><th>Size</th><th class="num">Est. Stock</th><th class="num">Physical</th><th>Level</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  document.getElementById('abadge').textContent = lowC+pendC;
+}
+
+// ── DELIVERY ──
+function calcDelivery() {
+  const b=parseInt(document.getElementById('d-boxes').value)||0;
+  const u=parseInt(document.getElementById('d-ubox').value)||350;
+  document.getElementById('d-calc').textContent=`Total: ${(b*u).toLocaleString()} units`;
+}
+async function saveDelivery() {
+  const prod=document.getElementById('d-prod').value;
+  const boxes=parseInt(document.getElementById('d-boxes').value)||0;
+  const ubox=parseInt(document.getElementById('d-ubox').value)||350;
+  const total=boxes*ubox;
+  if(!total){toast('Enter boxes and units/box','err');return;}
+  const date=document.getElementById('d-date').value;
+  const ref=document.getElementById('d-ref').value;
+  const notes=document.getElementById('d-notes').value;
+  await getDB().from('movements').insert([{date,type:'Delivery',reference:ref,product:prod,qty_in:total,notes}]);
+  const item=dbStock.find(p=>p.product===prod);
+  if(item) await getDB().from('stock').update({total_received:(item.total_received||0)+total}).eq('product',prod);
+  toast(`✓ ${total.toLocaleString()} units of ${prod} recorded`,'ok');
+  togglePanel('p-delivery');
+  document.getElementById('d-boxes').value='';
+  document.getElementById('d-calc').textContent='Total: — units';
+  loadStock();
+}
+
+// ── POs ──
+async function loadPOs() {
+  const {data}=await getDB().from('purchase_orders').select('*').order('po_date',{ascending:true}).order('id',{ascending:true});
+  if(!data) return;
+
+  // Summary metrics
+  const totalOrdered = data.reduce((s,p)=>s+(p.qty_ordered||0),0);
+  const totalValue   = data.reduce((s,p)=>s+((p.qty_ordered||0)*(p.unit_price||0)*1.15),0);
+  const pending      = data.filter(p=>p.status==='Pending'||p.status==='Partial').length;
+  const notDel       = data.filter(p=>p.status==='Not delivered').length;
+
+  document.getElementById('po-summary').innerHTML=`
+    <div class="metric"><div class="lbl">Total ordered</div><div class="val">${totalOrdered.toLocaleString()}</div><div class="sub">units</div></div>
+    <div class="metric"><div class="lbl">Total value</div><div class="val" style="font-size:16px;padding-top:4px">ZAR ${totalValue.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="sub">incl. VAT</div></div>
+    <div class="metric org"><div class="lbl">Pending / Partial</div><div class="val">${pending}</div><div class="sub">PO lines</div></div>
+    <div class="metric ${notDel>0?'red':'grn'}"><div class="lbl">Not delivered</div><div class="val">${notDel}</div><div class="sub">follow up</div></div>`;
+
+  const STATUS_BG = {
+    'Delivered':     '#D5F5E3', 'Over-delivered': '#C8F7C5',
+    'Partial':       '#FDEBD0', 'Not delivered':  '#FADBD8',
+    'To verify':     '#FEF9E7', 'Pending':        '#D6EAF8',
+  };
+  const STATUS_ICON = {
+    'Delivered':'✅','Over-delivered':'✅','Partial':'⚠️',
+    'Not delivered':'❌','To verify':'❓','Pending':'🔜',
+  };
+
+  const rows = data.map(p=>{
+    const ht    = (p.qty_ordered||0)*(p.unit_price||0);
+    const vat   = ht*0.15;
+    const total = ht+vat;
+    const bg    = STATUS_BG[p.status]||'#fff';
+    const icon  = STATUS_ICON[p.status]||'';
+    return `<tr style="background:${bg}">
+      <td style="font-weight:700;color:var(--blue)">${p.po_number||'—'}</td>
+      <td style="font-size:12px;color:var(--text-s)">${p.po_date||'—'}</td>
+      <td style="font-weight:500">${p.product||'—'}</td>
+      <td style="text-align:center">${p.size||'—'}</td>
+      <td style="text-align:center">${p.colour||'—'}</td>
+      <td style="text-align:right;font-weight:700;color:var(--blue)">${(p.qty_ordered||0).toLocaleString()}</td>
+      <td style="text-align:right;color:var(--green)">${p.unit_price?p.unit_price.toFixed(2):'—'}</td>
+      <td style="text-align:right">${ht?ht.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
+      <td style="text-align:right;color:var(--text-s)">${vat?vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
+      <td style="text-align:right;font-weight:700">${total?total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
+      <td style="text-align:center;font-size:12px;color:var(--text-s)">${p.delivery_date||'—'}</td>
+      <td style="font-weight:600;font-size:12px">${icon} ${p.status||'—'}</td>
+      ${currentRole==='owner' ? `<td style="text-align:center">
+        ${p.paid 
+          ? `<span style="color:var(--green);font-weight:700;font-size:13px" title="Paid on ${p.paid_date||'—'}">✅ Paid</span>`
+          : `<button class="btn btn-s btn-sm" style="font-size:11px;padding:4px 8px" onclick="markPaid(${p.id})">Mark paid</button>`
+        }
+      </td>` : '<td></td>'}
+      ${currentRole==='owner'?`<td><button class="btn btn-s btn-sm" onclick="editPO(${p.id})">✏️</button></td>`:'<td></td>'}
+    </tr>`;
+  }).join('');
+
+  // Totals row
+  const sumHT    = data.reduce((s,p)=>s+(p.qty_ordered||0)*(p.unit_price||0),0);
+  const sumVAT   = sumHT*0.15;
+  const sumTotal = sumHT+sumVAT;
+
+  document.getElementById('po-list').innerHTML=`
+    <div style="overflow-x:auto">
+    <table class="tbl" style="min-width:900px">
+      <thead><tr>
+        <th>PO #</th><th>PO Date</th><th>Product</th><th style="text-align:center">Size</th>
+        <th style="text-align:center">Colour</th><th style="text-align:right">Qty Ordered</th>
+        <th style="text-align:right">Unit Price</th><th style="text-align:right">Amount ex VAT</th>
+        <th style="text-align:right">VAT (15%)</th><th style="text-align:right">TOTAL ZAR</th>
+        <th style="text-align:center">Delivery Date</th><th>STATUS</th>
+        ${currentRole==='owner'?'<th style="text-align:center">💳 Paid</th>':''}<th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr style="background:var(--teal);color:#fff;font-weight:700">
+        <td colspan="7" style="text-align:right;padding:10px">TOTAL</td>
+        <td style="text-align:right;padding:10px">${sumHT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td style="text-align:right;padding:10px">${sumVAT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td style="text-align:right;padding:10px">${sumTotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td colspan="4" style="padding:10px"></td>
+      </tr></tfoot>
+    </table></div>`;
+}
+
+// Mark PO as paid
+async function markPaid(id) {
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const confirm_date = prompt('Confirm payment date:', dateStr);
+  if(confirm_date === null) return;
+  await getDB().from('purchase_orders').update({paid: true, paid_date: confirm_date||dateStr}).eq('id',id);
+  toast('✅ PO marked as paid','ok');
+  loadPOs();
+}
+
+// Edit PO inline
+async function editPO(id) {
+  const {data} = await getDB().from('purchase_orders').select('*').eq('id',id).single();
+  if(!data) return;
+  const newStatus = prompt(`Status for ${data.po_number} — ${data.product}:
+Current: ${data.status}
+
+Options: Pending, Partial, Delivered, Over-delivered, Not delivered, To verify`, data.status);
+  if(!newStatus) return;
+  const newDate = prompt('Delivery date (leave blank to keep current):', data.delivery_date||'');
+  const updates = {status: newStatus};
+  if(newDate !== null) updates.delivery_date = newDate || null;
+  await getDB().from('purchase_orders').update(updates).eq('id',id);
+  toast(`✓ PO updated`,'ok');
+  loadPOs();
+}
+
+// ── JOBS ──
+function calcJob() {
+  const q=parseInt(document.getElementById('j-qty').value)||0;
+  document.getElementById('j-calc').textContent=q?`Stock needed: ${Math.round(q*1.05).toLocaleString()} units (×1.05)`:'Stock needed: —';
+}
+
+async function saveJob() {
+  const client=document.getElementById('j-client').value.trim();
+  const qty=parseInt(document.getElementById('j-qty').value)||0;
+  if(!client||!qty){toast('Client and quantity required','err');return;}
+  const deliv=document.getElementById('j-delivery').value;
+  let period='—', weekLabel='Upcoming';
+  if(deliv) {
+    const d=new Date(deliv); d.setHours(0,0,0,0);
+    const dow=d.getDay();
+    const mon=new Date(d); mon.setDate(d.getDate()-(dow===0?6:dow-1));
+    const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+    const fmt=dt=>String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0');
+    period=fmt(mon)+'-'+fmt(sun);
+    const wn=Math.ceil((mon-new Date(mon.getFullYear(),0,1))/(7*86400000));
+    weekLabel='W'+wn;
+  }
+  await getDB().from('print_schedule').insert([{
+    week_label:weekLabel, date_period:period,
+    client, cup_size:document.getElementById('j-size').value,
+    cup_colour:document.getElementById('j-colour').value,
+    qty_printed:qty, num_colours:parseInt(document.getElementById('j-ncols').value)||1,
+    print_colour:document.getElementById('j-pcols').value,
+    artwork:document.getElementById('j-art').value,
+    delivery_date:deliv||null,
+    notes:document.getElementById('j-notes').value, status:'Scheduled'
+  }]);
+  toast(`✓ ${client} added`,'ok');
+  togglePanel('p-job');
+  document.getElementById('btn-add-job').style.display='flex';
+  ['j-client','j-qty','j-pcols','j-notes','j-delivery'].forEach(id=>document.getElementById(id).value='');
+  loadJobs();
+}
+
+async function loadJobs() {
+  const {data}=await getDB().from('print_schedule').select('*').order('created_at',{ascending:false});
+  if(!data) return;
+  const total=data.length;
+  const conf=data.filter(o=>o.status==='Scheduled').length;
+  const prog=data.filter(o=>o.status==='In progress').length;
+  const done=data.filter(o=>o.status==='Done').length;
+  document.getElementById('jm-total').textContent=total;
+  document.getElementById('jm-conf').textContent=conf;
+  document.getElementById('jm-prog').textContent=prog;
+  document.getElementById('jm-done').textContent=done;
+  const html=data.map(o=>{
+    window['job_'+o.id] = o;
+    return `
+    <div class="ocard">
+      <div class="oinfo">
+        <div class="oclient">${o.client}</div>
+        <div class="odetail">${o.cup_size||'—'} · ${o.cup_colour||'—'} · <strong>${(o.qty_printed||0).toLocaleString()} cups</strong><br>
+          ${o.print_colour||'—'} · ${o.num_colours||1} colour(s) · ${o.date_period||'—'}<br>
+          Stock needed: <strong>${Math.round((o.qty_printed||0)*1.05).toLocaleString()} units</strong></div>
+      </div>
+      <div class="oright">
+        ${pill(o.status||'Scheduled')}
+        ${currentRole!=='warda'?`<button class="btn btn-s btn-sm" onclick="openEdit(${JSON.stringify(o).replace(/"/g,"'")})">✏️ Edit</button>`:''}</div>
+    </div>`;}).join('');
+  document.getElementById('jobs-list').innerHTML=html||'<div class="loading">No jobs yet</div>';
+}
+
+// ── PRINT LIST ──
+async function loadPrint() {
+  const {data}=await getDB().from('print_schedule').select('*').order('created_at');
+  if(!data) return;
+  const sorted = [
+    ...data.filter(p=>p.print_date).sort((a,b)=>a.print_date.localeCompare(b.print_date)),
+    ...data.filter(p=>!p.print_date).sort((a,b)=>(a.week_label||'').localeCompare(b.week_label||''))
+  ];
+  dbPrints=sorted;
+  let lastWeek='', html='';
+  sorted.forEach(function(p) {
+    const weekKey = p.print_date || p.week_label || '';
+    const weekLabel = (p.print_date ? '📅 ' + p.print_date + ' — ' + (p.week_label||'') : (p.week_label||'—') + ' · ' + (p.date_period||''));
+    if(weekKey!==lastWeek) {
+      html += '<div class="week-hdr">' + weekLabel + '</div>';
+      lastWeek = weekKey;
+    }
+    const used = Math.round((p.qty_printed||0)*1.05).toLocaleString();
+    const barColor = (p.cup_size||'').includes('500') ? '#43A047' : (p.cup_size||'').includes('330') ? '#FDD835' : '#1E88E5';
+    const artBadge = p.artwork ? '<span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:1px 6px;border-radius:10px;margin-left:4px">' + p.artwork + '</span>' : '';
+    const printDateLine = p.print_date ? '<div style="font-size:11px;color:#0E6655;font-weight:500">Print: ' + p.print_date + '</div>' : '';
+    window['job_print_'+p.id] = p;
+    html += '<div style="display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #e0e0e0">'
+      + '<div style="width:4px;height:40px;border-radius:2px;background:' + barColor + ';flex-shrink:0"></div>'
+      + '<div style="flex:1">'
+        + '<div style="font-weight:600">' + p.client + artBadge + '</div>'
+        + '<div style="font-size:11px;color:#666">' + (p.cup_size||'—') + ' · ' + (p.cup_colour||'—') + ' · 🎨 ' + (p.print_colour||'—') + ' · ' + (p.num_colours||1) + ' col.</div>'
+        + printDateLine
+      + '</div>'
+      + '<div style="text-align:right">'
+        + '<div style="font-weight:700">' + (p.qty_printed||0).toLocaleString() + '</div>'
+        + '<div style="font-size:11px;color:#D35400">−' + used + '</div>'
+      + '</div>'
+      + '<div>' + pill(p.status||'Scheduled') + '</div>'
+      + '<button class="btn btn-s btn-sm" onclick="printJobCard(window[&quot;job_print_&quot;+' + p.id + '])" title="Job card">🖨️</button>'
+      + '</div>';
+  });
+  document.getElementById('print-list').innerHTML = html || '<div class="loading">No print jobs</div>';
+}
+
+
+// ── JOB CARD PDF (printable) ──
+function printJobCard(job) {
+  if(!job) return;
+  var lines = [
+    'SWIG CUPS - Job Card',
+    '====================',
+    'Client: ' + job.client,
+    'Week: ' + (job.week_label||'') + ' ' + (job.date_period||''),
+    'Print date: ' + (job.print_date||'TBC'),
+    'Delivery: ' + (job.delivery_date||'TBC'),
+    '',
+    'Cup size: ' + (job.cup_size||''),
+    'Cup colour: ' + (job.cup_colour||''),
+    'Quantity: ' + (job.qty_printed||0).toLocaleString() + ' cups',
+    'Stock needed: ' + Math.round((job.qty_printed||0)*1.05).toLocaleString() + ' units',
+    '',
+    'Print colour: ' + (job.print_colour||''),
+    'Colours: ' + (job.num_colours||1),
+    'Print type: ' + (job.print_type||'Screen print'),
+    'Artwork: ' + (job.artwork||''),
+    '',
+    'Status: ' + (job.status||''),
+    'Notes: ' + (job.notes||''),
+    '',
+    'Printed by: _________________ Date: _________'
+  ];
+  var text = lines.join('\n');
+  var blob = new Blob([text], {type: 'text/plain'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = job.client.replace(/[^a-z0-9]/gi,'_') + '_jobcard.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Job card downloaded', 'ok');
+}
+
+>
