@@ -943,4 +943,13 @@ function printJobCard(job) {
   toast('✓ Job card downloaded', 'ok');
 }
 
->
+// Close overlays on backdrop click
+['ev-overlay','ed-overlay','qa-overlay'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if(el) el.addEventListener('click', function(e) {
+    if(e.target === this) closeOverlay(id);
+  });
+});
+</script>
+</body>
+</html>
