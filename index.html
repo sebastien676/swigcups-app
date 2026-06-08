@@ -104,6 +104,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 .ce.s3{background:#FFFDE7;color:#E65100;border-left:3px solid #FDD835}
 .ce.s2{background:#E3F2FD;color:#0D47A1;border-left:3px solid #1E88E5}
 .ce.sd{background:#F5F5F5;color:#9E9E9E;border-left:3px solid #BDBDBD;text-decoration:line-through;opacity:0.6}
+.ce.cup-black{background:#ECEFF1;color:#263238;border-left:3px solid #455A64}
+.ce.cup-red{background:#FFEBEE;color:#B71C1C;border-left:3px solid #E53935}
+.ce.cup-pink{background:#FCE4EC;color:#880E4F;border-left:3px solid #E91E63}
+.ce.cup-blue{background:#E3F2FD;color:#0D47A1;border-left:3px solid #1E88E5}
+.ce.cup-purple{background:#F3E5F5;color:#4A148C;border-left:3px solid #8E24AA}
+.ce.cup-yellow{background:#FFFDE7;color:#E65100;border-left:3px solid #FDD835}
+.ce.cup-white{background:#F5EFE6;color:#6D4C41;border-left:3px solid #C8B89A}
+.ce.cup-green{background:#E8F5E9;color:#1B5E20;border-left:3px solid #43A047}
+.ce.cup-orange{background:#FFF3E0;color:#E65100;border-left:3px solid #FF9800}
+/* Tooltip */
+.ce-tooltip{position:fixed;background:#1a1a1a;color:#fff;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.6;z-index:99999;pointer-events:none;opacity:0;transition:opacity .15s;min-width:180px;max-width:260px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+.ce-tooltip.show{opacity:1}
+.ce{position:relative;cursor:pointer}
 .ce.drag{opacity:0.3}
 .ce .ec{font-weight:600;font-size:11px}
 .ce .ed{font-size:10px;opacity:0.75;margin-top:1px}
@@ -263,7 +276,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       </div>
       <div class="g3">
         <div class="fg"><label>Cup size ★</label><select id="jsz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-        <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option></select></div>
+        <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option></select></div>
         <div class="fg"><label>Qty ★</label><input type="number" id="jq" placeholder="e.g. 2000" oninput="this.nextElementSibling.textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"><span class="hint"></span></div>
       </div>
       <div class="g3">
@@ -293,7 +306,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   <div id="tab-cal" class="sec">
     <div class="mts">
       <div class="mt"><div class="lb">This week</div><div class="vl" id="ctw">—</div><div class="sb2">jobs</div></div>
-      <div class="mt"><div class="lb">Units this week</div><div class="vl" id="ctu">—</div><div class="sb2">to print</div></div>
+      <div class="mt"><div class="lb">Prints this week</div><div class="vl" id="ctu">—</div><div class="sb2">qty × colours</div></div>
       <div class="mt"><div class="lb">Next week</div><div class="vl" id="cnw">—</div><div class="sb2">scheduled</div></div>
       <div class="mt"><div class="lb">This month</div><div class="vl" id="cmth">—</div><div class="sb2">total</div></div>
     </div>
@@ -308,10 +321,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
         </div>
       </div>
       <div class="cgrid" id="cgrid"></div>
-      <div class="cleg">
-        <span><span class="cdot" style="background:#E8F5E9;border-left:3px solid #43A047"></span>500ml</span>
-        <span><span class="cdot" style="background:#FFFDE7;border-left:3px solid #FDD835"></span>330ml</span>
-        <span><span class="cdot" style="background:#E3F2FD;border-left:3px solid #1E88E5"></span>250ml</span>
+      <div class="cleg" style="flex-wrap:wrap;gap:8px">
+        <span><span class="cdot" style="background:#E8F5E9;border-left:3px solid #43A047"></span>Frosted 500ml</span>
+        <span><span class="cdot" style="background:#FFFDE7;border-left:3px solid #FDD835"></span>Frosted 330ml</span>
+        <span><span class="cdot" style="background:#E3F2FD;border-left:3px solid #1E88E5"></span>Frosted 250ml</span>
+        <span><span class="cdot" style="background:#FFEBEE;border-left:3px solid #E53935"></span>Red</span>
+        <span><span class="cdot" style="background:#ECEFF1;border-left:3px solid #455A64"></span>Black</span>
+        <span><span class="cdot" style="background:#F3E5F5;border-left:3px solid #8E24AA"></span>Purple</span>
         <span><span class="cdot" style="background:#F5F5F5;border-left:3px solid #BDBDBD"></span>Done</span>
       </div>
     </div>
@@ -367,7 +383,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="es">Cup details</div>
     <div class="g3">
       <div class="fg"><label>Size ★</label><select id="esz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-      <div class="fg"><label>Colour ★</label><select id="ecol"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option></select></div>
+      <div class="fg"><label>Colour ★</label><select id="ecol"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option></select></div>
       <div class="fg"><label>Qty ★</label><input type="number" id="eq" oninput="document.getElementById('ecalc').textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"></div>
     </div>
     <div class="hint" id="ecalc">Stock: —</div>
@@ -382,6 +398,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div class="fg"><label>Print type</label><select id="ept"><option>Screen print</option><option>Digital</option><option>Foil</option><option>Mixed</option></select></div>
     </div>
     <div class="fg"><label>Notes</label><textarea id="eno" rows="2"></textarea></div>
+    <div class="fg">
+      <label>Artwork file</label>
+      <div id="artwork-preview" style="margin-bottom:6px;display:none">
+        <span id="artwork-name" style="font-size:12px;color:#0E6655;font-weight:500"></span>
+        <button onclick="clearArtwork()" style="margin-left:8px;background:none;border:none;color:#C0392B;cursor:pointer;font-size:12px">✕ Remove</button>
+      </div>
+      <input type="file" id="artwork-file" accept="image/*,.pdf" style="font-size:12px;padding:6px" onchange="previewArtwork(this)">
+      <div id="artwork-current" style="font-size:11px;color:#666;margin-top:4px"></div>
+    </div>
     <div class="ma">
       <button class="btn bp bfl" onclick="saveEdit()">💾 Save</button>
       <button class="bd btn" onclick="delJob()">🗑️</button>
@@ -398,12 +423,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="fg"><label>Client ★</label><input type="text" id="qac" placeholder="Client name"></div>
     <div class="g3">
       <div class="fg"><label>Size</label><select id="qas"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-      <div class="fg"><label>Colour</label><select id="qacl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option></select></div>
+      <div class="fg"><label>Colour</label><select id="qacl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option></select></div>
       <div class="fg"><label>Qty</label><input type="number" id="qaq" placeholder="2000"></div>
     </div>
     <div class="g2">
       <div class="fg"><label>Print colour</label><input type="text" id="qapc" placeholder="e.g. White"></div>
       <div class="fg"><label>Print date</label><input type="date" id="qapd"></div>
+    </div>
+    <div class="fg">
+      <label>Artwork file</label>
+      <input type="file" id="qa-artwork-file" accept="image/*,.pdf" style="font-size:12px;padding:6px">
     </div>
     <div class="ma">
       <button class="btn bp bfl" onclick="saveQA()">Save job</button>
@@ -421,6 +450,33 @@ var db=null;
 function DB(){if(!db)db=supabase.createClient(SB_URL,SB_KEY);return db;}
 
 var USERS={'swig2026':'owner','fred2026':'fred','warda2026':'warda'};
+
+// ── ARTWORK UPLOAD ──
+var pendingArtworkFile = null;
+
+function previewArtwork(input) {
+  if(input.files && input.files[0]) {
+    pendingArtworkFile = input.files[0];
+    document.getElementById('artwork-preview').style.display = 'block';
+    document.getElementById('artwork-name').textContent = '📎 ' + pendingArtworkFile.name;
+  }
+}
+
+function clearArtwork() {
+  pendingArtworkFile = null;
+  document.getElementById('artwork-file').value = '';
+  document.getElementById('artwork-preview').style.display = 'none';
+  document.getElementById('artwork-current').textContent = '';
+}
+
+async function uploadArtwork(jobId, file) {
+  if(!file) return null;
+  var path = 'artworks/' + jobId + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  var r = await DB().storage.from('artworks').upload(path, file, {upsert: true});
+  if(r.error) { console.log('Upload error:', r.error); return null; }
+  var url = DB().storage.from('artworks').getPublicUrl(path);
+  return url.data.publicUrl;
+}
 var RTABS={owner:['stock','chart','pos','jobs','print','cal','alerts'],fred:['stock','jobs','print','cal'],warda:['myjobs','cal']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
 var role=null,prints=[],stock=[],calOff=0,dragId=null,curEv=null,qaWL='',qaP='',chartI=null;
@@ -471,12 +527,27 @@ function pill(s){
   return '<span class="pl '+(m[s]||'pend')+'">'+s+'</span>';
 }
 
-function sc2(sz){return sz&&sz.indexOf('500')>-1?'s5':sz&&sz.indexOf('330')>-1?'s3':'s2';}
+function sc2(sz, col) {
+  // Calendar uses SIZE-based colours only
+  return sz&&sz.indexOf('500')>-1?'s5':sz&&sz.indexOf('330')>-1?'s3':'s2';
+}
 
 // ── STOCK ──
 async function loadStock(){
-  var r=await DB().from('stock').select('*').order('size').order('colour');
+  var r=await DB().from('stock').select('*');
   if(!r.data)return;
+  // Sort: 500ml Frosted first, then 500ml colours A-Z, then 330ml, then 250ml
+  r.data.sort(function(a,b){
+    var sizeOrder = {'500ml':0,'330ml':1,'250ml':2};
+    var sa = sizeOrder[a.size]||99, sb = sizeOrder[b.size]||99;
+    if(sa!==sb) return sa-sb;
+    // Within same size: Frosted first
+    var aFr = (a.colour||'').toLowerCase()==='frosted'?0:1;
+    var bFr = (b.colour||'').toLowerCase()==='frosted'?0:1;
+    if(aFr!==bFr) return aFr-bFr;
+    // Then alphabetical by colour
+    return (a.colour||'').localeCompare(b.colour||'');
+  });
   stock=r.data;
   var LOW=5000,tot=0,lowc=0,pendc=0;
   r.data.forEach(function(p){
@@ -495,13 +566,23 @@ async function loadStock(){
     var est=Math.max(0,(p.total_received||0)-(p.total_outgoing||0));
     var max=Math.max(p.total_ordered||1,est,1);
     var pct=Math.min(100,Math.round(est/max*100));
-    var isFr=(p.product||'').toLowerCase().indexOf('frosted')>-1;
-    var st=est===0?'pend':(isFr&&est<LOW)?'low':est<LOW*2?'warn':'ok';
-    var bc=st==='ok'?'#0E6655':st==='warn'?'#D35400':'#E24B4A';
-    return '<tr><td><strong>'+p.product+'</strong></td><td style="color:#666">'+p.size+'</td>'+
+    var isFr=(p.colour||'').toLowerCase()==='frosted';
+    var st=est===0?'pend':(isFr&&est<LOW)?'low':est<LOW*2&&isFr?'warn':'ok';
+    // Bar color based on cup colour
+    var cupColours={
+      'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63',
+      'blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE',
+      'green':'#43A047','orange':'#FF9800'
+    };
+    var cupCol = (p.colour||'').toLowerCase();
+    var bc = cupColours[cupCol] || '#0E6655';
+    var alertBc = st==='low'?'#E24B4A':st==='warn'?'#D35400':bc;
+    // Colour dot
+    var dot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+bc+';margin-right:6px;flex-shrink:0"></span>';
+    return '<tr><td><strong>'+dot+p.product+'</strong></td><td style="color:#666">'+p.size+'</td>'+
       '<td class="nr">'+est.toLocaleString()+'</td>'+
       '<td class="nr" style="color:#999">'+(p.physical_stock!=null?p.physical_stock.toLocaleString():'—')+'</td>'+
-      '<td><div class="bar"><div class="barf" style="width:'+pct+'%;background:'+bc+'"></div></div></td>'+
+      '<td><div class="bar"><div class="barf" style="width:'+pct+'%;background:'+alertBc+'"></div></div></td>'+
       '<td>'+pill(st==='ok'?'ok':st==='low'?'low':st==='warn'?'warn':'pend')+'</td></tr>';
   }).join('');
   document.getElementById('stbl').innerHTML='<table><thead><tr><th>Product</th><th>Size</th><th class="nr">Est.Stock</th><th class="nr">Physical</th><th>Level</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
@@ -747,11 +828,33 @@ function renderChart(){
   var cur=items.map(function(p){return Math.max(0,(p.total_received||0)-(p.total_outgoing||0));});
   var eow=items.map(function(p){return Math.max(0,(p.total_received||0)-(p.total_outgoing||0)-(PTOW[p.product]||0));});
   var thr=new Array(items.length).fill(5000);
+
+  // Cup colour map for bar colors
+  var CUP_COLORS = {
+    'frosted':'#0E6655','black':'#37474F','red':'#E53935','pink':'#E91E63',
+    'blue':'#1E88E5','purple':'#8E24AA','yellow':'#F9A825','white':'#C8B89A',
+    'green':'#43A047','orange':'#FF9800'
+  };
+  var CUP_COLORS_LIGHT = {
+    'frosted':'#A5D6A7','black':'#78909C','red':'#EF9A9A','pink':'#F48FB1',
+    'blue':'#90CAF9','purple':'#CE93D8','yellow':'#FFF59D','white':'#E8DDD0',
+    'green':'#C8E6C9','orange':'#FFCC80'
+  };
+
+  var barColors = items.map(function(p){
+    var col = (p.colour||'').toLowerCase();
+    return CUP_COLORS[col] || '#0E6655';
+  });
+  var barColorsLight = items.map(function(p){
+    var col = (p.colour||'').toLowerCase();
+    return CUP_COLORS_LIGHT[col] || '#52BE80';
+  });
+
   if(chartI)chartI.destroy();
   chartI=new Chart(document.getElementById('sc'),{
     type:'bar',data:{labels:labels,datasets:[
-      {label:'Current',data:cur,backgroundColor:'#0E6655',borderRadius:3},
-      {label:'End of week',data:eow,backgroundColor:'#52BE80',borderRadius:3},
+      {label:'Current',data:cur,backgroundColor:barColors,borderRadius:3},
+      {label:'End of week',data:eow,backgroundColor:barColorsLight,borderRadius:3},
       {label:'Threshold',data:thr,type:'line',borderColor:'#E24B4A',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,backgroundColor:'#E24B4A'}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
@@ -811,7 +914,8 @@ function renderCal(){
   document.getElementById('clbl').textContent=fmt(mon)+' – '+fmt(fri)+' 2026';
   var tw=weekJobs(getMon(0)),nw=weekJobs(getMon(1));
   document.getElementById('ctw').textContent=tw.length;
-  document.getElementById('ctu').textContent=tw.reduce(function(s,j){return s+(j.qty_printed||0);},0).toLocaleString();
+  var twPrints = tw.reduce(function(s,j){return s+(j.qty_printed||0)*(j.num_colours||1);},0);
+  document.getElementById('ctu').textContent=twPrints.toLocaleString();
   document.getElementById('cnw').textContent=nw.length;
   document.getElementById('cmth').textContent=(prints||[]).length;
   var days=[];
@@ -849,18 +953,43 @@ function renderCal(){
     dayJ.forEach(function(ev){
       window['ev_'+ev.id]=ev;
       var isDone=(ev.status||'').toLowerCase().indexOf('done')>-1;
-      var sc=isDone?'sd':sc2(ev.cup_size||'');
+      var sc=isDone?'sd':sc2(ev.cup_size||'',ev.cup_colour||'');
       var ce=document.createElement('div');
       ce.className='ce '+sc;ce.draggable=true;
+      var prints = (ev.qty_printed||0) * (ev.num_colours||1);
       ce.innerHTML='<div class="ec">'+ev.client+'</div>'+
-        '<div class="ed">'+(ev.qty_printed||0).toLocaleString()+' · '+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div>'+
-        '<div class="ed">🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.</div>'+
+        '<div class="ed">'+(ev.qty_printed||0).toLocaleString()+' cups · '+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div>'+
+        '<div class="ed">🖨️ '+prints.toLocaleString()+' prints · '+(ev.num_colours||1)+' col.</div>'+
         (ev.artwork?'<div class="ed">📋 '+ev.artwork+' artwork</div>':'');
-      (function(eid){
+      // Tooltip data stored on element
+      ce.dataset.tip = [
+        ev.client,
+        ev.print_date?'📅 Print: '+ev.print_date:'',
+        ev.delivery_date?'🚚 Del: '+ev.delivery_date:'',
+        (ev.qty_printed||0).toLocaleString()+' '+( ev.cup_size||'')+' '+(ev.cup_colour||''),
+        '🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.',
+        ev.artwork?'📋 '+ev.artwork+' artwork':'',
+        ev.notes?'📝 '+ev.notes:'',
+        ev.artwork_url?'📎 Artwork uploaded':''
+      ].filter(Boolean).join('\n');
+      // Add check done button
+      var checkBtn = document.createElement('div');
+      checkBtn.style.cssText = 'position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:9px;cursor:pointer;opacity:0.6';
+      checkBtn.textContent = isDone ? '✓' : '○';
+      checkBtn.title = isDone ? 'Mark as In Progress' : 'Mark as Done';
+      ce.appendChild(checkBtn);
+      ce.style.paddingRight = '22px';
+      (function(eid, est){
         ce.addEventListener('dragstart',function(){dragId=eid;this.classList.add('drag');});
         ce.addEventListener('dragend',function(){this.classList.remove('drag');});
-        ce.addEventListener('click',function(){openEvDetail(window['ev_'+eid]);});
-      })(ev.id);
+        ce.addEventListener('click',function(e){
+          if(e.target === checkBtn || checkBtn.contains(e.target)) {
+            toggleDone(eid, est);
+          } else {
+            openEvDetail(window['ev_'+eid]);
+          }
+        });
+      })(ev.id, ev.status);
       cell.appendChild(ce);
     });
     // add button
@@ -932,14 +1061,21 @@ async function saveQA(){
   var c=document.getElementById('qac').value.trim();
   var q=parseInt(document.getElementById('qaq').value)||0;
   if(!c||!q){toast('Client and qty required','err');return;}
-  await DB().from('print_schedule').insert([{
+  var qaInsert = {
     week_label:qaWL,date_period:qaP,client:c,
     cup_size:document.getElementById('qas').value,
     cup_colour:document.getElementById('qacl').value,
     qty_printed:q,print_colour:document.getElementById('qapc').value,
     print_date:document.getElementById('qapd').value||null,
     num_colours:1,status:'Scheduled'
-  }]);
+  };
+  var qaR = await DB().from('print_schedule').insert([qaInsert]).select();
+  // Upload artwork if provided
+  var qaArtFile = document.getElementById('qa-artwork-file').files[0];
+  if(qaArtFile && qaR.data && qaR.data[0]) {
+    var qaUrl = await uploadArtwork(qaR.data[0].id, qaArtFile);
+    if(qaUrl) await DB().from('print_schedule').update({artwork_url:qaUrl}).eq('id',qaR.data[0].id);
+  }
   toast('✓ '+c+' added','ok');
   closeOv('qaov');
   document.getElementById('qac').value='';document.getElementById('qaq').value='';
@@ -962,16 +1098,19 @@ function openEvDetail(ev){
     '<div class="mr"><span class="ml">Status</span><span>'+pill(ev.status||'Scheduled')+'</span></div>'+
     (ev.notes?'<div class="mr"><span class="ml">Notes</span><span>'+ev.notes+'</span></div>':'');
   var act=document.getElementById('evact');
+  act.innerHTML='';
   if(role!=='warda'){
-    act.innerHTML='';
-    var eb=document.createElement('button');eb.className='btn bp bfl';eb.textContent='✏️ Edit this job';
+    var eb=document.createElement('button');eb.className='btn bp';eb.style.flex='1';eb.textContent='✏️ Edit';
     eb.addEventListener('click',function(){closeOv('evov');openEdit(curEv);});
-    var cb=document.createElement('button');cb.className='btn bs';cb.textContent='Close';
-    cb.addEventListener('click',function(){closeOv('evov');});
-    act.appendChild(eb);act.appendChild(cb);
-  } else {
-    act.innerHTML='';var cb2=document.createElement('button');cb2.className='btn bs bfl';cb2.textContent='Close';cb2.addEventListener('click',function(){closeOv('evov');});act.appendChild(cb2);
+    act.appendChild(eb);
   }
+  var db2=document.createElement('button');db2.className='btn bs';db2.textContent='🖨️ Job card';
+  db2.addEventListener('click',function(){downloadJobCard(curEv);});
+  act.appendChild(db2);
+  var cb=document.createElement('button');cb.className='btn bs';cb.textContent='Close';
+  cb.addEventListener('click',function(){closeOv('evov');});
+  act.appendChild(cb);
+
   document.getElementById('evov').classList.add('op');
 }
 
@@ -999,6 +1138,16 @@ function openEdit(ev){
   setSel('esz',ev.cup_size||'500ml');setSel('ecol',ev.cup_colour||'Frosted');
   setSel('enc',String(ev.num_colours||1));setSel('est',ev.status||'Scheduled');
   setSel('ept',ev.print_type||'Screen print');setSel('ear',ev.artwork||'New');
+  // Show current artwork
+  pendingArtworkFile = null;
+  document.getElementById('artwork-file').value = '';
+  document.getElementById('artwork-preview').style.display = 'none';
+  var ac = document.getElementById('artwork-current');
+  if(ev.artwork_url) {
+    ac.innerHTML = '📎 Current: <a href="'+ev.artwork_url+'" target="_blank" style="color:#0E6655">View artwork</a>';
+  } else {
+    ac.textContent = 'No artwork uploaded yet';
+  }
   document.getElementById('edov').classList.add('op');
   setTimeout(function(){document.getElementById('ecl').focus();},100);
 }
@@ -1009,7 +1158,13 @@ async function saveEdit(){
   var client=document.getElementById('ecl').value.trim();
   var qty=parseInt(document.getElementById('eq').value)||0;
   if(!client||!qty){toast('Client and qty required','err');return;}
-  var r=await DB().from('print_schedule').update({
+  // Upload artwork if provided
+  var artworkUrl = null;
+  if(pendingArtworkFile) {
+    artworkUrl = await uploadArtwork(id, pendingArtworkFile);
+    if(!artworkUrl) { toast('Artwork upload failed — saving without artwork','err'); }
+  }
+  var updateData = {
     client:client,week_label:document.getElementById('ewl').value,
     date_period:document.getElementById('ewp').value,
     print_date:document.getElementById('epd').value||null,
@@ -1022,7 +1177,9 @@ async function saveEdit(){
     status:document.getElementById('est').value,
     print_type:document.getElementById('ept').value,
     notes:document.getElementById('eno').value
-  }).eq('id',id);
+  };
+  if(artworkUrl) updateData.artwork_url = artworkUrl;
+  var r=await DB().from('print_schedule').update(updateData).eq('id',id);
   if(r.error){toast('Error saving','err');return;}
   toast('✓ '+client+' updated','ok');
   closeOv('edov');prints=[];loadCalData();loadJobs();loadPrint();loadMyJobs();
@@ -1047,8 +1204,18 @@ async function loadMyJobs(){
   document.getElementById('wd').textContent=done;
   document.getElementById('wr').textContent=tot-done;
   document.getElementById('wu').textContent=units.toLocaleString();
+  // Sort: undone first (chronological by print_date/week), then done (greyed)
+  var sorted = r.data.slice().sort(function(a,b){
+    var aDone = a.status==='Done' ? 1 : 0;
+    var bDone = b.status==='Done' ? 1 : 0;
+    if(aDone !== bDone) return aDone - bDone;
+    // Both same done status: sort chronologically
+    var aDate = a.print_date || a.date_period || a.week_label || '';
+    var bDate = b.print_date || b.date_period || b.week_label || '';
+    return aDate.localeCompare(bDate);
+  });
   var weeks={};
-  r.data.forEach(function(j){var w=j.week_label||'Other';if(!weeks[w])weeks[w]=[];weeks[w].push(j);});
+  sorted.forEach(function(j){var w=j.week_label||'Other';if(!weeks[w])weeks[w]=[];weeks[w].push(j);});
   var el=document.getElementById('mjlist');el.innerHTML='';
   Object.keys(weeks).forEach(function(wk){
     var jobs=weeks[wk];
@@ -1062,9 +1229,24 @@ async function loadMyJobs(){
       var waste=Math.round((j.qty_printed||0)*0.05).toLocaleString();
       var card=document.createElement('div');card.className='pj '+sc;
       card.innerHTML='<div class="ck">'+(isDone?'✓':'')+'</div>'+
-        '<div class="ji"><div class="jc">'+j.client+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+' · '+(j.print_colour||'—')+'</div></div>'+
-        '<div><div class="jq">'+(j.qty_printed||0).toLocaleString()+'</div><div class="jw">+'+waste+' waste</div></div>';
-      (function(jid,jst){card.addEventListener('click',function(){toggleDone(jid,jst);});})(j.id,j.status);
+        '<div class="ji"><div class="jc">'+j.client+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+' · '+(j.print_colour||'—')+'<br>'+(j.print_date?'📅 '+j.print_date:'')+'</div></div>'+
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
+        '<div><div class="jq">'+(j.qty_printed||0).toLocaleString()+'</div><div class="jw">+'+waste+'</div></div>'+
+        '<button class="btn bs bsm" style="font-size:10px;padding:3px 8px">🖨️ Card</button>'+
+        '</div>';
+      (function(jid,jst,jev){
+        // Click on card = toggle done (but not on the download button)
+        card.addEventListener('click',function(e){
+          if(e.target.tagName==='BUTTON') return;
+          toggleDone(jid,jst);
+        });
+        // Download button
+        var btn = card.querySelector('button');
+        btn.addEventListener('click',function(e){
+          e.stopPropagation();
+          downloadJobCard(jev);
+        });
+      })(j.id,j.status,j);
       el.appendChild(card);
     });
   });
@@ -1076,6 +1258,94 @@ async function toggleDone(id,st){
   toast(ns==='Done'?'✅ Done!':'↩️ In progress','ok');
   prints=[];loadMyJobs();loadCalData();
 }
+
+// ── JOB CARD ──
+function downloadJobCard(ev) {
+  if(!ev) return;
+  var artSection = ev.artwork_url
+    ? '<div style="margin-top:16px;padding:12px;background:#E3F2FD;border-radius:8px;border:1.5px solid #1E88E5">'
+      + '<div style="font-size:11px;font-weight:700;color:#1F4E79;margin-bottom:6px">ARTWORK</div>'
+      + (ev.artwork_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+        ? '<img src="'+ev.artwork_url+'" style="max-width:100%;max-height:200px;border-radius:4px">'
+        : '<a href="'+ev.artwork_url+'" style="color:#1F4E79;font-weight:600">📎 Open artwork file</a>')
+      + '</div>'
+    : '<div style="margin-top:16px;padding:12px;background:#f2f3f4;border-radius:8px;border:1.5px dashed #ccc;text-align:center;color:#999">No artwork uploaded</div>';
+
+  var html = '<!DOCTYPE html><html><head><title>Job Card — '+ev.client+'</title>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}'
+    + 'body{padding:24px;color:#1a1a1a;font-size:13px}'
+    + '.hdr{background:#0E6655;color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}'
+    + '.hdr h1{font-size:20px;font-weight:700}.hdr .sub{font-size:11px;opacity:0.8}'
+    + '.bar{height:5px;background:'+(ev.cup_size&&ev.cup_size.indexOf('500')>-1?'#43A047':ev.cup_size&&ev.cup_size.indexOf('330')>-1?'#FDD835':'#1E88E5')+';border-radius:3px;margin-bottom:20px}'
+    + '.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}'
+    + '.field{background:#f7f8fa;border-radius:6px;padding:10px 12px}'
+    + '.field .lb{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:3px}'
+    + '.field .vl{font-size:14px;font-weight:600}'
+    + '.field.big .vl{font-size:18px;color:#0E6655}'
+    + '.sign{border:1px solid #ddd;border-radius:8px;padding:14px;margin-top:16px;min-height:60px}'
+    + '.sign .lb{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:8px}'
+    + '.footer{margin-top:20px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:10px}'
+    + '@media print{body{padding:12px}}</style></head><body>'
+    + '<div class="hdr"><div><div class="sub">SWIG CUPS — Print Job Card</div><h1>'+ev.client+'</h1></div>'
+    + '<div style="text-align:right"><div style="font-size:11px;opacity:0.8">'+(ev.week_label||'')+' · '+(ev.date_period||'')+'</div>'
+    + '<div style="font-size:20px;font-weight:700">'+(ev.print_date||'Date TBC')+'</div></div></div>'
+    + '<div class="bar"></div>'
+    + '<div class="grid">'
+    + '<div class="field big"><div class="lb">Quantity</div><div class="vl">'+(ev.qty_printed||0).toLocaleString()+' cups</div></div>'
+    + '<div class="field big"><div class="lb">Stock to use</div><div class="vl">'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+' units</div></div>'
+    + '<div class="field"><div class="lb">Cup size</div><div class="vl">'+(ev.cup_size||'—')+'</div></div>'
+    + '<div class="field"><div class="lb">Cup colour</div><div class="vl">'+(ev.cup_colour||'—')+'</div></div>'
+    + '<div class="field"><div class="lb">Print colour(s)</div><div class="vl">'+(ev.print_colour||'—')+'</div></div>'
+    + '<div class="field"><div class="lb">Number of colours</div><div class="vl">'+(ev.num_colours||1)+'</div></div>'
+    + '<div class="field"><div class="lb">Print type</div><div class="vl">'+(ev.print_type||'Screen print')+'</div></div>'
+    + '<div class="field"><div class="lb">Artwork</div><div class="vl">'+(ev.artwork||'—')+' artwork</div></div>'
+    + '<div class="field"><div class="lb">Print date</div><div class="vl">'+(ev.print_date||'—')+'</div></div>'
+    + '<div class="field"><div class="lb">Delivery date</div><div class="vl">'+(ev.delivery_date||'—')+'</div></div>'
+    + '</div>'
+    + (ev.notes?'<div class="field" style="margin-bottom:16px"><div class="lb">Notes</div><div class="vl" style="font-size:12px">'+ev.notes+'</div></div>':'')
+    + artSection
+    + '<div class="sign"><div class="lb">Printed by (signature & date)</div></div>'
+    + '<div class="footer">Swig Cups — Greenvolved T/A · Generated '+new Date().toLocaleDateString('en-GB')+'</div>'
+    + '</body></html>';
+
+  var blob = new Blob([html], {type:'text/html'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = ev.client.replace(/[^a-z0-9]/gi,'_')+'_JobCard.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Job card downloaded','ok');
+}
+
+// ── GLOBAL TOOLTIP ──
+var tipEl = document.createElement('div');
+tipEl.className = 'ce-tooltip';
+tipEl.id = 'global-tip';
+document.body.appendChild(tipEl);
+
+document.addEventListener('mouseover', function(e) {
+  var ce = e.target.closest('.ce');
+  if(ce && ce.dataset.tip) {
+    tipEl.innerHTML = ce.dataset.tip.split('\n').join('<br>');
+    tipEl.classList.add('show');
+  }
+});
+document.addEventListener('mousemove', function(e) {
+  if(tipEl.classList.contains('show')) {
+    var x = e.clientX + 14;
+    var y = e.clientY + 14;
+    // Keep within viewport
+    if(x + 280 > window.innerWidth) x = e.clientX - 280;
+    if(y + 150 > window.innerHeight) y = e.clientY - 150;
+    tipEl.style.left = x + 'px';
+    tipEl.style.top = y + 'px';
+  }
+});
+document.addEventListener('mouseout', function(e) {
+  var ce = e.target.closest('.ce');
+  if(ce) tipEl.classList.remove('show');
+});
 
 // close overlays on click outside
 ['evov','edov','qaov'].forEach(function(id){
