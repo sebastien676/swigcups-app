@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swig Cups</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;color:#1a1a1a;background:#f7f8fa;min-height:100vh}
+/* LOGIN */
+#lw{position:fixed;inset:0;background:#0E6655;display:flex;align-items:center;justify-content:center;z-index:9999}
+.lc{background:#fff;border-radius:16px;padding:32px;width:300px;text-align:center}
+.lc h1{font-size:20px;font-weight:700;color:#0E6655;margin:8px 0 4px}
+.lc p{font-size:13px;color:#888;margin-bottom:20px}
+.lc input{width:100%;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:15px;text-align:center;letter-spacing:3px;margin-bottom:12px;box-sizing:border-box}
+.lc .sb{width:100%;padding:13px;background:#0E6655;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer}
+.lc .sb:hover{background:#085041}
+.le{color:red;font-size:12px;margin-top:8px;display:none}
+/* SHELL */
+#app{display:none}
+.tb{background:#0E6655;color:#fff;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100}
+.tb h1{font-size:16px;font-weight:600}
+.tb .rt{font-size:11px;background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:20px}
+nav{background:#fff;border-bottom:1px solid #e0e0e0;display:flex;overflow-x:auto;position:sticky;top:52px;z-index:99}
+nav button{flex-shrink:0;padding:12px 14px;border:none;background:transparent;font-size:13px;font-weight:500;color:#666;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+nav button.act{color:#0E6655;border-bottom-color:#0E6655}
+nav button:hover:not(.act){background:#f2f3f4}
+.ab{background:#C0392B;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px}
+.sec{display:none;padding:16px;max-width:960px;margin:0 auto}
+.sec.act{display:block}
+/* CARDS */
+.card{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.ct{font-size:12px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px}
+.mts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.mt{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.mt .lb{font-size:11px;color:#666;margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:0.3px}
+.mt .vl{font-size:24px;font-weight:700;color:#1a1a1a}
+.mt .sb2{font-size:11px;color:#999;margin-top:4px}
+.mt.rd .vl{color:#C0392B} .mt.gn .vl{color:#1E8449} .mt.or .vl{color:#D35400}
+/* TABLE */
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:700;color:#666;text-align:left;padding:8px 10px;border-bottom:2px solid #e0e0e0;text-transform:uppercase;white-space:nowrap}
+td{padding:9px 10px;font-size:13px;border-bottom:1px solid #e0e0e0;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.nr{text-align:right;font-weight:500}
+/* PILLS */
+.pl{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:12px;white-space:nowrap}
+.pl.ok{background:#D5F5E3;color:#0B5E2F}
+.pl.low{background:#FADBD8;color:#7B241C}
+.pl.warn{background:#F9E79F;color:#7D6608}
+.pl.pend{background:#D6EAF8;color:#1A3A5C}
+.pl.del{background:#D5F5E3;color:#0B5E2F}
+.pl.ndel{background:#FADBD8;color:#7B241C}
+.pl.prog{background:#D6EAF8;color:#1A3A5C}
+.pl.sch{background:#F9E79F;color:#7D6608}
+.pl.done{background:#D5F5E3;color:#0B5E2F}
+.pl.part{background:#FDEBD0;color:#784212}
+/* STOCK BAR */
+.bar{width:70px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden;display:inline-block}
+.barf{height:100%;border-radius:3px}
+/* FORMS */
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.fg label{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.3px}
+input,select,textarea{font-size:13px;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:6px;width:100%;font-family:inherit;color:#1a1a1a;background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-shadow:0 0 0 3px rgba(14,102,85,0.1)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.btn{padding:9px 16px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.bp{background:#0E6655;color:#fff} .bp:hover{background:#085041}
+.bs{background:#fff;color:#1a1a1a;border:1px solid #e0e0e0} .bs:hover{background:#f2f3f4}
+.bd{background:#FADBD8;color:#C0392B;border:1px solid #C0392B} .bd:hover{background:#C0392B;color:#fff}
+.bsm{padding:5px 10px;font-size:12px}
+.bfl{width:100%;justify-content:center;margin-top:4px}
+.badd{background:transparent;color:#0E6655;border:1.5px dashed #0E6655;border-radius:6px;padding:10px;width:100%;font-size:13px;font-weight:500;cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px}
+.badd:hover{background:#D1F2EB}
+.pnl{display:none;background:#f2f3f4;border-radius:10px;padding:16px;margin-top:8px;border:1px solid #e0e0e0}
+.pnl.op{display:block}
+.pnl h3{font-size:13px;font-weight:600;margin-bottom:14px}
+.hint{font-size:12px;color:#0E6655;font-weight:500;margin-top:4px}
+.fa{display:flex;gap:8px;margin-top:12px}
+/* CALENDAR */
+.cw{background:#fff;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.chdr{background:#4A235A;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.chdr h3{font-size:14px;font-weight:600}
+.cnav button{background:rgba(255,255,255,0.2);border:none;color:#fff;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:500;margin-left:6px}
+.cnav button:hover{background:rgba(255,255,255,0.35)}
+.cgrid{display:grid;grid-template-columns:50px repeat(6,1fr);gap:1px;background:#e0e0e0}
+.cdh{background:#f2f3f4;text-align:center;padding:8px 4px}
+.cdh .dn{font-size:10px;font-weight:700;color:#666;text-transform:uppercase}
+.cdh .dd{font-size:20px;font-weight:700;color:#1a1a1a}
+.cdh .dm{font-size:10px;color:#999}
+.cdh.td{background:#D1F2EB} .cdh.td .dd{color:#0E6655}
+.clbl{background:#f2f3f4;display:flex;align-items:flex-start;justify-content:flex-end;padding:6px 4px;font-size:10px;color:#999}
+.cc{background:#fff;min-height:100px;padding:4px}
+.cc.td{background:#F8FFFE}
+.cc.dov{outline:2px dashed #43A047;outline-offset:-2px;background:#F1F8F1}
+.ce{padding:5px 7px;border-radius:6px;margin-bottom:3px;font-size:11px;font-weight:500;cursor:pointer;line-height:1.3;border:none}
+.ce:hover{filter:brightness(0.92)}
+.ce.s5{background:#E8F5E9;color:#1B5E20;border-left:3px solid #43A047}
+.ce.s3{background:#FFFDE7;color:#E65100;border-left:3px solid #FDD835}
+.ce.s2{background:#E3F2FD;color:#0D47A1;border-left:3px solid #1E88E5}
+.ce.sd{background:#F5F5F5;color:#9E9E9E;border-left:3px solid #BDBDBD;text-decoration:line-through;opacity:0.6}
+.ce.cup-black{background:#ECEFF1;color:#263238;border-left:3px solid #455A64}
+.ce.cup-red{background:#FFEBEE;color:#B71C1C;border-left:3px solid #E53935}
+.ce.cup-pink{background:#FCE4EC;color:#880E4F;border-left:3px solid #E91E63}
+.ce.cup-blue{background:#E3F2FD;color:#0D47A1;border-left:3px solid #1E88E5}
+.ce.cup-purple{background:#F3E5F5;color:#4A148C;border-left:3px solid #8E24AA}
+.ce.cup-yellow{background:#FFFDE7;color:#E65100;border-left:3px solid #FDD835}
+.ce.cup-white{background:#F5EFE6;color:#6D4C41;border-left:3px solid #C8B89A}
+.ce.cup-green{background:#E8F5E9;color:#1B5E20;border-left:3px solid #43A047}
+.ce.cup-orange{background:#FFF3E0;color:#E65100;border-left:3px solid #FF9800}
+/* Tooltip */
+.ce-tooltip{position:fixed;background:#1a1a1a;color:#fff;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.6;z-index:99999;pointer-events:none;opacity:0;transition:opacity .15s;min-width:180px;max-width:260px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+.ce-tooltip.show{opacity:1}
+.ce{position:relative;cursor:pointer}
+.ce.drag{opacity:0.3}
+.ce .ec{font-weight:600;font-size:11px}
+.ce .ed{font-size:10px;opacity:0.75;margin-top:1px}
+.cleg{display:flex;gap:14px;padding:10px 16px;border-top:1px solid #e0e0e0;font-size:11px;color:#666}
+.cleg span{display:flex;align-items:center;gap:4px}
+.cdot{width:10px;height:10px;border-radius:2px;display:inline-block}
+.cadd{width:100%;margin-top:3px;background:transparent;border:1px dashed #ccc;border-radius:4px;padding:3px;font-size:10px;color:#bbb;cursor:pointer;text-align:center;display:none}
+.cc:hover .cadd{display:block}
+.cadd:hover{border-color:#0E6655;color:#0E6655}
+/* WARDA */
+.pj{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s}
+.pj:hover{border-color:#aaa}
+.pj.s5b{border-left:4px solid #43A047} .pj.s3b{border-left:4px solid #FDD835} .pj.s2b{border-left:4px solid #1E88E5}
+.pj.dn2{background:#F9F9F9;border-left:4px solid #BDBDBD;opacity:0.7}
+.pj .ck{width:26px;height:26px;border-radius:50%;border:2px solid #e0e0e0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+.pj.dn2 .ck{background:#1E8449;border-color:#1E8449;color:#fff}
+.pj .ji{flex:1}
+.pj .jc{font-weight:600;font-size:14px}
+.pj .jd{font-size:12px;color:#666;margin-top:2px}
+.pj .jq{font-weight:700;font-size:15px;color:#0E6655;white-space:nowrap;text-align:right}
+.pj .jw{font-size:11px;color:#999}
+.wh{font-size:11px;font-weight:700;color:#0E6655;background:#D1F2EB;padding:5px 12px;border-radius:20px;display:inline-block;margin:14px 0 8px}
+.pb{height:4px;background:#e0e0e0;border-radius:2px;margin-bottom:12px;overflow:hidden}
+.pbf{height:100%;background:#1E8449;border-radius:2px;transition:width .4s}
+/* OVERLAYS */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center;padding:16px}
+.ov.op{display:flex}
+.modal{background:#fff;border-radius:10px;padding:20px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.2)}
+.mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.mh h3{font-size:15px;font-weight:700;color:#0E6655}
+.mc{background:none;border:none;font-size:22px;cursor:pointer;color:#666;line-height:1;padding:0}
+.mr{display:flex;gap:8px;margin-bottom:8px;font-size:13px;align-items:flex-start}
+.ml{font-weight:600;color:#666;min-width:90px;font-size:12px}
+.es{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #e0e0e0}
+.ma{display:flex;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid #e0e0e0}
+/* ALERTS */
+.ai{border-left:3px solid #C0392B;background:#FADBD8;border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:8px}
+.ai h4{font-size:12px;font-weight:600;color:#C0392B;margin-bottom:3px}
+.ai p{font-size:12px;color:#666;line-height:1.5}
+.ai.warn{border-color:#D35400;background:#FDEBD0} .ai.warn h4{color:#D35400}
+.ai.info{border-color:#1F4E79;background:#D6EAF8} .ai.info h4{color:#1F4E79}
+.ai.ok{border-color:#1E8449;background:#D5F5E3} .ai.ok h4{color:#1E8449}
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:#1a1a1a;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;z-index:9999;opacity:0;transform:translateY(10px);transition:all .3s;max-width:300px;pointer-events:none}
+.toast.sh{opacity:1;transform:translateY(0)}
+.toast.tok{background:#1E8449} .toast.ter{background:#C0392B}
+/* CHART */
+.cw2{position:relative;width:100%;height:250px;margin-top:8px}
+/* LOADING */
+.ld{text-align:center;padding:40px;color:#666}
+.sp{width:22px;height:22px;border:2px solid #e0e0e0;border-top-color:#0E6655;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:600px){
+  .mts{grid-template-columns:1fr 1fr}
+  .g2,.g3{grid-template-columns:1fr}
+  table{font-size:12px}
+  th,td{padding:7px 6px}
+  .sec{padding:12px}
+  nav button{padding:10px 12px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<div id="lw">
+  <div class="lc">
+    <div style="font-size:48px">🥤</div>
+    <h1>Swig Cups</h1>
+    <p>Stock & Print Manager</p>
+    <input type="password" id="pw" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="sb" onclick="doLogin()">Sign in</button>
+    <div class="le" id="le">Wrong password. Try again.</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="tb">
+    <h1>🥤 Swig Cups</h1>
+    <span class="rt" id="rt">Owner</span>
+  </div>
+  <nav id="nav">
+    <button class="act" onclick="showTab('stock',this)">📦 Stock</button>
+    <button onclick="showTab('chart',this)">📊 Chart</button>
+    <button onclick="showTab('pos',this)">📋 Orders</button>
+    <button onclick="showTab('jobs',this)">📝 Jobs</button>
+    <button onclick="showTab('print',this)">🖨️ Print</button>
+    <button onclick="showTab('cal',this)">📅 Calendar</button>
+    <button onclick="showTab('myjobs',this)" id="wmj" style="display:none">✅ My Jobs</button>
+    <button onclick="showTab('alerts',this)">🚨 Alerts <span class="ab" id="abn">!</span></button>
+  </nav>
+
+  <div id="tab-stock" class="sec act">
+    <div class="mts" id="smets"></div>
+    <div class="card">
+      <div class="ch"><span class="ct">Stock by product</span><button class="btn bs bsm" onclick="loadStock()">↻</button></div>
+      <div id="stbl"><div class="ld"><div class="sp"></div>Loading...</div></div>
+    </div>
+    <button class="badd" id="badd" style="display:none" onclick="togglePnl('pdel')">+ Record delivery</button>
+    <div class="pnl" id="pdel">
+      <h3>New delivery — Africa Plastics</h3>
+      <div class="g2">
+        <div class="fg"><label>Date</label><input type="date" id="dd" value="2026-06-08"></div>
+        <div class="fg"><label>Reference</label><input type="text" id="dr" placeholder="e.g. Ronald #66"></div>
+      </div>
+      <div class="g3">
+        <div class="fg"><label>Product</label><select id="dp">
+          <option>500ml Frosted cups</option><option>500ml Black cups</option><option>500ml Red cups</option>
+          <option>500ml Pink cups</option><option>500ml White cups</option><option>500ml Purple cups</option>
+          <option>500ml Blue cups</option><option>500ml Yellow cups</option>
+          <option>330ml Frosted cups</option><option>330ml Red cups</option><option>330ml Yellow cups</option>
+        </select></div>
+        <div class="fg"><label>Boxes</label><input type="number" id="dbx" placeholder="e.g. 28" oninput="calcDel()"></div>
+        <div class="fg"><label>Units/box</label><input type="number" id="dub" placeholder="350" oninput="calcDel()"></div>
+      </div>
+      <div class="hint" id="dcalc">Total: — units</div>
+      <div class="fg" style="margin-top:8px"><label>PO / Notes</label><input type="text" id="dn2" placeholder="e.g. PO-365"></div>
+      <div class="fa">
+        <button class="btn bp bfl" onclick="saveDel()">Save delivery</button>
+        <button class="btn bs" onclick="togglePnl('pdel')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-chart" class="sec">
+    <div class="card">
+      <div class="ch"><span class="ct">Stock levels — current vs end of week</span></div>
+      <div class="cw2"><canvas id="sc"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">End-of-week projection</span></div>
+      <table id="et"><tr><td class="ld">Loading...</td></tr></table>
+    </div>
+  </div>
+
+  <div id="tab-pos" class="sec">
+    <div class="mts" id="pmets"></div>
+    <div class="card">
+      <div class="ch"><span class="ct">Purchase orders — Africa Plastics</span><button class="btn bs bsm" onclick="loadPOs()">↻</button></div>
+      <div id="pol"><div class="ld"><div class="sp"></div></div></div>
+    </div>
+  </div>
+
+  <div id="tab-jobs" class="sec">
+    <div class="mts" id="jmets">
+      <div class="mt"><div class="lb">Total</div><div class="vl" id="jt">—</div></div>
+      <div class="mt gn"><div class="lb">Scheduled</div><div class="vl" id="js">—</div></div>
+      <div class="mt or"><div class="lb">In progress</div><div class="vl" id="jp">—</div></div>
+      <div class="mt"><div class="lb">Done</div><div class="vl" id="jd">—</div></div>
+    </div>
+    <button class="badd" id="bajob" style="display:none" onclick="togglePnl('pjob');this.style.display='none'">+ Add client order</button>
+    <div class="pnl" id="pjob">
+      <h3>New client order</h3>
+      <div class="g3">
+        <div class="fg"><label>Client ★</label><input type="text" id="jc2" placeholder="e.g. Heineken"></div>
+        <div class="fg"><label>Date received</label><input type="date" id="jdr" value="2026-06-08"></div>
+        <div class="fg"><label>Delivery date</label><input type="date" id="jdl"></div>
+      </div>
+      <div class="g3">
+        <div class="fg"><label>Cup size ★</label><select id="jsz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
+        <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option></select></div>
+        <div class="fg"><label>Qty ★</label><input type="number" id="jq" placeholder="e.g. 2000" oninput="this.nextElementSibling.textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"><span class="hint"></span></div>
+      </div>
+      <div class="g3">
+        <div class="fg"><label># Colours</label><select id="jnc"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+        <div class="fg"><label>Print colour</label><input type="text" id="jpc" placeholder="e.g. White"></div>
+        <div class="fg"><label>Artwork</label><select id="jar"><option>New</option><option>Existing</option><option>Client to send</option><option>TBC</option></select></div>
+      </div>
+      <div class="fg"><label>Notes</label><input type="text" id="jno" placeholder="Special instructions..."></div>
+      <div class="fa">
+        <button class="btn bp bfl" onclick="saveJob()">Save order</button>
+        <button class="btn bs" onclick="togglePnl('pjob');document.getElementById('bajob').style.display='flex'">Cancel</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="ch"><span class="ct">All orders</span><button class="btn bs bsm" onclick="loadJobs()">↻</button></div>
+      <div id="jlist"><div class="ld"><div class="sp"></div></div></div>
+    </div>
+  </div>
+
+  <div id="tab-print" class="sec">
+    <div class="card">
+      <div class="ch"><span class="ct">Print schedule — Blink (Warda)</span><button class="btn bs bsm" onclick="loadPrint()">↻</button></div>
+      <div id="plist"><div class="ld"><div class="sp"></div></div></div>
+    </div>
+  </div>
+
+  <div id="tab-cal" class="sec">
+    <div class="mts">
+      <div class="mt"><div class="lb">This week</div><div class="vl" id="ctw">—</div><div class="sb2">jobs</div></div>
+      <div class="mt"><div class="lb">Prints this week</div><div class="vl" id="ctu">—</div><div class="sb2">qty × colours</div></div>
+      <div class="mt"><div class="lb">Next week</div><div class="vl" id="cnw">—</div><div class="sb2">scheduled</div></div>
+      <div class="mt"><div class="lb">This month</div><div class="vl" id="cmth">—</div><div class="sb2">total</div></div>
+    </div>
+    <div class="cw">
+      <div class="chdr">
+        <div style="font-size:11px;opacity:0.8">Blink Printing — Warda</div>
+        <h3 id="clbl">Loading...</h3>
+        <div class="cnav">
+          <button onclick="calNav(-1)">‹ Prev</button>
+          <button onclick="calNav(0)">Today</button>
+          <button onclick="calNav(1)">Next ›</button>
+        </div>
+      </div>
+      <div class="cgrid" id="cgrid"></div>
+      <div class="cleg" style="flex-wrap:wrap;gap:8px">
+        <span><span class="cdot" style="background:#E8F5E9;border-left:3px solid #43A047"></span>Frosted 500ml</span>
+        <span><span class="cdot" style="background:#FFFDE7;border-left:3px solid #FDD835"></span>Frosted 330ml</span>
+        <span><span class="cdot" style="background:#E3F2FD;border-left:3px solid #1E88E5"></span>Frosted 250ml</span>
+        <span><span class="cdot" style="background:#FFEBEE;border-left:3px solid #E53935"></span>Red</span>
+        <span><span class="cdot" style="background:#ECEFF1;border-left:3px solid #455A64"></span>Black</span>
+        <span><span class="cdot" style="background:#F3E5F5;border-left:3px solid #8E24AA"></span>Purple</span>
+        <span><span class="cdot" style="background:#F5F5F5;border-left:3px solid #BDBDBD"></span>Done</span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="ch"><span class="ct">Upcoming jobs</span></div>
+      <div id="clist"><div class="ld"><div class="sp"></div></div></div>
+    </div>
+  </div>
+
+  <div id="tab-myjobs" class="sec">
+    <div class="mts">
+      <div class="mt"><div class="lb">Total</div><div class="vl" id="wt">—</div></div>
+      <div class="mt gn"><div class="lb">Done ✅</div><div class="vl" id="wd">—</div></div>
+      <div class="mt or"><div class="lb">Remaining</div><div class="vl" id="wr">—</div></div>
+      <div class="mt"><div class="lb">Units done</div><div class="vl" id="wu">—</div></div>
+    </div>
+    <div id="mjlist"><div class="ld"><div class="sp"></div></div></div>
+  </div>
+
+  <div id="tab-alerts" class="sec">
+    <div class="ch" style="margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:700">🚨 Alerts & Actions</h2>
+      <button class="btn bs bsm" onclick="loadAlerts()">↻ Refresh</button>
+    </div>
+    <div id="alist"><div class="ld"><div class="sp"></div></div></div>
+  </div>
+</div>
+
+<!-- EVENT DETAIL -->
+<div class="ov" id="evov">
+  <div class="modal">
+    <div class="mh"><h3 id="evtitle">Job</h3><button class="mc" onclick="closeOv('evov')">×</button></div>
+    <div id="evbody"></div>
+    <div class="ma" id="evact"></div>
+  </div>
+</div>
+
+<!-- EDIT JOB -->
+<div class="ov" id="edov">
+  <div class="modal">
+    <div class="mh"><h3>✏️ Edit job</h3><button class="mc" onclick="closeOv('edov')">×</button></div>
+    <input type="hidden" id="eid">
+    <div class="es">Client & Schedule</div>
+    <div class="g2">
+      <div class="fg"><label>Client ★</label><input type="text" id="ecl"></div>
+      <div class="fg"><label>Week label</label><input type="text" id="ewl" placeholder="e.g. W23"></div>
+    </div>
+    <div class="g2">
+      <div class="fg"><label>Week period</label><input type="text" id="ewp" placeholder="e.g. 07/06-13/06"></div>
+      <div class="fg"><label>Print date</label><input type="date" id="epd"></div>
+    </div>
+    <div class="fg"><label>Delivery date</label><input type="date" id="edd"></div>
+    <div class="es">Cup details</div>
+    <div class="g3">
+      <div class="fg"><label>Size ★</label><select id="esz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
+      <div class="fg"><label>Colour ★</label><select id="ecol"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option></select></div>
+      <div class="fg"><label>Qty ★</label><input type="number" id="eq" oninput="document.getElementById('ecalc').textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"></div>
+    </div>
+    <div class="hint" id="ecalc">Stock: —</div>
+    <div class="es">Print details</div>
+    <div class="g3">
+      <div class="fg"><label># Colours</label><select id="enc"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+      <div class="fg"><label>Print colour</label><input type="text" id="epc"></div>
+      <div class="fg"><label>Artwork</label><select id="ear"><option>New</option><option>Existing</option><option>Client to send</option><option>TBC</option></select></div>
+    </div>
+    <div class="g2">
+      <div class="fg"><label>Status</label><select id="est"><option>Scheduled</option><option>In progress</option><option>Done</option><option>On hold</option><option>Cancelled</option></select></div>
+      <div class="fg"><label>Print type</label><select id="ept"><option>Screen print</option><option>Digital</option><option>Foil</option><option>Mixed</option></select></div>
+    </div>
+    <div class="fg"><label>Notes</label><textarea id="eno" rows="2"></textarea></div>
+    <div class="fg">
+      <label>Artwork file</label>
+      <div id="artwork-preview" style="margin-bottom:6px;display:none">
+        <span id="artwork-name" style="font-size:12px;color:#0E6655;font-weight:500"></span>
+        <button onclick="clearArtwork()" style="margin-left:8px;background:none;border:none;color:#C0392B;cursor:pointer;font-size:12px">✕ Remove</button>
+      </div>
+      <input type="file" id="artwork-file" accept="image/*,.pdf" style="font-size:12px;padding:6px" onchange="previewArtwork(this)">
+      <div id="artwork-current" style="font-size:11px;color:#666;margin-top:4px"></div>
+    </div>
+    <div class="ma">
+      <button class="btn bp bfl" onclick="saveEdit()">💾 Save</button>
+      <button class="bd btn" onclick="delJob()">🗑️</button>
+      <button class="btn bs" onclick="closeOv('edov')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK ADD -->
+<div class="ov" id="qaov">
+  <div class="modal" style="max-width:360px">
+    <div class="mh"><h3>➕ Add job</h3><button class="mc" onclick="closeOv('qaov')">×</button></div>
+    <div id="qainfo" style="font-size:12px;color:#0E6655;font-weight:600;margin-bottom:12px"></div>
+    <div class="fg"><label>Client ★</label><input type="text" id="qac" placeholder="Client name"></div>
+    <div class="g3">
+      <div class="fg"><label>Size</label><select id="qas"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
+      <div class="fg"><label>Colour</label><select id="qacl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option></select></div>
+      <div class="fg"><label>Qty</label><input type="number" id="qaq" placeholder="2000"></div>
+    </div>
+    <div class="g2">
+      <div class="fg"><label>Print colour</label><input type="text" id="qapc" placeholder="e.g. White"></div>
+      <div class="fg"><label>Print date</label><input type="date" id="qapd"></div>
+    </div>
+    <div class="fg">
+      <label>Artwork file</label>
+      <input type="file" id="qa-artwork-file" accept="image/*,.pdf" style="font-size:12px;padding:6px">
+    </div>
+    <div class="ma">
+      <button class="btn bp bfl" onclick="saveQA()">Save job</button>
+      <button class="btn bs" onclick="closeOv('qaov')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var SB_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co';
+var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZWx2cWdxbWF6ZHNhcWxzeHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1OTYzOTAsImV4cCI6MjA5NjE3MjM5MH0.xediho7kmpJXmYH5tMO_LyXPjx88229VrQ3M3L1zfqw';
+var db=null;
+function DB(){if(!db)db=supabase.createClient(SB_URL,SB_KEY);return db;}
+
+var USERS={'swig2026':'owner','fred2026':'fred','warda2026':'warda'};
+
+// ── ARTWORK UPLOAD ──
+var pendingArtworkFile = null;
+
+function previewArtwork(input) {
+  if(input.files && input.files[0]) {
+    pendingArtworkFile = input.files[0];
+    document.getElementById('artwork-preview').style.display = 'block';
+    document.getElementById('artwork-name').textContent = '📎 ' + pendingArtworkFile.name;
+  }
+}
+
+function clearArtwork() {
+  pendingArtworkFile = null;
+  document.getElementById('artwork-file').value = '';
+  document.getElementById('artwork-preview').style.display = 'none';
+  document.getElementById('artwork-current').textContent = '';
+}
+
+async function uploadArtwork(jobId, file) {
+  if(!file) return null;
+  var path = 'artworks/' + jobId + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  var r = await DB().storage.from('artworks').upload(path, file, {upsert: true});
+  if(r.error) { console.log('Upload error:', r.error); return null; }
+  var url = DB().storage.from('artworks').getPublicUrl(path);
+  return url.data.publicUrl;
+}
+var RTABS={owner:['stock','chart','pos','jobs','print','cal','alerts'],fred:['stock','jobs','print','cal'],warda:['myjobs','cal']};
+var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
+var role=null,prints=[],stock=[],calOff=0,dragId=null,curEv=null,qaWL='',qaP='',chartI=null;
+
+function doLogin(){
+  var pw=document.getElementById('pw').value.trim();
+  var r=USERS[pw];
+  if(!r){document.getElementById('le').style.display='block';document.getElementById('pw').value='';return;}
+  role=r;
+  document.getElementById('lw').style.display='none';
+  document.getElementById('app').style.display='block';
+  initRole(r);
+}
+
+function initRole(r){
+  document.getElementById('rt').textContent=RLAB[r];
+  var allowed=RTABS[r];
+  var btns=document.querySelectorAll('nav button');
+  var order=['stock','chart','pos','jobs','print','cal','myjobs','alerts'];
+  btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
+  if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
+  if(r==='owner'||r==='fred'){document.getElementById('badd').style.display='flex';document.getElementById('bajob').style.display='flex';}
+  loadStock();loadPOs();loadPrint();loadJobs();
+}
+
+function showTab(n,b){
+  document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('act');});
+  document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('act');});
+  document.getElementById('tab-'+n).classList.add('act');
+  if(b)b.classList.add('act');
+  if(n==='chart')renderChart();
+  if(n==='cal'){if(prints.length>0)renderCal();else loadCalData();}
+  if(n==='alerts')loadAlerts();
+  if(n==='myjobs')loadMyJobs();
+}
+
+function togglePnl(id){document.getElementById(id).classList.toggle('op');}
+function closeOv(id){document.getElementById(id).classList.remove('op');}
+
+function toast(msg,t){
+  var el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast sh t'+(t||'ok');
+  setTimeout(function(){el.className='toast';},2800);
+}
+
+function pill(s){
+  var m={ok:'ok',low:'low',warn:'warn',Pending:'pend',Delivered:'del','Not delivered':'ndel','In progress':'prog',Scheduled:'sch',Done:'done',Partial:'part','To verify':'warn','Over-delivered':'ok'};
+  return '<span class="pl '+(m[s]||'pend')+'">'+s+'</span>';
+}
+
+function sc2(sz, col) {
+  // Calendar uses SIZE-based colours only
+  return sz&&sz.indexOf('500')>-1?'s5':sz&&sz.indexOf('330')>-1?'s3':'s2';
+}
+
+// ── STOCK ──
+async function loadStock(){
+  var r=await DB().from('stock').select('*');
+  if(!r.data)return;
+  // Sort: 500ml Frosted first, then 500ml colours A-Z, then 330ml, then 250ml
+  r.data.sort(function(a,b){
+    var sizeOrder = {'500ml':0,'330ml':1,'250ml':2};
+    var sa = sizeOrder[a.size]||99, sb = sizeOrder[b.size]||99;
+    if(sa!==sb) return sa-sb;
+    // Within same size: Frosted first
+    var aFr = (a.colour||'').toLowerCase()==='frosted'?0:1;
+    var bFr = (b.colour||'').toLowerCase()==='frosted'?0:1;
+    if(aFr!==bFr) return aFr-bFr;
+    // Then alphabetical by colour
+    return (a.colour||'').localeCompare(b.colour||'');
+  });
+  stock=r.data;
+  var LOW=5000,tot=0,lowc=0,pendc=0;
+  r.data.forEach(function(p){
+    var est=Math.max(0,(p.total_received||0)-(p.total_outgoing||0));
+    tot+=est;
+    if(est>0&&est<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1)lowc++;
+    if((p.total_received||0)===0)pendc++;
+  });
+  document.getElementById('smets').innerHTML=
+    '<div class="mt gn"><div class="lb">Total in stock</div><div class="vl">'+tot.toLocaleString()+'</div><div class="sb2">units</div></div>'+
+    '<div class="mt '+(lowc>0?'rd':'gn')+'"><div class="lb">Low stock (Frosted)</div><div class="vl">'+lowc+'</div><div class="sb2">below 5,000</div></div>'+
+    '<div class="mt or"><div class="lb">Pending POs</div><div class="vl">'+pendc+'</div></div>'+
+    '<div class="mt"><div class="lb">Live data</div><div class="vl" style="font-size:14px;padding-top:4px">✅</div></div>';
+  document.getElementById('abn').textContent=lowc+pendc;
+  var rows=r.data.map(function(p){
+    var est=Math.max(0,(p.total_received||0)-(p.total_outgoing||0));
+    var max=Math.max(p.total_ordered||1,est,1);
+    var pct=Math.min(100,Math.round(est/max*100));
+    var isFr=(p.colour||'').toLowerCase()==='frosted';
+    var st=est===0?'pend':(isFr&&est<LOW)?'low':est<LOW*2&&isFr?'warn':'ok';
+    // Bar color based on cup colour
+    var cupColours={
+      'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63',
+      'blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE',
+      'green':'#43A047','orange':'#FF9800'
+    };
+    var cupCol = (p.colour||'').toLowerCase();
+    var bc = cupColours[cupCol] || '#0E6655';
+    var alertBc = st==='low'?'#E24B4A':st==='warn'?'#D35400':bc;
+    // Colour dot
+    var dot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+bc+';margin-right:6px;flex-shrink:0"></span>';
+    return '<tr><td><strong>'+dot+p.product+'</strong></td><td style="color:#666">'+p.size+'</td>'+
+      '<td class="nr">'+est.toLocaleString()+'</td>'+
+      '<td class="nr" style="color:#999">'+(p.physical_stock!=null?p.physical_stock.toLocaleString():'—')+'</td>'+
+      '<td><div class="bar"><div class="barf" style="width:'+pct+'%;background:'+alertBc+'"></div></div></td>'+
+      '<td>'+pill(st==='ok'?'ok':st==='low'?'low':st==='warn'?'warn':'pend')+'</td></tr>';
+  }).join('');
+  document.getElementById('stbl').innerHTML='<table><thead><tr><th>Product</th><th>Size</th><th class="nr">Est.Stock</th><th class="nr">Physical</th><th>Level</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+function calcDel(){
+  var b=parseInt(document.getElementById('dbx').value)||0;
+  var u=parseInt(document.getElementById('dub').value)||350;
+  document.getElementById('dcalc').textContent='Total: '+(b*u).toLocaleString()+' units';
+}
+
+async function saveDel(){
+  var prod=document.getElementById('dp').value;
+  var b=parseInt(document.getElementById('dbx').value)||0;
+  var u=parseInt(document.getElementById('dub').value)||350;
+  var tot=b*u;
+  if(!tot){toast('Enter boxes and units/box','err');return;}
+  var date=document.getElementById('dd').value;
+  var ref=document.getElementById('dr').value;
+  var notes=document.getElementById('dn2').value;
+  await DB().from('movements').insert([{date:date,type:'Delivery',reference:ref,product:prod,qty_in:tot,notes:notes}]);
+  var item=stock.find(function(p){return p.product===prod;});
+  if(item)await DB().from('stock').update({total_received:(item.total_received||0)+tot}).eq('product',prod);
+  toast('✓ '+tot.toLocaleString()+' units recorded','ok');
+  togglePnl('pdel');
+  document.getElementById('dbx').value='';
+  document.getElementById('dcalc').textContent='Total: — units';
+  loadStock();
+}
+
+// ── POs ──
+async function loadPOs(){
+  var r=await DB().from('purchase_orders').select('*').order('po_date',{ascending:true});
+  if(!r.data)return;
+  var tot=r.data.reduce(function(s,p){return s+(p.qty_ordered||0);},0);
+  var val=r.data.reduce(function(s,p){return s+(p.qty_ordered||0)*(p.unit_price||0)*1.15;},0);
+  var pend=r.data.filter(function(p){return p.status==='Pending'||p.status==='Partial';}).length;
+  var nd=r.data.filter(function(p){return p.status==='Not delivered';}).length;
+  document.getElementById('pmets').innerHTML=
+    '<div class="mt"><div class="lb">Total ordered</div><div class="vl">'+tot.toLocaleString()+'</div></div>'+
+    '<div class="mt"><div class="lb">Total value</div><div class="vl" style="font-size:14px;padding-top:4px">ZAR '+Math.round(val).toLocaleString()+'</div></div>'+
+    '<div class="mt or"><div class="lb">Pending/Partial</div><div class="vl">'+pend+'</div></div>'+
+    '<div class="mt '+(nd>0?'rd':'gn')+'"><div class="lb">Not delivered</div><div class="vl">'+nd+'</div></div>';
+  var SBG={'Delivered':'#D5F5E3','Over-delivered':'#D5F5E3','Partial':'#FDEBD0','Not delivered':'#FADBD8','To verify':'#FEF9E7','Pending':'#D6EAF8'};
+  var SICO={'Delivered':'✅','Over-delivered':'✅','Partial':'⚠️','Not delivered':'❌','To verify':'❓','Pending':'🔜'};
+  var last='';
+  var rows=r.data.map(function(p){
+    var isN=p.po_number!==last;last=p.po_number;
+    var ht=(p.qty_ordered||0)*(p.unit_price||0);
+    var vat=ht*0.15,tot2=ht+vat;
+    var bg=SBG[p.status]||'#fff';
+    var paid=role==='owner'?(p.paid?'<span style="color:#1E8449;font-weight:700">✅ Paid</span>':'<button class="btn bs bsm" onclick="markPaid('+p.id+')">Mark paid</button>'):'';
+    return '<tr style="background:'+bg+'">'+
+      '<td style="font-weight:700;color:#1F4E79">'+(isN?p.po_number:'↳')+'</td>'+
+      '<td style="font-size:12px;color:#666">'+(p.po_date||'—')+'</td>'+
+      '<td style="font-weight:500">'+(p.product||'—')+'</td>'+
+      '<td style="text-align:center">'+(p.size||'—')+'</td>'+
+      '<td style="text-align:center">'+(p.colour||'—')+'</td>'+
+      '<td class="nr" style="color:#1F4E79;font-weight:700">'+(p.qty_ordered||0).toLocaleString()+'</td>'+
+      '<td class="nr" style="color:#1E8449">'+(p.unit_price?p.unit_price.toFixed(2):'—')+'</td>'+
+      '<td class="nr">'+(ht?ht.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'+
+      '<td class="nr" style="color:#666">'+(vat?vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'+
+      '<td class="nr" style="font-weight:700">'+(tot2?tot2.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'+
+      '<td style="text-align:center;font-size:12px">'+(p.delivery_date||'—')+'</td>'+
+      '<td style="font-weight:600;font-size:12px">'+(SICO[p.status]||'')+'&nbsp;'+(p.status||'—')+'</td>'+
+      (role==='owner'?'<td>'+paid+'</td>':'<td></td>')+
+      (role==='owner'?'<td><button class="btn bs bsm" onclick="editPO('+p.id+')">✏️</button></td>':'<td></td>')+
+      '</tr>';
+  }).join('');
+  var sumHT=r.data.reduce(function(s,p){return s+(p.qty_ordered||0)*(p.unit_price||0);},0);
+  var sumV=sumHT*0.15,sumT=sumHT+sumV;
+  document.getElementById('pol').innerHTML='<div style="overflow-x:auto"><table>'+
+    '<thead><tr><th>PO#</th><th>Date</th><th>Product</th><th>Size</th><th>Colour</th><th class="nr">Qty</th><th class="nr">Unit</th><th class="nr">ex VAT</th><th class="nr">VAT</th><th class="nr">TOTAL ZAR</th><th>Delivery</th><th>Status</th>'+(role==='owner'?'<th>💳</th><th></th>':'<th></th>')+'</tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+    '<tfoot><tr style="background:#0E6655;color:#fff;font-weight:700">'+
+    '<td colspan="7" style="text-align:right;padding:10px">TOTAL</td>'+
+    '<td style="text-align:right;padding:10px">'+sumHT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
+    '<td style="text-align:right;padding:10px">'+sumV.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
+    '<td style="text-align:right;padding:10px">'+sumT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
+    '<td colspan="4" style="padding:10px"></td></tr></tfoot></table></div>';
+}
+
+async function markPaid(id){
+  var d=new Date();
+  var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var cd=prompt('Payment date:',ds);
+  if(cd===null)return;
+  await DB().from('purchase_orders').update({paid:true,paid_date:cd||ds}).eq('id',id);
+  toast('✅ PO marked as paid','ok');loadPOs();
+}
+
+async function editPO(id){
+  var r=await DB().from('purchase_orders').select('*').eq('id',id).single();
+  if(!r.data)return;
+  var ns=prompt('Status ('+r.data.po_number+'): Pending/Partial/Delivered/Not delivered/To verify/Over-delivered',r.data.status);
+  if(!ns)return;
+  var nd=prompt('Delivery date:',r.data.delivery_date||'');
+  var up={status:ns};if(nd!==null)up.delivery_date=nd||null;
+  await DB().from('purchase_orders').update(up).eq('id',id);
+  toast('✅ PO updated','ok');loadPOs();
+}
+
+// ── JOBS ──
+async function loadJobs(){
+  var r=await DB().from('print_schedule').select('*').order('created_at',{ascending:false});
+  if(!r.data)return;
+  document.getElementById('jt').textContent=r.data.length;
+  document.getElementById('js').textContent=r.data.filter(function(o){return o.status==='Scheduled';}).length;
+  document.getElementById('jp').textContent=r.data.filter(function(o){return o.status==='In progress';}).length;
+  document.getElementById('jd').textContent=r.data.filter(function(o){return o.status==='Done';}).length;
+  var el=document.getElementById('jlist');
+  el.innerHTML='';
+  r.data.forEach(function(o){
+    window['j_'+o.id]=o;
+    var d=document.createElement('div');
+    d.style.cssText='background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start';
+    d.innerHTML='<div style="flex:1">'+
+      '<div style="font-weight:600;font-size:14px">'+o.client+'</div>'+
+      '<div style="font-size:12px;color:#666;margin-top:3px;line-height:1.6">'+
+      (o.cup_size||'—')+' · '+(o.cup_colour||'—')+' · <strong>'+(o.qty_printed||0).toLocaleString()+' cups</strong><br>'+
+      (o.print_colour||'—')+' · '+(o.num_colours||1)+' col. · '+(o.date_period||'—')+'<br>'+
+      'Stock: <strong>'+Math.round((o.qty_printed||0)*1.05).toLocaleString()+'</strong></div></div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'+
+      pill(o.status||'Scheduled')+'</div>';
+    if(role!=='warda'){
+      var eb=document.createElement('button');
+      eb.className='btn bs bsm';eb.textContent='✏️ Edit';
+      eb.style.marginTop='6px';
+      (function(jid){eb.addEventListener('click',function(){openEdit(window['j_'+jid]);});})(o.id);
+      d.querySelector('div:last-child').appendChild(eb);
+    }
+    el.appendChild(d);
+  });
+}
+
+async function saveJob(){
+  var client=document.getElementById('jc2').value.trim();
+  var qty=parseInt(document.getElementById('jq').value)||0;
+  if(!client||!qty){toast('Client and quantity required','err');return;}
+  var deliv=document.getElementById('jdl').value;
+  var period='—',wl='Upcoming';
+  if(deliv){
+    var d=new Date(deliv.split('-')[0],parseInt(deliv.split('-')[1])-1,parseInt(deliv.split('-')[2]));
+    d.setHours(0,0,0,0);
+    var dow=d.getDay();
+    var mon=new Date(d);mon.setDate(d.getDate()-(dow===0?6:dow-1));
+    var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    var fmt=function(dt){return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0');};
+    period=fmt(mon)+'-'+fmt(sun);
+    var wn=Math.ceil((mon-new Date(mon.getFullYear(),0,1))/(7*86400000));
+    wl='W'+wn;
+  }
+  await DB().from('print_schedule').insert([{
+    week_label:wl,date_period:period,client:client,
+    cup_size:document.getElementById('jsz').value,
+    cup_colour:document.getElementById('jcl').value,
+    qty_printed:qty,num_colours:parseInt(document.getElementById('jnc').value)||1,
+    print_colour:document.getElementById('jpc').value,
+    artwork:document.getElementById('jar').value,
+    delivery_date:deliv||null,
+    notes:document.getElementById('jno').value,status:'Scheduled'
+  }]);
+  toast('✓ '+client+' added','ok');
+  togglePnl('pjob');document.getElementById('bajob').style.display='flex';
+  ['jc2','jq','jpc','jno','jdl'].forEach(function(id){document.getElementById(id).value='';});
+  loadJobs();prints=[];loadCalData();
+}
+
+// ── PRINT ──
+async function loadPrint(){
+  var r=await DB().from('print_schedule').select('*').order('created_at');
+  if(!r.data)return;
+  var sorted=[].concat(
+    r.data.filter(function(p){return p.print_date;}).sort(function(a,b){return a.print_date.localeCompare(b.print_date);}),
+    r.data.filter(function(p){return !p.print_date;}).sort(function(a,b){return (a.week_label||'').localeCompare(b.week_label||'');})
+  );
+  prints=sorted;
+  var el=document.getElementById('plist');el.innerHTML='';
+  var lastW='';
+  sorted.forEach(function(p){
+    window['p_'+p.id]=p;
+    var wk=p.print_date||p.week_label||'';
+    if(wk!==lastW){
+      var h=document.createElement('div');
+      h.className='wh';
+      h.textContent=(p.print_date?'📅 '+p.print_date+' — '+(p.week_label||''):(p.week_label||'—')+' · '+(p.date_period||''));
+      el.appendChild(h);lastW=wk;
+    }
+    var used=Math.round((p.qty_printed||0)*1.05).toLocaleString();
+    var bc=(p.cup_size||'').indexOf('500')>-1?'#43A047':(p.cup_size||'').indexOf('330')>-1?'#FDD835':'#1E88E5';
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #e0e0e0';
+    row.innerHTML='<div style="width:4px;height:40px;border-radius:2px;background:'+bc+';flex-shrink:0"></div>'+
+      '<div style="flex:1">'+
+      '<div style="font-weight:600">'+p.client+(p.artwork?'<span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:1px 6px;border-radius:10px;margin-left:4px">'+p.artwork+' artwork</span>':'')+'</div>'+
+      '<div style="font-size:11px;color:#666">'+(p.cup_size||'—')+' · '+(p.cup_colour||'—')+' · 🎨 '+(p.print_colour||'—')+' · '+(p.num_colours||1)+' col.</div>'+
+      (p.print_date?'<div style="font-size:11px;color:#0E6655;font-weight:500">Print: '+p.print_date+'</div>':'')+'</div>'+
+      '<div style="text-align:right"><div style="font-weight:700">'+(p.qty_printed||0).toLocaleString()+'</div><div style="font-size:11px;color:#D35400">−'+used+'</div></div>'+
+      '<div>'+pill(p.status||'Scheduled')+'</div>';
+    el.appendChild(row);
+  });
+}
+
+// ── ALERTS ──
+async function loadAlerts(){
+  var rs=await DB().from('stock').select('*');
+  var rp=await DB().from('purchase_orders').select('*');
+  if(!rs.data||!rp.data)return;
+  var el=document.getElementById('alist');el.innerHTML='';
+  var LOW=5000;
+  var low=rs.data.filter(function(p){var e=(p.total_received||0)-(p.total_outgoing||0);return e>0&&e<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1;});
+  if(low.length){
+    var d=document.createElement('div');d.className='ai';
+    d.innerHTML='<h4>🔴 Low stock — reorder from Africa Plastics</h4><p>'+low.map(function(p){return '<strong>'+p.product+'</strong>: '+Math.max(0,(p.total_received||0)-(p.total_outgoing||0)).toLocaleString()+' units';}).join('<br>')+'</p>';
+    el.appendChild(d);
+  }
+  var nd=rp.data.filter(function(p){return p.status==='Not delivered';});
+  nd.forEach(function(p){
+    var d=document.createElement('div');d.className='ai';
+    d.innerHTML='<h4>❌ Not delivered — '+p.po_number+'</h4><p>'+p.product+' — '+(p.qty_ordered||0).toLocaleString()+' units</p>';
+    el.appendChild(d);
+  });
+  var mb=rp.data.filter(function(p){return p.notes&&p.notes.toLowerCase().indexOf('masterbatch')>-1;});
+  if(mb.length){
+    var d2=document.createElement('div');d2.className='ai warn';
+    d2.innerHTML='<h4>⚠️ Masterbatch photos required</h4><p>'+[...new Set(mb.map(function(p){return p.po_number;}))].join(', ')+'</p>';
+    el.appendChild(d2);
+  }
+  var yb=document.createElement('div');yb.className='ai info';
+  yb.innerHTML='<h4>🔵 500ml Yellow — balance outstanding</h4><p>600 units still expected from Africa Plastics</p>';
+  el.appendChild(yb);
+  var ok=document.createElement('div');ok.className='ai ok';
+  ok.innerHTML='<h4>✅ Recently resolved</h4><p>PO-358,353 Red,359,360 Blue+Purple,363 — all delivered</p>';
+  el.appendChild(ok);
+}
+
+// ── CHART ──
+function renderChart(){
+  if(!stock||!stock.length){loadStock().then(function(){renderChart();});return;}
+  var PTOW={'500ml Frosted cups':9450,'500ml Black cups':3675,'500ml Red cups':2100};
+  var items=stock.filter(function(p){return(p.total_received||0)>0||(PTOW[p.product]||0)>0;});
+  var labels=items.map(function(p){return p.product.replace(' cups','');});
+  var cur=items.map(function(p){return Math.max(0,(p.total_received||0)-(p.total_outgoing||0));});
+  var eow=items.map(function(p){return Math.max(0,(p.total_received||0)-(p.total_outgoing||0)-(PTOW[p.product]||0));});
+  var thr=new Array(items.length).fill(5000);
+
+  // Cup colour map for bar colors
+  var CUP_COLORS = {
+    'frosted':'#0E6655','black':'#37474F','red':'#E53935','pink':'#E91E63',
+    'blue':'#1E88E5','purple':'#8E24AA','yellow':'#F9A825','white':'#C8B89A',
+    'green':'#43A047','orange':'#FF9800'
+  };
+  var CUP_COLORS_LIGHT = {
+    'frosted':'#A5D6A7','black':'#78909C','red':'#EF9A9A','pink':'#F48FB1',
+    'blue':'#90CAF9','purple':'#CE93D8','yellow':'#FFF59D','white':'#E8DDD0',
+    'green':'#C8E6C9','orange':'#FFCC80'
+  };
+
+  var barColors = items.map(function(p){
+    var col = (p.colour||'').toLowerCase();
+    return CUP_COLORS[col] || '#0E6655';
+  });
+  var barColorsLight = items.map(function(p){
+    var col = (p.colour||'').toLowerCase();
+    return CUP_COLORS_LIGHT[col] || '#52BE80';
+  });
+
+  if(chartI)chartI.destroy();
+  chartI=new Chart(document.getElementById('sc'),{
+    type:'bar',data:{labels:labels,datasets:[
+      {label:'Current',data:cur,backgroundColor:barColors,borderRadius:3},
+      {label:'End of week',data:eow,backgroundColor:barColorsLight,borderRadius:3},
+      {label:'Threshold',data:thr,type:'line',borderColor:'#E24B4A',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,backgroundColor:'#E24B4A'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'top',labels:{usePointStyle:true,font:{size:11}}}},
+      scales:{x:{ticks:{font:{size:10},maxRotation:45},grid:{display:false}},y:{ticks:{callback:function(v){return v>=1000?(v/1000)+'k':v;},font:{size:10}}}}}
+  });
+  var eowR=items.map(function(p,i){
+    var st=eow[i]<5000&&(p.product||'').indexOf('Frosted')>-1?'low':eow[i]<10000?'warn':'ok';
+    return '<tr><td><strong>'+p.product+'</strong></td><td class="nr">'+cur[i].toLocaleString()+'</td>'+
+      '<td class="nr" style="color:#D35400">'+(PTOW[p.product]?'−'+PTOW[p.product].toLocaleString():'—')+'</td>'+
+      '<td class="nr" style="color:'+(st==='low'?'#C0392B':st==='warn'?'#D35400':'inherit')+';font-weight:600">'+eow[i].toLocaleString()+'</td>'+
+      '<td>'+pill(st)+'</td></tr>';
+  }).join('');
+  document.getElementById('et').innerHTML='<thead><tr><th>Product</th><th class="nr">Current</th><th class="nr">Print</th><th class="nr">End of week</th><th>Status</th></tr></thead><tbody>'+eowR+'</tbody>';
+}
+
+// ── CALENDAR ──
+function getMon(off){
+  var t=new Date();t.setHours(0,0,0,0);
+  var dow=t.getDay();
+  var m=new Date(t);m.setDate(t.getDate()-(dow===0?6:dow-1)+(off||0)*7);
+  return m;
+}
+
+function parseMonday(period){
+  if(!period||period==='—')return null;
+  try{
+    var hi=period.indexOf('-',3);if(hi===-1)return null;
+    var s=period.substring(0,hi).trim().split('/');if(s.length<2)return null;
+    var d=new Date(2026,parseInt(s[1])-1,parseInt(s[0]));d.setHours(0,0,0,0);
+    var dow=d.getDay();
+    if(dow===0)d.setDate(d.getDate()+1);else d.setDate(d.getDate()-(dow-1));
+    return d;
+  }catch(e){return null;}
+}
+
+function weekJobs(mon){
+  return (prints||[]).filter(function(ev){
+    var m=parseMonday(ev.date_period);return m&&m.getTime()===mon.getTime();
+  });
+}
+
+async function loadCalData(){
+  var r=await DB().from('print_schedule').select('*').order('created_at');
+  if(r&&r.data)prints=r.data;
+  renderCal();
+}
+
+function calNav(d){if(d===0)calOff=0;else calOff+=d;renderCal();}
+
+function renderCal(){
+  var mon=getMon(calOff);
+  var fri=new Date(mon);fri.setDate(mon.getDate()+5);
+  var today=new Date();today.setHours(0,0,0,0);
+  var DAYS=['Mon','Tue','Wed','Thu','Fri','Sat'];
+  var fmt=function(d){return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
+  document.getElementById('clbl').textContent=fmt(mon)+' – '+fmt(fri)+' 2026';
+  var tw=weekJobs(getMon(0)),nw=weekJobs(getMon(1));
+  document.getElementById('ctw').textContent=tw.length;
+  var twPrints = tw.reduce(function(s,j){return s+(j.qty_printed||0)*(j.num_colours||1);},0);
+  document.getElementById('ctu').textContent=twPrints.toLocaleString();
+  document.getElementById('cnw').textContent=nw.length;
+  document.getElementById('cmth').textContent=(prints||[]).length;
+  var days=[];
+  for(var i=0;i<6;i++){var d=new Date(mon);d.setDate(mon.getDate()+i);days.push(d);}
+  var grid=document.getElementById('cgrid');
+  grid.innerHTML='';
+  // label
+  var lbl=document.createElement('div');lbl.className='clbl';lbl.textContent='Jobs';grid.appendChild(lbl);
+  // headers
+  days.forEach(function(d,i){
+    var isT=d.getTime()===today.getTime();
+    var h=document.createElement('div');h.className='cdh'+(isT?' td':'');
+    h.innerHTML='<div class="dn">'+DAYS[i]+'</div><div class="dd">'+d.getDate()+'</div><div class="dm">'+d.toLocaleDateString('en-GB',{month:'short'})+'</div>';
+    grid.appendChild(h);
+  });
+  // empty label for jobs row
+  var lbl2=document.createElement('div');lbl2.className='clbl';grid.appendChild(lbl2);
+  // cells
+  var wj=weekJobs(mon);wj.sort(function(a,b){return(a.id||0)-(b.id||0);});
+  days.forEach(function(d,di){
+    var isT=d.getTime()===today.getTime();
+    var yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0');
+    var iso=yr+'-'+mo+'-'+dy;
+    var cell=document.createElement('div');
+    cell.className='cc'+(isT?' td':'');
+    cell.dataset.date=iso;
+    cell.addEventListener('dragover',function(e){e.preventDefault();this.classList.add('dov');});
+    cell.addEventListener('dragleave',function(){this.classList.remove('dov');});
+    cell.addEventListener('drop',function(e){e.preventDefault();this.classList.remove('dov');onDrop(this.dataset.date);});
+    // jobs for this day
+    var dayJ=wj.filter(function(ev){
+      if(ev.print_date)return ev.print_date===iso;
+      return di===0;
+    });
+    dayJ.forEach(function(ev){
+      window['ev_'+ev.id]=ev;
+      var isDone=(ev.status||'').toLowerCase().indexOf('done')>-1;
+      var sc=isDone?'sd':sc2(ev.cup_size||'',ev.cup_colour||'');
+      var ce=document.createElement('div');
+      ce.className='ce '+sc;ce.draggable=true;
+      var prints = (ev.qty_printed||0) * (ev.num_colours||1);
+      ce.innerHTML='<div class="ec">'+ev.client+'</div>'+
+        '<div class="ed">'+(ev.qty_printed||0).toLocaleString()+' cups · '+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div>'+
+        '<div class="ed">🖨️ '+prints.toLocaleString()+' prints · '+(ev.num_colours||1)+' col.</div>'+
+        (ev.artwork?'<div class="ed">📋 '+ev.artwork+' artwork</div>':'');
+      // Tooltip data stored on element
+      ce.dataset.tip = [
+        ev.client,
+        ev.print_date?'📅 Print: '+ev.print_date:'',
+        ev.delivery_date?'🚚 Del: '+ev.delivery_date:'',
+        (ev.qty_printed||0).toLocaleString()+' '+( ev.cup_size||'')+' '+(ev.cup_colour||''),
+        '🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.',
+        ev.artwork?'📋 '+ev.artwork+' artwork':'',
+        ev.notes?'📝 '+ev.notes:'',
+        ev.artwork_url?'📎 Artwork uploaded':''
+      ].filter(Boolean).join('\n');
+      // Add check done button
+      var checkBtn = document.createElement('div');
+      checkBtn.style.cssText = 'position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:9px;cursor:pointer;opacity:0.6';
+      checkBtn.textContent = isDone ? '✓' : '○';
+      checkBtn.title = isDone ? 'Mark as In Progress' : 'Mark as Done';
+      ce.appendChild(checkBtn);
+      ce.style.paddingRight = '22px';
+      (function(eid, est){
+        ce.addEventListener('dragstart',function(){dragId=eid;this.classList.add('drag');});
+        ce.addEventListener('dragend',function(){this.classList.remove('drag');});
+        ce.addEventListener('click',function(e){
+          if(e.target === checkBtn || checkBtn.contains(e.target)) {
+            toggleDone(eid, est);
+          } else {
+            openEvDetail(window['ev_'+eid]);
+          }
+        });
+      })(ev.id, ev.status);
+      cell.appendChild(ce);
+    });
+    // add button
+    var ab=document.createElement('button');ab.className='cadd';ab.textContent='+ add';
+    (function(date){ab.addEventListener('click',function(){openQA(date);});})(iso);
+    cell.appendChild(ab);
+    grid.appendChild(cell);
+  });
+  // list
+  var listEl=document.getElementById('clist');listEl.innerHTML='';
+  var upcoming=(prints||[]).filter(function(j){return j.status!=='Done';});
+  upcoming.sort(function(a,b){return(a.id||0)-(b.id||0);});
+  if(!upcoming.length){listEl.innerHTML='<div class="ld">No upcoming jobs</div>';return;}
+  var lastW2='';
+  upcoming.forEach(function(ev){
+    window['ev_'+ev.id]=ev;
+    if(ev.week_label!==lastW2){
+      var wh=document.createElement('div');wh.className='wh';
+      wh.textContent=(ev.week_label||'—')+' · '+(ev.date_period||'');
+      listEl.appendChild(wh);lastW2=ev.week_label;
+    }
+    var used=Math.round((ev.qty_printed||0)*1.05).toLocaleString();
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e0e0e0;cursor:pointer';
+    row.innerHTML='<div style="flex:1"><div style="font-weight:500">'+ev.client+'</div>'+
+      '<div style="font-size:11px;color:#666">'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div></div>'+
+      '<div style="text-align:right;font-weight:600">'+(ev.qty_printed||0).toLocaleString()+'</div>'+
+      '<div style="font-size:11px;color:#D35400">−'+used+'</div>'+
+      '<div>'+pill(ev.status||'Scheduled')+'</div>';
+    (function(eid){row.addEventListener('click',function(){openEvDetail(window['ev_'+eid]);});})(ev.id);
+    listEl.appendChild(row);
+  });
+}
+
+async function onDrop(dateISO){
+  if(!dragId)return;
+  var parts=dateISO.split('-');
+  var d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  d.setHours(0,0,0,0);
+  var dow=d.getDay();var mon=new Date(d);mon.setDate(d.getDate()-(dow===0?6:dow-1));
+  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  var fmt=function(dt){return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0');};
+  var np=fmt(mon)+'-'+fmt(sun);
+  var wn=Math.ceil((mon-new Date(mon.getFullYear(),0,1))/(7*86400000));
+  await DB().from('print_schedule').update({week_label:'W'+wn,date_period:np,print_date:dateISO}).eq('id',dragId);
+  var ev=(prints||[]).find(function(e){return e.id===dragId;});
+  toast('✓ '+(ev?ev.client:'Job')+' moved to W'+wn,'ok');
+  dragId=null;loadCalData();
+}
+
+// ── QUICK ADD ──
+function openQA(dateISO){
+  var parts=dateISO.split('-');
+  var d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  d.setHours(0,0,0,0);
+  var dow=d.getDay();var mon=new Date(d);mon.setDate(d.getDate()-(dow===0?6:dow-1));
+  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  var fmt=function(dt){return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0');};
+  qaP=fmt(mon)+'-'+fmt(sun);
+  var wn=Math.ceil((mon-new Date(mon.getFullYear(),0,1))/(7*86400000));
+  qaWL='W'+wn;
+  document.getElementById('qainfo').textContent=qaWL+' · '+qaP;
+  document.getElementById('qapd').value=dateISO;
+  document.getElementById('qaov').classList.add('op');
+  setTimeout(function(){document.getElementById('qac').focus();},100);
+}
+
+async function saveQA(){
+  var c=document.getElementById('qac').value.trim();
+  var q=parseInt(document.getElementById('qaq').value)||0;
+  if(!c||!q){toast('Client and qty required','err');return;}
+  var qaInsert = {
+    week_label:qaWL,date_period:qaP,client:c,
+    cup_size:document.getElementById('qas').value,
+    cup_colour:document.getElementById('qacl').value,
+    qty_printed:q,print_colour:document.getElementById('qapc').value,
+    print_date:document.getElementById('qapd').value||null,
+    num_colours:1,status:'Scheduled'
+  };
+  var qaR = await DB().from('print_schedule').insert([qaInsert]).select();
+  // Upload artwork if provided
+  var qaArtFile = document.getElementById('qa-artwork-file').files[0];
+  if(qaArtFile && qaR.data && qaR.data[0]) {
+    var qaUrl = await uploadArtwork(qaR.data[0].id, qaArtFile);
+    if(qaUrl) await DB().from('print_schedule').update({artwork_url:qaUrl}).eq('id',qaR.data[0].id);
+  }
+  toast('✓ '+c+' added','ok');
+  closeOv('qaov');
+  document.getElementById('qac').value='';document.getElementById('qaq').value='';
+  prints=[];loadCalData();loadJobs();loadMyJobs();
+}
+
+// ── EVENT DETAIL ──
+function openEvDetail(ev){
+  if(!ev)return;
+  curEv=ev;
+  document.getElementById('evtitle').textContent=ev.client;
+  document.getElementById('evbody').innerHTML=
+    '<div class="mr"><span class="ml">Week</span><span>'+(ev.week_label||'—')+' · '+(ev.date_period||'—')+'</span></div>'+
+    (ev.print_date?'<div class="mr"><span class="ml">Print date</span><span><strong>'+ev.print_date+'</strong></span></div>':'')+
+    (ev.delivery_date?'<div class="mr"><span class="ml">Delivery</span><span>'+ev.delivery_date+'</span></div>':'')+
+    '<div class="mr"><span class="ml">Cup</span><span>'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</span></div>'+
+    '<div class="mr"><span class="ml">Qty</span><span><strong>'+(ev.qty_printed||0).toLocaleString()+'</strong> units</span></div>'+
+    '<div class="mr"><span class="ml">Stock used</span><span><strong>'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+'</strong> units</span></div>'+
+    '<div class="mr"><span class="ml">Print</span><span>'+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.</span></div>'+
+    '<div class="mr"><span class="ml">Status</span><span>'+pill(ev.status||'Scheduled')+'</span></div>'+
+    (ev.notes?'<div class="mr"><span class="ml">Notes</span><span>'+ev.notes+'</span></div>':'');
+  var act=document.getElementById('evact');
+  act.innerHTML='';
+  if(role!=='warda'){
+    var eb=document.createElement('button');eb.className='btn bp';eb.style.flex='1';eb.textContent='✏️ Edit';
+    eb.addEventListener('click',function(){closeOv('evov');openEdit(curEv);});
+    act.appendChild(eb);
+  }
+  var db2=document.createElement('button');db2.className='btn bs';db2.textContent='🖨️ Job card';
+  db2.addEventListener('click',function(){downloadJobCard(curEv);});
+  act.appendChild(db2);
+  var cb=document.createElement('button');cb.className='btn bs';cb.textContent='Close';
+  cb.addEventListener('click',function(){closeOv('evov');});
+  act.appendChild(cb);
+
+  document.getElementById('evov').classList.add('op');
+}
+
+// ── EDIT ──
+function setSel(id,v){
+  var s=document.getElementById(id);
+  if(!s)return;
+  for(var i=0;i<s.options.length;i++){
+    if(s.options[i].value===v||s.options[i].text===v){s.selectedIndex=i;return;}
+  }
+}
+
+function openEdit(ev){
+  if(!ev)return;
+  document.getElementById('eid').value=ev.id||'';
+  document.getElementById('ecl').value=ev.client||'';
+  document.getElementById('ewl').value=ev.week_label||'';
+  document.getElementById('ewp').value=ev.date_period||'';
+  document.getElementById('epd').value=ev.print_date||'';
+  document.getElementById('edd').value=ev.delivery_date||'';
+  document.getElementById('eq').value=ev.qty_printed||'';
+  document.getElementById('epc').value=ev.print_colour||'';
+  document.getElementById('eno').value=ev.notes||'';
+  document.getElementById('ecalc').textContent=ev.qty_printed?'Stock: '+Math.round(ev.qty_printed*1.05).toLocaleString()+' units':'Stock: —';
+  setSel('esz',ev.cup_size||'500ml');setSel('ecol',ev.cup_colour||'Frosted');
+  setSel('enc',String(ev.num_colours||1));setSel('est',ev.status||'Scheduled');
+  setSel('ept',ev.print_type||'Screen print');setSel('ear',ev.artwork||'New');
+  // Show current artwork
+  pendingArtworkFile = null;
+  document.getElementById('artwork-file').value = '';
+  document.getElementById('artwork-preview').style.display = 'none';
+  var ac = document.getElementById('artwork-current');
+  if(ev.artwork_url) {
+    ac.innerHTML = '📎 Current: <a href="'+ev.artwork_url+'" target="_blank" style="color:#0E6655">View artwork</a>';
+  } else {
+    ac.textContent = 'No artwork uploaded yet';
+  }
+  document.getElementById('edov').classList.add('op');
+  setTimeout(function(){document.getElementById('ecl').focus();},100);
+}
+
+async function saveEdit(){
+  var id=document.getElementById('eid').value;
+  if(!id)return;
+  var client=document.getElementById('ecl').value.trim();
+  var qty=parseInt(document.getElementById('eq').value)||0;
+  if(!client||!qty){toast('Client and qty required','err');return;}
+  // Upload artwork if provided
+  var artworkUrl = null;
+  if(pendingArtworkFile) {
+    artworkUrl = await uploadArtwork(id, pendingArtworkFile);
+    if(!artworkUrl) { toast('Artwork upload failed — saving without artwork','err'); }
+  }
+  var updateData = {
+    client:client,week_label:document.getElementById('ewl').value,
+    date_period:document.getElementById('ewp').value,
+    print_date:document.getElementById('epd').value||null,
+    delivery_date:document.getElementById('edd').value||null,
+    cup_size:document.getElementById('esz').value,
+    cup_colour:document.getElementById('ecol').value,
+    qty_printed:qty,num_colours:parseInt(document.getElementById('enc').value)||1,
+    print_colour:document.getElementById('epc').value,
+    artwork:document.getElementById('ear').value,
+    status:document.getElementById('est').value,
+    print_type:document.getElementById('ept').value,
+    notes:document.getElementById('eno').value
+  };
+  if(artworkUrl) updateData.artwork_url = artworkUrl;
+  var r=await DB().from('print_schedule').update(updateData).eq('id',id);
+  if(r.error){toast('Error saving','err');return;}
+  toast('✓ '+client+' updated','ok');
+  closeOv('edov');prints=[];loadCalData();loadJobs();loadPrint();loadMyJobs();
+}
+
+async function delJob(){
+  var id=document.getElementById('eid').value;
+  var c=document.getElementById('ecl').value;
+  if(!confirm('Delete "'+c+'"? Cannot be undone.'))return;
+  await DB().from('print_schedule').delete().eq('id',id);
+  toast('🗑️ '+c+' deleted','ok');
+  closeOv('edov');prints=[];loadCalData();loadJobs();loadPrint();loadMyJobs();
+}
+
+// ── WARDA ──
+async function loadMyJobs(){
+  var r=await DB().from('print_schedule').select('*').order('created_at');
+  if(!r.data)return;
+  var tot=r.data.length,done=r.data.filter(function(j){return j.status==='Done';}).length;
+  var units=r.data.filter(function(j){return j.status==='Done';}).reduce(function(s,j){return s+(j.qty_printed||0);},0);
+  document.getElementById('wt').textContent=tot;
+  document.getElementById('wd').textContent=done;
+  document.getElementById('wr').textContent=tot-done;
+  document.getElementById('wu').textContent=units.toLocaleString();
+  // Sort: undone first (chronological by print_date/week), then done (greyed)
+  var sorted = r.data.slice().sort(function(a,b){
+    var aDone = a.status==='Done' ? 1 : 0;
+    var bDone = b.status==='Done' ? 1 : 0;
+    if(aDone !== bDone) return aDone - bDone;
+    // Both same done status: sort chronologically
+    var aDate = a.print_date || a.date_period || a.week_label || '';
+    var bDate = b.print_date || b.date_period || b.week_label || '';
+    return aDate.localeCompare(bDate);
+  });
+  var weeks={};
+  sorted.forEach(function(j){var w=j.week_label||'Other';if(!weeks[w])weeks[w]=[];weeks[w].push(j);});
+  var el=document.getElementById('mjlist');el.innerHTML='';
+  Object.keys(weeks).forEach(function(wk){
+    var jobs=weeks[wk];
+    var wDone=jobs.filter(function(j){return j.status==='Done';}).length;
+    var pct=Math.round(wDone/jobs.length*100);
+    var wh=document.createElement('div');wh.className='wh';wh.textContent=wk+' — '+wDone+'/'+jobs.length+' done';el.appendChild(wh);
+    var pb=document.createElement('div');pb.className='pb';pb.innerHTML='<div class="pbf" style="width:'+pct+'%"></div>';el.appendChild(pb);
+    jobs.forEach(function(j){
+      var isDone=j.status==='Done';
+      var sc=isDone?'dn2':(j.cup_size||'').indexOf('500')>-1?'s5b':(j.cup_size||'').indexOf('330')>-1?'s3b':'s2b';
+      var waste=Math.round((j.qty_printed||0)*0.05).toLocaleString();
+      var card=document.createElement('div');card.className='pj '+sc;
+      card.innerHTML='<div class="ck">'+(isDone?'✓':'')+'</div>'+
+        '<div class="ji"><div class="jc">'+j.client+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+' · '+(j.print_colour||'—')+'<br>'+(j.print_date?'📅 '+j.print_date:'')+'</div></div>'+
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
+        '<div><div class="jq">'+(j.qty_printed||0).toLocaleString()+'</div><div class="jw">+'+waste+'</div></div>'+
+        '<button class="btn bs bsm" style="font-size:10px;padding:3px 8px">🖨️ Card</button>'+
+        '</div>';
+      (function(jid,jst,jev){
+        // Click on card = toggle done (but not on the download button)
+        card.addEventListener('click',function(e){
+          if(e.target.tagName==='BUTTON') return;
+          toggleDone(jid,jst);
+        });
+        // Download button
+        var btn = card.querySelector('button');
+        btn.addEventListener('click',function(e){
+          e.stopPropagation();
+          downloadJobCard(jev);
+        });
+      })(j.id,j.status,j);
+      el.appendChild(card);
+    });
+  });
+}
+
+async function toggleDone(id,st){
+  var ns=st==='Done'?'In progress':'Done';
+  await DB().from('print_schedule').update({status:ns}).eq('id',id);
+  toast(ns==='Done'?'✅ Done!':'↩️ In progress','ok');
+  prints=[];loadMyJobs();loadCalData();
+}
+
+// ── JOB CARD ──
+function downloadJobCard(ev) {
+  if(!ev) return;
+  var artSection = ev.artwork_url
+    ? '<div style="margin-top:16px;padding:12px;background:#E3F2FD;border-radius:8px;border:1.5px solid #1E88E5">'
+      + '<div style="font-size:11px;font-weight:700;color:#1F4E79;margin-bottom:6px">ARTWORK</div>'
+      + (ev.artwork_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+        ? '<img src="'+ev.artwork_url+'" style="max-width:100%;max-height:200px;border-radius:4px">'
+        : '<a href="'+ev.artwork_url+'" style="color:#1F4E79;font-weight:600">📎 Open artwork file</a>')
+      + '</div>'
+    : '<div style="margin-top:16px;padding:12px;background:#f2f3f4;border-radius:8px;border:1.5px dashed #ccc;text-align:center;color:#999">No artwork uploaded</div>';
+
+  var html = '<!DOCTYPE html><html><head><title>Job Card — '+ev.client+'</title>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}'
+    + 'body{padding:24px;color:#1a1a1a;font-size:13px}'
+    + '.hdr{background:#0E6655;color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}'
+    + '.hdr h1{font-size:20px;font-weight:700}.hdr .sub{font-size:11px;opacity:0.8}'
+    + '.bar{height:5px;background:'+(ev.cup_size&&ev.cup_size.indexOf('500')>-1?'#43A047':ev.cup_size&&ev.cup_size.indexOf('330')>-1?'#FDD835':'#1E88E5')+';border-radius:3px;margin-bottom:20px}'
+    + '.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}'
+    + '.field{background:#f7f8fa;border-radius:6px;padding:10px 12px}'
+    + '.field .lb{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:3px}'
+    + '.field .vl{font-size:14px;font-weight:600}'
+    + '.field.big .vl{font-size:18px;color:#0E6655}'
+    + '.sign{border:1px solid #ddd;border-radius:8px;padding:14px;margin-top:16px;min-height:60px}'
+    + '.sign .lb{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:8px}'
+    + '.footer{margin-top:20px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:10px}'
+    + '@media print{body{padding:12px}}</style></head><body>'
+    + '<div class="hdr"><div><div class="sub">SWIG CUPS — Print Job Card</div><h1>'+ev.client+'</h1></div>'
+    + '<div style="text-align:right"><div style="font-size:11px;opacity:0.8">'+(ev.week_label||'')+' · '+(ev.date_period||'')+'</div>'
+    + '<div style="font-size:20px;font-weight:700">'+(ev.print_date||'Date TBC')+'</div></div></div>'
+    + '<div class="bar"></div>'
+    + '<div class="grid">'
+    + '<div class="field big"><div class="lb">Quantity</div><div class="vl">'+(ev.qty_printed||0).toLocaleString()+' cups</div></div>'
+    + '<div class="field big"><div class="lb">Stock to use</div><div class="vl">'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+' units</div></div>'
+    + '<div class="field"><div class="lb">Cup size</div><div class="vl">'+(ev.cup_size||'—')+'</div></div>'
+    + '<div class="field"><div class="lb">Cup colour</div><div class="vl">'+(ev.cup_colour||'—')+'</div></div>'
+    + '<div class="field"><div class="lb">Print colour(s)</div><div class="vl">'+(ev.print_colour||'—')+'</div></div>'
+    + '<div class="field"><div class="lb">Number of colours</div><div class="vl">'+(ev.num_colours||1)+'</div></div>'
+    + '<div class="field"><div class="lb">Print type</div><div class="vl">'+(ev.print_type||'Screen print')+'</div></div>'
+    + '<div class="field"><div class="lb">Artwork</div><div class="vl">'+(ev.artwork||'—')+' artwork</div></div>'
+    + '<div class="field"><div class="lb">Print date</div><div class="vl">'+(ev.print_date||'—')+'</div></div>'
+    + '<div class="field"><div class="lb">Delivery date</div><div class="vl">'+(ev.delivery_date||'—')+'</div></div>'
+    + '</div>'
+    + (ev.notes?'<div class="field" style="margin-bottom:16px"><div class="lb">Notes</div><div class="vl" style="font-size:12px">'+ev.notes+'</div></div>':'')
+    + artSection
+    + '<div class="sign"><div class="lb">Printed by (signature & date)</div></div>'
+    + '<div class="footer">Swig Cups — Greenvolved T/A · Generated '+new Date().toLocaleDateString('en-GB')+'</div>'
+    + '</body></html>';
+
+  var blob = new Blob([html], {type:'text/html'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = ev.client.replace(/[^a-z0-9]/gi,'_')+'_JobCard.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Job card downloaded','ok');
+}
+
+// ── GLOBAL TOOLTIP ──
+var tipEl = document.createElement('div');
+tipEl.className = 'ce-tooltip';
+tipEl.id = 'global-tip';
+document.body.appendChild(tipEl);
+
+document.addEventListener('mouseover', function(e) {
+  var ce = e.target.closest('.ce');
+  if(ce && ce.dataset.tip) {
+    tipEl.innerHTML = ce.dataset.tip.split('\n').join('<br>');
+    tipEl.classList.add('show');
+  }
+});
+document.addEventListener('mousemove', function(e) {
+  if(tipEl.classList.contains('show')) {
+    var x = e.clientX + 14;
+    var y = e.clientY + 14;
+    // Keep within viewport
+    if(x + 280 > window.innerWidth) x = e.clientX - 280;
+    if(y + 150 > window.innerHeight) y = e.clientY - 150;
+    tipEl.style.left = x + 'px';
+    tipEl.style.top = y + 'px';
+  }
+});
+document.addEventListener('mouseout', function(e) {
+  var ce = e.target.closest('.ce');
+  if(ce) tipEl.classList.remove('show');
+});
+
+// close overlays on click outside
+['evov','edov','qaov'].forEach(function(id){
+  document.getElementById(id).addEventListener('click',function(e){
+    if(e.target===this)closeOv(id);
+  });
+});
+</script>
+</body>
+</html>
