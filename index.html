@@ -496,11 +496,31 @@ function clearArtwork() {
 
 async function uploadArtwork(jobId, file) {
   if(!file) return null;
-  var path = 'artworks/' + jobId + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  var r = await DB().storage.from('artworks').upload(path, file, {upsert: true});
-  if(r.error) { console.log('Upload error:', r.error); return null; }
-  var url = DB().storage.from('artworks').getPublicUrl(path);
-  return url.data.publicUrl;
+  return new Promise(function(resolve){
+    // Images: resize + base64. PDFs: base64 direct.
+    var isPDF = file.type === 'application/pdf';
+    var reader = new FileReader();
+    reader.onload = function(e){
+      if(isPDF){
+        // Store PDF as data URI directly
+        resolve(e.target.result);
+      } else {
+        // Resize image to max 1200px before storing
+        var img = new Image();
+        img.onload = function(){
+          var MAX = 1200;
+          var w = img.width, h = img.height;
+          if(w > MAX){ h = Math.round(h * MAX/w); w = MAX; }
+          var canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = e.target.result;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 }
 var RTABS={owner:['stock','chart','pos','jobs','print','cal','alerts'],fred:['stock','jobs','print','cal'],warda:['myjobs','cal']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
@@ -1207,7 +1227,13 @@ function openEdit(ev){
   document.getElementById('artwork-preview').style.display = 'none';
   var ac = document.getElementById('artwork-current');
   if(ev.artwork_url) {
-    ac.innerHTML = '📎 Current: <a href="'+ev.artwork_url+'" target="_blank" style="color:#0E6655">View artwork</a>';
+    if(ev.artwork_url.startsWith('data:image')){
+      ac.innerHTML = '<img src="'+ev.artwork_url+'" style="max-width:100%;max-height:120px;border-radius:6px;margin-top:4px">';
+    } else if(ev.artwork_url.startsWith('data:application/pdf')){
+      ac.innerHTML = '📄 <span style="color:#0E6655;font-weight:500">PDF artwork on file</span>';
+    } else {
+      ac.innerHTML = '📎 Current: <a href="'+ev.artwork_url+'" target="_blank" style="color:#0E6655">View artwork</a>';
+    }
   } else {
     ac.textContent = 'No artwork uploaded yet';
   }
@@ -1349,9 +1375,11 @@ function downloadJobCard(ev) {
   var artSection = ev.artwork_url
     ? '<div style="margin-top:16px;padding:12px;background:#E3F2FD;border-radius:8px;border:1.5px solid #1E88E5">'
       + '<div style="font-size:11px;font-weight:700;color:#1F4E79;margin-bottom:6px">ARTWORK</div>'
-      + (ev.artwork_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+      + (ev.artwork_url.startsWith('data:image')
         ? '<img src="'+ev.artwork_url+'" style="max-width:100%;max-height:200px;border-radius:4px">'
-        : '<a href="'+ev.artwork_url+'" style="color:#1F4E79;font-weight:600">📎 Open artwork file</a>')
+        : ev.artwork_url.startsWith('data:application/pdf')
+          ? '<span style="color:#1F4E79">📄 PDF artwork stored</span>'
+          : '<a href="'+ev.artwork_url+'" target="_blank" style="color:#1F4E79;font-weight:600">📎 Open artwork file</a>')
       + '</div>'
     : '<div style="margin-top:16px;padding:12px;background:#f2f3f4;border-radius:8px;border:1.5px dashed #ccc;text-align:center;color:#999">No artwork uploaded</div>';
 
