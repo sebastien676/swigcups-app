@@ -169,6 +169,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 .ld{text-align:center;padding:40px;color:#666}
 .sp{width:22px;height:22px;border:2px solid #e0e0e0;border-top-color:#0E6655;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ── URGENT ── */
+.ce.urgent { border-left: 3px solid #C0392B !important; box-shadow: 0 0 0 2px #FADBD8; }
+.ce .urg-badge { display:inline-block;background:#C0392B;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-bottom:2px;letter-spacing:0.03em }
+.pj.urg-card { border-left: 4px solid #C0392B !important; background:#FFF5F5 !important; }
+.urg-lock { font-size:9px;color:#C0392B;font-weight:700;margin-top:1px }
 /* ── PURCHASE ORDERS: month separators + greyed done rows ── */
 .po-done { opacity: 0.38; }
 .po-done td { color: #bbb !important; }
@@ -414,6 +419,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div class="fg"><label>Print type</label><select id="ept"><option>Screen print</option><option>Digital</option><option>Foil</option><option>Mixed</option></select></div>
     </div>
     <div class="fg"><label>Notes</label><textarea id="eno" rows="2"></textarea></div>
+    <div class="fg" style="flex-direction:row;align-items:center;gap:10px;margin-bottom:10px">
+      <input type="checkbox" id="eurg" style="width:18px;height:18px;cursor:pointer;accent-color:#C0392B">
+      <label style="font-size:13px;font-weight:600;color:#C0392B;cursor:pointer;text-transform:none;letter-spacing:0" for="eurg">🚨 Mark as URGENT — cannot be moved</label>
+    </div>
     <div class="fg">
       <label>Artwork file</label>
       <div id="artwork-preview" style="margin-bottom:6px;display:none">
@@ -1010,13 +1019,17 @@ function renderCal(){
     dayJ.forEach(function(ev){
       window['ev_'+ev.id]=ev;
       var isDone=(ev.status||'').toLowerCase().indexOf('done')>-1;
+      var isUrg=ev.is_urgent||false;
       var sc=isDone?'sd':sc2(ev.cup_size||'',ev.cup_colour||'');
       var ce=document.createElement('div');
-      ce.className='ce '+sc;ce.draggable=true;
+      ce.className='ce '+sc+(isUrg?' urgent':'');
+      ce.draggable=!isUrg;
       var prints = (ev.qty_printed||0) * (ev.num_colours||1);
-      ce.innerHTML='<div class="ec">'+ev.client+'</div>'+
+      ce.innerHTML=(isUrg?'<div class="urg-badge">🚨 URGENT</div>':'')+
+        '<div class="ec">'+ev.client+'</div>'+
         '<div class="ed">'+(ev.qty_printed||0).toLocaleString()+' cups · '+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div>'+
         '<div class="ed">🖨️ '+prints.toLocaleString()+' prints · '+(ev.num_colours||1)+' col.</div>'+
+        (isUrg?'<div class="urg-lock">🔒 Cannot be moved</div>':'')+
         (ev.artwork?'<div class="ed">📋 '+ev.artwork+' artwork</div>':'');
       ce.dataset.tip = [
         ev.client,
@@ -1035,7 +1048,7 @@ function renderCal(){
       ce.appendChild(checkBtn);
       ce.style.paddingRight = '22px';
       (function(eid, est){
-        ce.addEventListener('dragstart',function(){dragId=eid;this.classList.add('drag');});
+        ce.addEventListener('dragstart',function(){if(window['ev_'+eid]&&window['ev_'+eid].is_urgent){toast('🔒 Urgent job — cannot be moved','err');return;}dragId=eid;this.classList.add('drag');});
         ce.addEventListener('dragend',function(){this.classList.remove('drag');});
         ce.addEventListener('click',function(e){
           if(e.target === checkBtn || checkBtn.contains(e.target)) {
@@ -1198,6 +1211,7 @@ function openEdit(ev){
   } else {
     ac.textContent = 'No artwork uploaded yet';
   }
+  document.getElementById('eurg').checked = ev.is_urgent||false;
   document.getElementById('edov').classList.add('op');
   setTimeout(function(){document.getElementById('ecl').focus();},100);
 }
@@ -1224,8 +1238,8 @@ async function saveEdit(){
     print_colour:document.getElementById('epc').value,
     artwork:document.getElementById('ear').value,
     status:document.getElementById('est').value,
-    print_type:document.getElementById('ept').value,
-    notes:document.getElementById('eno').value
+    notes:document.getElementById('eno').value,
+    is_urgent:document.getElementById('eurg').checked
   };
   if(artworkUrl) updateData.artwork_url = artworkUrl;
   var r=await DB().from('print_schedule').update(updateData).eq('id',id);
@@ -1272,11 +1286,12 @@ async function loadMyJobs(){
     var pb=document.createElement('div');pb.className='pb';pb.innerHTML='<div class="pbf" style="width:'+pct+'%"></div>';el.appendChild(pb);
     jobs.forEach(function(j){
       var isDone=j.status==='Done';
+      var isUrg=j.is_urgent||false;
       var sc=isDone?'dn2':(j.cup_size||'').indexOf('500')>-1?'s5b':(j.cup_size||'').indexOf('330')>-1?'s3b':'s2b';
       var waste=Math.round((j.qty_printed||0)*0.05).toLocaleString();
-      var card=document.createElement('div');card.className='pj '+sc;
+      var card=document.createElement('div');card.className='pj '+sc+(isUrg?' urg-card':'');
       card.innerHTML='<div class="ck">'+(isDone?'✓':'')+'</div>'+
-        '<div class="ji"><div class="jc">'+j.client+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+' · '+(j.print_colour||'—')+'<br>'+(j.print_date?'📅 '+j.print_date:'')+'</div></div>'+
+        '<div class="ji"><div class="jc">'+(isUrg?'<span class="urg-badge">🚨 URGENT</span> ':'')+j.client+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+' · '+(j.print_colour||'—')+'<br>'+(j.print_date?'📅 '+j.print_date:'')+'</div></div>'+
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
         '<div><div class="jq">'+(j.qty_printed||0).toLocaleString()+'</div><div class="jw">+'+waste+'</div></div>'+
         '<button class="btn bs bsm" style="font-size:10px;padding:3px 8px">🖨️ Card</button>'+
