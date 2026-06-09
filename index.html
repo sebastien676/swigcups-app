@@ -1218,34 +1218,58 @@ function openEdit(ev){
 
 async function saveEdit(){
   var id=document.getElementById('eid').value;
-  if(!id)return;
+  if(!id){toast('No job ID — please close and reopen','err');return;}
   var client=document.getElementById('ecl').value.trim();
   var qty=parseInt(document.getElementById('eq').value)||0;
-  if(!client||!qty){toast('Client and qty required','err');return;}
-  var artworkUrl = null;
-  if(pendingArtworkFile) {
-    artworkUrl = await uploadArtwork(id, pendingArtworkFile);
-    if(!artworkUrl) { toast('Artwork upload failed — saving without artwork','err'); }
-  }
+  if(!client||!qty){toast('Client and quantity required','err');return;}
+
+  // Save core data first — never blocked by artwork
   var updateData = {
-    client:client,week_label:document.getElementById('ewl').value,
+    client:client,
+    week_label:document.getElementById('ewl').value,
     date_period:document.getElementById('ewp').value,
     print_date:document.getElementById('epd').value||null,
     delivery_date:document.getElementById('edd').value||null,
     cup_size:document.getElementById('esz').value,
     cup_colour:document.getElementById('ecol').value,
-    qty_printed:qty,num_colours:parseInt(document.getElementById('enc').value)||1,
+    qty_printed:qty,
+    num_colours:parseInt(document.getElementById('enc').value)||1,
     print_colour:document.getElementById('epc').value,
     artwork:document.getElementById('ear').value,
     status:document.getElementById('est').value,
-    notes:document.getElementById('eno').value,
-    is_urgent:document.getElementById('eurg').checked
+    notes:document.getElementById('eno').value
   };
-  if(artworkUrl) updateData.artwork_url = artworkUrl;
-  var r=await DB().from('print_schedule').update(updateData).eq('id',id);
-  if(r.error){toast('Error saving','err');return;}
-  toast('✓ '+client+' updated','ok');
-  closeOv('edov');prints=[];loadCalData();loadJobs();loadPrint();loadMyJobs();
+
+  // Add is_urgent only if column exists (won't break if missing)
+  try { updateData.is_urgent = document.getElementById('eurg').checked; } catch(e){}
+
+  var r = await DB().from('print_schedule').update(updateData).eq('id',id);
+  if(r.error){
+    toast('❌ Save error: '+r.error.message,'err');
+    console.error('saveEdit error:', r.error);
+    return;
+  }
+
+  // Artwork upload after save — won't block the save
+  if(pendingArtworkFile){
+    try {
+      var artworkUrl = await uploadArtwork(id, pendingArtworkFile);
+      if(artworkUrl){
+        await DB().from('print_schedule').update({artwork_url:artworkUrl}).eq('id',id);
+        toast('✓ '+client+' saved + artwork uploaded','ok');
+      } else {
+        toast('✓ '+client+' saved (artwork upload failed)','ok');
+      }
+    } catch(e){
+      toast('✓ '+client+' saved (artwork error)','ok');
+    }
+  } else {
+    toast('✓ '+client+' saved','ok');
+  }
+
+  closeOv('edov');
+  pendingArtworkFile=null;
+  prints=[];loadCalData();loadJobs();loadPrint();loadMyJobs();
 }
 
 async function delJob(){
