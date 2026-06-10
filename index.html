@@ -169,6 +169,31 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 .ld{text-align:center;padding:40px;color:#666}
 .sp{width:22px;height:22px;border:2px solid #e0e0e0;border-top-color:#0E6655;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ── TODAY / TO-DO ── */
+.today-date-nav{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:12px 16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.today-date-nav h2{font-size:16px;font-weight:700;color:#0E6655;text-align:center;flex:1}
+.today-date-nav button{background:#f2f3f4;border:none;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;color:#444}
+.today-date-nav button:hover{background:#e0e0e0}
+.today-date-nav .today-lbl{font-size:10px;font-weight:700;color:#0E6655;background:#D1F2EB;padding:2px 8px;border-radius:10px;display:block;text-align:center;margin-top:2px}
+.todo-section{margin-bottom:18px}
+.todo-section-hdr{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.todo-section-hdr h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#666}
+.todo-section-hdr .cnt{background:#e0e0e0;color:#555;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700}
+.todo-card{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:13px 15px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer;transition:border-color .15s}
+.todo-card:hover{border-color:#aaa}
+.todo-card.done-card{opacity:0.45;background:#f9f9f9}
+.todo-card .tc-bar{width:4px;border-radius:2px;align-self:stretch;flex-shrink:0;min-height:40px}
+.todo-card .tc-body{flex:1}
+.todo-card .tc-client{font-weight:700;font-size:14px;margin-bottom:3px}
+.todo-card .tc-detail{font-size:12px;color:#666;line-height:1.7}
+.todo-card .tc-detail strong{color:#1a1a1a}
+.todo-card .tc-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.todo-card .tc-qty{font-weight:700;font-size:15px;color:#0E6655}
+.todo-card .tc-ck{width:28px;height:28px;border-radius:50%;border:2px solid #e0e0e0;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;cursor:pointer;transition:all .15s}
+.todo-card .tc-ck:hover{border-color:#0E6655;background:#D1F2EB}
+.todo-card.done-card .tc-ck{background:#1E8449;border-color:#1E8449;color:#fff}
+.todo-empty{text-align:center;padding:24px;color:#aaa;font-size:13px;background:#fafafa;border-radius:10px;border:1px dashed #ddd}
+.todo-ph-banner{background:#FADBD8;border-left:3px solid #C0392B;border-radius:0 8px 8px 0;padding:8px 14px;margin-bottom:14px;font-size:12px;font-weight:600;color:#C0392B}
 /* ── PUBLIC HOLIDAYS ── */
 .cc.ph { background: #FFECEC !important; }
 .cc.td.ph { background: #FFE0E0 !important; }
@@ -226,6 +251,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   </div>
   <nav id="nav">
     <button class="act" onclick="showTab('stock',this)">📦 Stock</button>
+    <button onclick="showTab('today',this)">✅ Today</button>
     <button onclick="showTab('chart',this)">📊 Chart</button>
     <button onclick="showTab('pos',this)">📋 Purchase Orders</button>
     <button onclick="showTab('jobs',this)">📝 Jobs</button>
@@ -265,6 +291,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
         <button class="btn bs" onclick="togglePnl('pdel')">Cancel</button>
       </div>
     </div>
+  </div>
+
+  <div id="tab-today" class="sec">
+    <div class="today-date-nav">
+      <button onclick="todayNav(-1)">‹ Prev</button>
+      <div style="text-align:center;flex:1">
+        <div id="today-title" style="font-size:16px;font-weight:700;color:#0E6655">—</div>
+        <span class="today-lbl" id="today-rel"></span>
+      </div>
+      <button onclick="todayNav(1)">Next ›</button>
+    </div>
+    <div id="today-ph" style="display:none" class="todo-ph-banner"></div>
+    <div id="today-content"></div>
   </div>
 
   <div id="tab-chart" class="sec">
@@ -408,6 +447,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div class="fg"><label>Print date</label><input type="date" id="epd"></div>
     </div>
     <div class="fg"><label>Delivery date</label><input type="date" id="edd"></div>
+    <div class="g2">
+      <div class="fg"><label>Delivery type</label><select id="edt"><option value="">— Select —</option><option>Collection</option><option>Delivery</option></select></div>
+      <div class="fg"><label>Delivery address / notes</label><input type="text" id="eda" placeholder="e.g. 14 Main St or Client collects"></div>
+    </div>
     <div class="es">Cup details</div>
     <div class="g3">
       <div class="fg"><label>Size ★</label><select id="esz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
@@ -529,9 +572,9 @@ async function uploadArtwork(jobId, file) {
     reader.readAsDataURL(file);
   });
 }
-var RTABS={owner:['stock','chart','pos','jobs','print','cal','alerts'],fred:['stock','jobs','print','cal'],warda:['myjobs','cal']};
+var RTABS={owner:['stock','today','chart','pos','jobs','print','cal','alerts'],fred:['stock','today','jobs','print','cal'],warda:['myjobs','cal']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
-var role=null,prints=[],stock=[],calOff=0,dragId=null,curEv=null,qaWL='',qaP='',chartI=null;
+var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',chartI=null;
 
 // South Africa public holidays
 var SA_HOLIDAYS={"2026-01-01":"New Years Day","2026-03-21":"Human Rights Day","2026-04-03":"Good Friday","2026-04-06":"Family Day","2026-04-27":"Freedom Day","2026-05-01":"Workers Day","2026-06-16":"Youth Day","2026-08-09":"Womens Day","2026-08-10":"Womens Day (obs.)","2026-09-24":"Heritage Day","2026-12-16":"Day of Reconciliation","2026-12-25":"Christmas Day","2026-12-26":"Day of Goodwill"};
@@ -550,11 +593,11 @@ function initRole(r){
   document.getElementById('rt').textContent=RLAB[r];
   var allowed=RTABS[r];
   var btns=document.querySelectorAll('nav button');
-  var order=['stock','chart','pos','jobs','print','cal','myjobs','alerts'];
+  var order=['stock','today','chart','pos','jobs','print','cal','myjobs','alerts'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
   if(r==='owner'||r==='fred'){document.getElementById('badd').style.display='flex';document.getElementById('bajob').style.display='flex';}
-  loadStock();loadPOs();loadPrint();loadJobs();
+  loadStock();loadPOs();loadPrint();loadJobs();if(role!=='warda')loadToday();
 }
 
 function showTab(n,b){
@@ -565,6 +608,7 @@ function showTab(n,b){
   if(n==='chart')renderChart();
   if(n==='cal'){if(prints.length>0)renderCal();else loadCalData();}
   if(n==='alerts')loadAlerts();
+  if(n==='today'){todayOff=0;loadToday();}
   if(n==='myjobs')loadMyJobs();
 }
 
@@ -1201,6 +1245,8 @@ function openEvDetail(ev){
     '<div class="mr"><span class="ml">Stock used</span><span><strong>'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+'</strong> units</span></div>'+
     '<div class="mr"><span class="ml">Print</span><span>'+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.</span></div>'+
     '<div class="mr"><span class="ml">Status</span><span>'+pill(ev.status||'Scheduled')+'</span></div>'+
+    (ev.delivery_type?'<div class="mr"><span class="ml">Type</span><span>'+(ev.delivery_type==='Collection'?'📦 Collection':'🚚 Delivery')+'</span></div>':'')+
+    (ev.delivery_address?'<div class="mr"><span class="ml">Address</span><span>'+ev.delivery_address+'</span></div>':'')+
     (ev.notes?'<div class="mr"><span class="ml">Notes</span><span>'+ev.notes+'</span></div>':'');
   var act=document.getElementById('evact');
   act.innerHTML='';
@@ -1257,6 +1303,8 @@ function openEdit(ev){
   } else {
     ac.textContent = 'No artwork uploaded yet';
   }
+  document.getElementById('edt').value  = ev.delivery_type||'';
+  document.getElementById('eda').value  = ev.delivery_address||'';
   document.getElementById('eurg').checked = ev.is_urgent||false;
   document.getElementById('edov').classList.add('op');
   setTimeout(function(){document.getElementById('ecl').focus();},100);
@@ -1283,7 +1331,9 @@ async function saveEdit(){
     print_colour:document.getElementById('epc').value,
     artwork:document.getElementById('ear').value,
     status:document.getElementById('est').value,
-    notes:document.getElementById('eno').value
+    notes:document.getElementById('eno').value,
+    delivery_type:document.getElementById('edt').value||null,
+    delivery_address:document.getElementById('eda').value||null
   };
 
   // Add is_urgent only if column exists (won't break if missing)
@@ -1483,6 +1533,135 @@ document.addEventListener('mouseout', function(e) {
     if(e.target===this)closeOv(id);
   });
 });
+
+// ── TODAY / TO-DO ──────────────────────────────────────────────────────────
+
+function todayNav(d){ todayOff += d; loadToday(); }
+
+function getTodayISO(off){
+  var d = new Date();
+  d.setDate(d.getDate() + (off||0));
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+async function loadToday(){
+  var iso = getTodayISO(todayOff);
+  var parts = iso.split('-');
+  var d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+  var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  document.getElementById('today-title').textContent = DAYS[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear();
+  var relEl = document.getElementById('today-rel');
+  relEl.textContent = todayOff===0?'TODAY':todayOff===-1?'YESTERDAY':todayOff===1?'TOMORROW':'';
+  relEl.style.display = (todayOff>=-1&&todayOff<=1)?'block':'none';
+
+  var phEl = document.getElementById('today-ph');
+  if(SA_HOLIDAYS[iso]){
+    phEl.style.display='block';
+    phEl.textContent='ZA Public Holiday: '+SA_HOLIDAYS[iso];
+  } else { phEl.style.display='none'; }
+
+  var r = await DB().from('print_schedule').select('*').order('created_at');
+  if(!r.data) return;
+  var all = r.data;
+
+  var prints_today = all.filter(function(j){ return j.print_date===iso; });
+  var deliveries   = all.filter(function(j){ return j.delivery_date===iso; });
+  var upcoming_del = todayOff===0 ? all.filter(function(j){
+    return j.delivery_date && j.delivery_date>iso && j.status!=='Done';
+  }).sort(function(a,b){ return a.delivery_date.localeCompare(b.delivery_date); }).slice(0,5) : [];
+
+  var el = document.getElementById('today-content');
+  el.innerHTML = '';
+
+  function barColor(size){ return (size||'').indexOf('500')>-1?'#43A047':(size||'').indexOf('330')>-1?'#FDD835':'#1E88E5'; }
+
+  function makeCard(j, type){
+    var isDone=j.status==='Done', isUrg=j.is_urgent||false;
+    var card=document.createElement('div');
+    card.className='todo-card'+(isDone?' done-card':'')+(isUrg?' urgent':'');
+    var bar=document.createElement('div');
+    bar.className='tc-bar';
+    bar.style.background=isUrg?'#C0392B':barColor(j.cup_size);
+    card.appendChild(bar);
+    var body=document.createElement('div');
+    body.className='tc-body';
+    var typeIcon=type==='print'?'Prints':type==='delivery'?'Delivery':'Upcoming';
+    body.innerHTML='<div class="tc-client">'+(isUrg?'<span class="urg-badge">URGENT</span> ':'')+j.client+'</div>'+
+      '<div class="tc-detail">'+
+      '<strong>'+typeIcon+(type==='upcoming'?' - '+j.delivery_date:'')+'</strong>'+
+      (j.delivery_type?'<br>'+(j.delivery_type==='Collection'?'📦 Collection':'🚚 Delivery'):'')+
+      (j.delivery_address?'<br>📍 '+j.delivery_address:'')+
+      '<br>'+(j.cup_size||'-')+' - '+(j.cup_colour||'-')+' - <strong>'+(j.qty_printed||0).toLocaleString()+' cups</strong>'+
+      (j.print_colour?'<br>'+(j.print_colour)+(j.num_colours?' - '+(j.num_colours)+' col.':''):'')+
+      (j.print_date&&type!=='print'?'<br>Print: '+j.print_date:'')+
+      (j.delivery_date&&type!=='delivery'&&type!=='upcoming'?'<br>Delivery: '+j.delivery_date:'')+
+      (j.notes?'<br>'+j.notes:'')+
+      '</div>';
+    card.appendChild(body);
+    var right=document.createElement('div');
+    right.className='tc-right';
+    var qty=document.createElement('div');
+    qty.className='tc-qty';
+    qty.textContent=(j.qty_printed||0).toLocaleString();
+    right.appendChild(qty);
+    var stClass=j.status==='Done'?'done':j.status==='In progress'?'prog':'sch';
+    var stEl=document.createElement('span');
+    stEl.innerHTML='<span class="pl '+stClass+'">'+j.status+'</span>';
+    right.appendChild(stEl);
+    if(type!=='upcoming'&&role!=='warda'){
+      var ck=document.createElement('div');
+      ck.className='tc-ck';
+      ck.innerHTML=isDone?'<span>+</span>':'';
+      ck.title=isDone?'Mark In Progress':'Mark Done';
+      (function(jid,jst){ ck.addEventListener('click',function(e){
+        e.stopPropagation();
+        toggleDone(jid,jst);
+        setTimeout(loadToday,500);
+      }); })(j.id,j.status);
+      right.appendChild(ck);
+    }
+    card.appendChild(right);
+    (function(jev){ card.addEventListener('click',function(e){
+      if(e.target.closest('.tc-ck'))return;
+      openEvDetail(jev);
+    }); })(j);
+    return card;
+  }
+
+  function buildSection(title,icon,items,type,emptyMsg){
+    var sec=document.createElement('div');
+    sec.className='todo-section';
+    var hdr=document.createElement('div');
+    hdr.className='todo-section-hdr';
+    hdr.innerHTML='<span style="font-size:16px">'+icon+'</span><h3>'+title+'</h3><span class="cnt">'+items.length+'</span>';
+    sec.appendChild(hdr);
+    if(!items.length){
+      var emp=document.createElement('div');
+      emp.className='todo-empty';
+      emp.textContent=emptyMsg;
+      sec.appendChild(emp);
+    } else {
+      items.forEach(function(j){ sec.appendChild(makeCard(j,type)); });
+    }
+    return sec;
+  }
+
+  el.appendChild(buildSection('Deliveries','',deliveries,'delivery','No deliveries for this day'));
+
+  if(deliveries.length>0){
+    var done_jobs=deliveries.filter(function(j){return j.status==='Done';}).length;
+    var sumDiv=document.createElement('div');
+    sumDiv.style.cssText='background:#f2f3f4;border-radius:8px;padding:10px 14px;font-size:12px;color:#666;margin-top:8px;display:flex;align-items:center;justify-content:space-between';
+    var pct=Math.round(done_jobs/deliveries.length*100);
+    sumDiv.innerHTML='<span>'+done_jobs+'/'+deliveries.length+' deliveries done</span>'+
+      '<div style="background:#e0e0e0;border-radius:4px;height:6px;width:120px;overflow:hidden">'+
+      '<div style="background:#1E8449;height:100%;border-radius:4px;width:'+pct+'%"></div></div>';
+    el.appendChild(sumDiv);
+  }
+}
+
 </script>
 </body>
 </html>
