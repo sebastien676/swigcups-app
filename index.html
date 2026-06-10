@@ -169,6 +169,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 .ld{text-align:center;padding:40px;color:#666}
 .sp{width:22px;height:22px;border:2px solid #e0e0e0;border-top-color:#0E6655;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ── PUBLIC HOLIDAYS ── */
+.cc.ph { background: #FFECEC !important; }
+.cc.td.ph { background: #FFE0E0 !important; }
+.ph-label { font-size:9px; font-weight:700; color:#C0392B; background:#FADBD8; border-radius:3px; padding:1px 5px; margin-bottom:3px; display:block; line-height:1.4; }
+.cdh.ph-hdr { background:#FFECEC !important; }
+.cdh.ph-hdr .dd { color:#C0392B !important; }
 /* ── URGENT ── */
 .ce.urgent { border-left: 3px solid #C0392B !important; box-shadow: 0 0 0 2px #FADBD8; }
 .ce .urg-badge { display:inline-block;background:#C0392B;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-bottom:2px;letter-spacing:0.03em }
@@ -350,6 +356,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
         <span><span class="cdot" style="background:#ECEFF1;border-left:3px solid #455A64"></span>Black</span>
         <span><span class="cdot" style="background:#F3E5F5;border-left:3px solid #8E24AA"></span>Purple</span>
         <span><span class="cdot" style="background:#F5F5F5;border-left:3px solid #BDBDBD"></span>Done</span>
+        <span><span class="cdot" style="background:#FADBD8;border-left:3px solid #C0392B"></span>Public holiday</span>
       </div>
     </div>
     <div class="card" style="margin-top:14px">
@@ -525,6 +532,9 @@ async function uploadArtwork(jobId, file) {
 var RTABS={owner:['stock','chart','pos','jobs','print','cal','alerts'],fred:['stock','jobs','print','cal'],warda:['myjobs','cal']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
 var role=null,prints=[],stock=[],calOff=0,dragId=null,curEv=null,qaWL='',qaP='',chartI=null;
+
+// South Africa public holidays
+var SA_HOLIDAYS={"2026-01-01":"New Years Day","2026-03-21":"Human Rights Day","2026-04-03":"Good Friday","2026-04-06":"Family Day","2026-04-27":"Freedom Day","2026-05-01":"Workers Day","2026-06-16":"Youth Day","2026-08-09":"Womens Day","2026-08-10":"Womens Day (obs.)","2026-09-24":"Heritage Day","2026-12-16":"Day of Reconciliation","2026-12-25":"Christmas Day","2026-12-26":"Day of Goodwill"};
 
 function doLogin(){
   var pw=document.getElementById('pw').value.trim();
@@ -1016,8 +1026,11 @@ function renderCal(){
   var lbl=document.createElement('div');lbl.className='clbl';lbl.textContent='Jobs';grid.appendChild(lbl);
   days.forEach(function(d,i){
     var isT=d.getTime()===today.getTime();
-    var h=document.createElement('div');h.className='cdh'+(isT?' td':'');
-    h.innerHTML='<div class="dn">'+DAYS[i]+'</div><div class="dd">'+d.getDate()+'</div><div class="dm">'+d.toLocaleDateString('en-GB',{month:'short'})+'</div>';
+    var yr0=d.getFullYear(),mo0=String(d.getMonth()+1).padStart(2,'0'),dy0=String(d.getDate()).padStart(2,'0');
+    var iso0=yr0+'-'+mo0+'-'+dy0;
+    var isPH0=!!SA_HOLIDAYS[iso0];
+    var h=document.createElement('div');h.className='cdh'+(isT?' td':'')+(isPH0?' ph-hdr':'');
+    h.innerHTML='<div class="dn">'+DAYS[i]+'</div><div class="dd">'+d.getDate()+'</div><div class="dm">'+d.toLocaleDateString('en-GB',{month:'short'})+'</div>'+(isPH0?'<div style="font-size:8px;color:#C0392B;font-weight:700;margin-top:1px">🇿🇦 '+SA_HOLIDAYS[iso0]+'</div>':'');
     grid.appendChild(h);
   });
   var lbl2=document.createElement('div');lbl2.className='clbl';grid.appendChild(lbl2);
@@ -1026,9 +1039,16 @@ function renderCal(){
     var isT=d.getTime()===today.getTime();
     var yr=d.getFullYear(),mo=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0');
     var iso=yr+'-'+mo+'-'+dy;
+    var isPH=!!SA_HOLIDAYS[iso];
     var cell=document.createElement('div');
-    cell.className='cc'+(isT?' td':'');
+    cell.className='cc'+(isT?' td':'')+(isPH?' ph':'');
     cell.dataset.date=iso;
+    if(isPH){
+      var phl=document.createElement('span');
+      phl.className='ph-label';
+      phl.textContent='🇿🇦 '+SA_HOLIDAYS[iso];
+      cell.appendChild(phl);
+    }
     cell.addEventListener('dragover',function(e){e.preventDefault();this.classList.add('dov');});
     cell.addEventListener('dragleave',function(){this.classList.remove('dov');});
     cell.addEventListener('drop',function(e){e.preventDefault();this.classList.remove('dov');onDrop(this.dataset.date);});
