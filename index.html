@@ -473,6 +473,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <input type="checkbox" id="eurg" style="width:18px;height:18px;cursor:pointer;accent-color:#C0392B">
       <label style="font-size:13px;font-weight:600;color:#C0392B;cursor:pointer;text-transform:none;letter-spacing:0" for="eurg">🚨 Mark as URGENT — cannot be moved</label>
     </div>
+    <div class="fg" style="flex-direction:row;align-items:center;gap:10px;margin-bottom:10px">
+      <input type="checkbox" id="eposis" style="width:18px;height:18px;cursor:pointer;accent-color:#1F4E79">
+      <label style="font-size:13px;font-weight:600;color:#1F4E79;cursor:pointer;text-transform:none;letter-spacing:0" for="eposis">✅ POSIS received</label>
+    </div>
     <div class="fg">
       <label>Artwork file</label>
       <div id="artwork-preview" style="margin-bottom:6px;display:none">
@@ -855,7 +859,8 @@ async function loadJobs(){
       (o.print_colour||'—')+' · '+(o.num_colours||1)+' col. · '+(o.date_period||'—')+'<br>'+
       'Stock: <strong>'+Math.round((o.qty_printed||0)*1.05).toLocaleString()+'</strong></div></div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'+
-      pill(o.status||'Scheduled')+'</div>';
+      pill(o.status||'Scheduled')+
+      (o.posis_received?'<span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:2px 7px;border-radius:10px;font-weight:700">✅ POSIS</span>':'')+'</div>';
     if(role!=='warda'){
       var eb=document.createElement('button');
       eb.className='btn bs bsm';eb.textContent='✏️ Edit';
@@ -1123,6 +1128,7 @@ function renderCal(){
         '🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.',
         ev.artwork?'📋 '+ev.artwork+' artwork':'',
         ev.notes?'📝 '+ev.notes:'',
+        ev.posis_received?'✅ POSIS received':'❌ POSIS not received',
         ev.artwork_url?'📎 Artwork uploaded':''
       ].filter(Boolean).join('\n');
       var checkBtn = document.createElement('div');
@@ -1245,7 +1251,9 @@ function openEvDetail(ev){
     '<div class="mr"><span class="ml">Stock used</span><span><strong>'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+'</strong> units</span></div>'+
     '<div class="mr"><span class="ml">Print</span><span>'+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.</span></div>'+
     '<div class="mr"><span class="ml">Status</span><span>'+pill(ev.status||'Scheduled')+'</span></div>'+
-    (ev.delivery_type?'<div class="mr"><span class="ml">Type</span><span>'+(ev.delivery_type==='Collection'?'📦 Collection':'🚚 Delivery')+'</span></div>':'')+
+    (ev.posis_received?'<div class="mr"><span class="ml">POSIS</span><span style="color:#1F4E79;font-weight:700">✅ Received</span></div>':
+    '<div class="mr"><span class="ml">POSIS</span><span style="color:#aaa">Not received yet</span></div>')+
+    (ev.delivery_type?'<div class="mr"><span class="ml">Type</span><span>'+(ev.delivery_type==='Collection'?'📦 Collection':'🚚 Delivery')+'</span></div>':'')+ 
     (ev.delivery_address?'<div class="mr"><span class="ml">Address</span><span>'+ev.delivery_address+'</span></div>':'')+
     (ev.notes?'<div class="mr"><span class="ml">Notes</span><span>'+ev.notes+'</span></div>':'');
   var act=document.getElementById('evact');
@@ -1306,6 +1314,7 @@ function openEdit(ev){
   document.getElementById('edt').value  = ev.delivery_type||'';
   document.getElementById('eda').value  = ev.delivery_address||'';
   document.getElementById('eurg').checked = ev.is_urgent||false;
+  document.getElementById('eposis').checked = ev.posis_received||false;
   document.getElementById('edov').classList.add('op');
   setTimeout(function(){document.getElementById('ecl').focus();},100);
 }
@@ -1335,6 +1344,7 @@ async function saveEdit(){
     delivery_type:document.getElementById('edt').value||null,
     delivery_address:document.getElementById('eda').value||null
   };
+  try { updateData.posis_received = document.getElementById('eposis').checked; } catch(e){}
 
   // Add is_urgent only if column exists (won't break if missing)
   try { updateData.is_urgent = document.getElementById('eurg').checked; } catch(e){}
@@ -1411,7 +1421,7 @@ async function loadMyJobs(){
       var waste=Math.round((j.qty_printed||0)*0.05).toLocaleString();
       var card=document.createElement('div');card.className='pj '+sc+(isUrg?' urg-card':'');
       card.innerHTML='<div class="ck">'+(isDone?'✓':'')+'</div>'+
-        '<div class="ji"><div class="jc">'+(isUrg?'<span class="urg-badge">🚨 URGENT</span> ':'')+j.client+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+' · '+(j.print_colour||'—')+'<br>'+(j.print_date?'📅 '+j.print_date:'')+'</div></div>'+
+        '<div class="ji"><div class="jc">'+(isUrg?'<span class="urg-badge">🚨 URGENT</span> ':'')+j.client+(j.posis_received?' <span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:1px 6px;border-radius:8px;font-weight:700">✅ POSIS</span>':'')+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+' · '+(j.print_colour||'—')+'<br>'+(j.print_date?'📅 '+j.print_date:'')+'</div></div>'+
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
         '<div><div class="jq">'+(j.qty_printed||0).toLocaleString()+'</div><div class="jw">+'+waste+'</div></div>'+
         '<button class="btn bs bsm" style="font-size:10px;padding:3px 8px">🖨️ Card</button>'+
