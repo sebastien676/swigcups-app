@@ -1259,7 +1259,11 @@ function weekJobs(mon){
 
 async function loadCalData(){
   var r=await DB().from('print_schedule').select('*').order('created_at');
-  if(r&&r.data)prints=r.data;
+  if(r&&r.data){
+    prints=r.data;
+    // Rebuild window cache from fresh data
+    r.data.forEach(function(p){window['ev_'+p.id]=p;window['p_'+p.id]=p;window['j_'+p.id]=p;});
+  }
   renderCal();
 }
 
@@ -1748,13 +1752,62 @@ async function saveEdit(){
 async function delJob(){
   var id=document.getElementById('eid').value;
   var c=document.getElementById('ecl').value;
+  if(!id){toast('❌ No job ID — close and reopen','err');return;}
   if(!confirm('Delete "'+c+'"? Cannot be undone.'))return;
-  var del=await DB().from('print_schedule').delete().eq('id',id);
-  if(del.error){toast('❌ Delete failed: '+del.error.message,'err');return;}
+
+  // Try delete with both string and int versions of the ID
+  var numId=parseInt(id);
+  console.log('Deleting job id:', id, 'numId:', numId, 'client:', c);
+
+  var delResult = isNaN(numId)
+    ? await DB().from('print_schedule').delete().eq('id', id)
+    : await DB().from('print_schedule').delete().eq('id', numId);
+
+  console.log('Delete result:', delResult);
+
+  if(delResult.error){
+    toast('❌ '+delResult.error.message,'err');
+    return;
+  }
+
+  // Verify it's actually gone from DB
+  var check = isNaN(numId)
+    ? await DB().from('print_schedule').select('id').eq('id', id)
+    : await DB().from('print_schedule').select('id').eq('id', numId);
+
+  console.log('Verify check:', check);
+
+  if(check.data && check.data.length > 0){
+    // Still there — might be RLS blocking. Try with both
+    toast('❌ Could not delete — check Supabase RLS permissions','err');
+    console.error('Record still exists after delete attempt. RLS may be blocking.');
+    return;
+  }
+
+  // Confirmed deleted — update UI
   toast('🗑️ '+c+' deleted','ok');
   closeOv('edov');
-  // Small delay so DB confirms delete before any reload
-  setTimeout(function(){prints=[];loadCalData();loadJobs();loadPrintNoReschedule();loadMyJobs();},300);
+
+  // Purge from ALL memory caches
+  var sid=String(id);
+  prints = prints.filter(function(p){ return String(p.id) !== sid; });
+  [id, numId].forEach(function(k){
+    delete window['ev_'+k];
+    delete window['p_'+k];
+    delete window['j_'+k];
+  });
+
+  // Immediate re-render from cleaned cache
+  renderCal();
+
+  // Full fresh reload from DB
+  setTimeout(async function(){
+    await loadCalData();
+    loadJobs();
+    loadPrintNoReschedule();
+    loadMyJobs();
+    loadDeliveries();
+  }, 500);
 }
 
 // Load print tab WITHOUT triggering auto-reschedule (used after delete/save)
