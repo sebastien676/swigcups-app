@@ -714,51 +714,104 @@ function sc2(sz, col) {
 async function loadStock(){
   var r=await DB().from('stock').select('*');
   if(!r.data)return;
-  r.data.sort(function(a,b){
-    var sizeOrder = {'500ml':0,'330ml':1,'250ml':2};
-    var sa = sizeOrder[a.size]||99, sb = sizeOrder[b.size]||99;
+  var rpo=await DB().from('purchase_orders').select('product,qty_ordered,status').in('status',['Pending','Partial']);
+  var pendByProduct={};
+  if(rpo.data){
+    rpo.data.forEach(function(p){
+      var key=p.product||'';
+      pendByProduct[key]=(pendByProduct[key]||0)+(p.qty_ordered||0);
+    });
+  }
+  // ── Consolidate duplicate rows (same product+size+colour) ──
+  // Manual aliases: map old name -> canonical name (merges into canonical)
+  var STOCK_ALIASES={
+    '500ml Blue cups':'500ml Dark Blue cups'
+  };
+  var consolidated={};
+  var order=[];
+  r.data.forEach(function(p){
+    var prodName=STOCK_ALIASES[p.product]||p.product;
+    var colourName=prodName===p.product?p.colour:'Dark Blue';
+    var key=(prodName||'')+'||'+(p.size||'')+'||'+(colourName||'');
+    if(!consolidated[key]){
+      consolidated[key]={
+        product:prodName,size:p.size,colour:colourName,
+        physical_stock:0,total_received:0,total_outgoing:0,id:p.id,ids:[]
+      };
+      order.push(key);
+    }
+    consolidated[key].physical_stock+=(p.physical_stock||0);
+    consolidated[key].total_received+=(p.total_received||0);
+    consolidated[key].total_outgoing+=(p.total_outgoing||0);
+    consolidated[key].ids.push(p.id);
+  });
+  var merged=order.map(function(k){return consolidated[k];});
+
+  function sizeRank(sz){
+    var s=(sz||'').toLowerCase().replace(/\s+/g,'');
+    if(s.indexOf('500')>-1)return 0;
+    if(s.indexOf('330')>-1)return 1;
+    if(s.indexOf('250')>-1)return 2;
+    return 99;
+  }
+  merged.sort(function(a,b){
+    var sa=sizeRank(a.size), sb=sizeRank(b.size);
     if(sa!==sb) return sa-sb;
     var aFr = (a.colour||'').toLowerCase()==='frosted'?0:1;
     var bFr = (b.colour||'').toLowerCase()==='frosted'?0:1;
     if(aFr!==bFr) return aFr-bFr;
     return (a.colour||'').localeCompare(b.colour||'');
   });
-  stock=r.data;
+  stock=merged;
   var LOW=5000,tot=0,lowc=0,pendc=0;
-  r.data.forEach(function(p){
-    var est=Math.max(0,(p.total_received||0)-(p.total_outgoing||0));
-    tot+=est;
-    if(est>0&&est<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1)lowc++;
-    if((p.total_received||0)===0)pendc++;
+  merged.forEach(function(p){
+    var cur=(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0);
+    var pending=pendByProduct[p.product]||0;
+    tot+=cur;
+    if(cur>0&&cur<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1)lowc++;
+    if(pending>0)pendc++;
   });
   document.getElementById('smets').innerHTML=
-    '<div class="mt gn"><div class="lb">Total in stock</div><div class="vl">'+tot.toLocaleString()+'</div><div class="sb2">units</div></div>'+
+    '<div class="mt gn"><div class="lb">Total stock</div><div class="vl">'+tot.toLocaleString()+'</div><div class="sb2">units</div></div>'+
     '<div class="mt '+(lowc>0?'rd':'gn')+'"><div class="lb">Low stock (Frosted)</div><div class="vl">'+lowc+'</div><div class="sb2">below 5,000</div></div>'+
-    '<div class="mt or"><div class="lb">Pending POs</div><div class="vl">'+pendc+'</div></div>'+
+    '<div class="mt or"><div class="lb">Products with pending POs</div><div class="vl">'+pendc+'</div></div>'+
     '<div class="mt"><div class="lb">Live data</div><div class="vl" style="font-size:14px;padding-top:4px">✅</div></div>';
   document.getElementById('abn').textContent=lowc+pendc;
-  var rows=r.data.map(function(p){
-    var est=Math.max(0,(p.total_received||0)-(p.total_outgoing||0));
-    var max=Math.max(p.total_ordered||1,est,1);
-    var pct=Math.min(100,Math.round(est/max*100));
+
+  var cupColours={
+    'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63',
+    'blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE',
+    'green':'#43A047','orange':'#FF9800'
+  };
+
+  var rows='';
+  var lastSize='';
+  merged.forEach(function(p){
+    if(p.size!==lastSize){
+      rows+='<tr style="background:#e6f2ef"><td colspan="6" style="padding:6px 10px;font-size:11px;font-weight:700;color:#0a4033;text-transform:uppercase;letter-spacing:0.06em">'+p.size+'</td></tr>';
+      lastSize=p.size;
+    }
+    var cur=(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0);
+    var pending=pendByProduct[p.product]||0;
+    var after=cur+pending;
+    var max=Math.max(after,cur,1);
+    var pct=Math.min(100,Math.round(cur/max*100));
     var isFr=(p.colour||'').toLowerCase()==='frosted';
-    var st=est===0?'pend':(isFr&&est<LOW)?'low':est<LOW*2&&isFr?'warn':'ok';
-    var cupColours={
-      'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63',
-      'blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE',
-      'green':'#43A047','orange':'#FF9800'
-    };
+    var st=cur<=0?'pend':(isFr&&cur<LOW)?'low':cur<LOW*2&&isFr?'warn':'ok';
     var cupCol = (p.colour||'').toLowerCase();
     var bc = cupColours[cupCol] || '#0E6655';
     var alertBc = st==='low'?'#E24B4A':st==='warn'?'#D35400':bc;
     var dot = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+bc+';margin-right:6px;flex-shrink:0"></span>';
-    return '<tr><td><strong>'+dot+p.product+'</strong></td><td style="color:#666">'+p.size+'</td>'+
-      '<td class="nr">'+est.toLocaleString()+'</td>'+
-      '<td class="nr" style="color:#999">'+(p.physical_stock!=null?p.physical_stock.toLocaleString():'—')+'</td>'+
+    var afterCell = pending>0
+      ? '<span style="font-weight:700;color:#0E6655">'+after.toLocaleString()+'</span><div style="font-size:10px;color:#D35400">+'+pending.toLocaleString()+' incoming</div>'
+      : '<span style="color:#999">'+after.toLocaleString()+'</span>';
+    rows+='<tr><td><strong>'+dot+p.product+'</strong></td><td style="color:#666">'+p.size+'</td>'+
+      '<td class="nr">'+cur.toLocaleString()+'</td>'+
+      '<td class="nr">'+afterCell+'</td>'+
       '<td><div class="bar"><div class="barf" style="width:'+pct+'%;background:'+alertBc+'"></div></div></td>'+
       '<td>'+pill(st==='ok'?'ok':st==='low'?'low':st==='warn'?'warn':'pend')+'</td></tr>';
-  }).join('');
-  document.getElementById('stbl').innerHTML='<table><thead><tr><th>Product</th><th>Size</th><th class="nr">Est.Stock</th><th class="nr">Physical</th><th>Level</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  });
+  document.getElementById('stbl').innerHTML='<table><thead><tr><th>Product</th><th>Size</th><th class="nr">Physical</th><th class="nr">After delivery</th><th>Level</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
 function calcDel(){
@@ -778,7 +831,7 @@ async function saveDel(){
   var notes=document.getElementById('dn2').value;
   await DB().from('movements').insert([{date:date,type:'Delivery',reference:ref,product:prod,qty_in:tot,notes:notes}]);
   var item=stock.find(function(p){return p.product===prod;});
-  if(item)await DB().from('stock').update({total_received:(item.total_received||0)+tot}).eq('product',prod);
+  if(item)await DB().from('stock').update({total_received:(item.total_received||0)+tot}).eq('id',item.id);
   toast('✓ '+tot.toLocaleString()+' units recorded','ok');
   togglePnl('pdel');
   document.getElementById('dbx').value='';
@@ -1899,9 +1952,26 @@ async function loadMyJobs(){
 
 async function toggleDone(id,st){
   var ns=st==='Done'?'In progress':'Done';
+  var job=(prints||[]).find(function(p){return String(p.id)===String(id);})||window['ev_'+id]||window['p_'+id]||window['j_'+id];
   await DB().from('print_schedule').update({status:ns}).eq('id',id);
+
+  // Adjust stock total_outgoing when toggling Done
+  if(job){
+    var used=Math.round((job.qty_printed||0)*1.05);
+    var prod=(job.cup_size||'')+' '+(job.cup_colour||'')+' cups';
+    // Find matching stock row (case-insensitive, flexible match)
+    var srow=(stock||[]).find(function(s){
+      return (s.size===job.cup_size)&&((s.colour||'').toLowerCase()===(job.cup_colour||'').toLowerCase());
+    });
+    if(srow&&used>0){
+      var delta=ns==='Done'?used:-used; // Done = consume stock; Undo = give it back
+      var newOut=Math.max(0,(srow.total_outgoing||0)+delta);
+      await DB().from('stock').update({total_outgoing:newOut}).eq('id',srow.id);
+    }
+  }
+
   toast(ns==='Done'?'✅ Done!':'↩️ In progress','ok');
-  prints=[];loadMyJobs();loadCalData();loadPrintNoReschedule();
+  prints=[];loadMyJobs();loadCalData();loadPrintNoReschedule();loadStock();
 }
 
 // ── JOB CARD ──
