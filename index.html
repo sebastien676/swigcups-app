@@ -1196,11 +1196,11 @@ async function loadAlerts(){
   if(!rs.data||!rp.data)return;
   var el=document.getElementById('alist');el.innerHTML='';
   var LOW=5000;
-  var low=rs.data.filter(function(p){var e=(p.total_received||0)-(p.total_outgoing||0);return e>0&&e<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1;});
+  var low=rs.data.filter(function(p){var e=(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0);return e>0&&e<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1;});
   if(low.length){
     var key='low_stock_'+low.map(function(p){return p.product;}).join('_');
     if(_dismissedAlerts.indexOf(key)===-1){
-      el.appendChild(makeAlert('','<h4>🔴 Low stock — reorder from Africa Plastics</h4><p>'+low.map(function(p){return '<strong>'+p.product+'</strong>: '+Math.max(0,(p.total_received||0)-(p.total_outgoing||0)).toLocaleString()+' units';}).join('<br>')+'</p>',key));
+      el.appendChild(makeAlert('','<h4>🔴 Low stock — reorder from Africa Plastics</h4><p>'+low.map(function(p){return '<strong>'+p.product+'</strong>: '+Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0)).toLocaleString()+' units';}).join('<br>')+'</p>',key));
     }
   }
   var nd=rp.data.filter(function(p){return p.status==='Not delivered';});
