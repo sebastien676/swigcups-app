@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Swig Cups</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;color:#1a1a1a;background:#f7f8fa;min-height:100vh}
@@ -234,6 +235,43 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 .del-card .dc-detail{font-size:12px;color:#666;line-height:1.8}
 .del-card .dc-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .del-card .dc-qty{font-weight:700;font-size:15px;color:#0E6655}
+/* ── DELIVERIES MINI CALENDAR ── */
+.dmcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dmcal-dow{font-size:10px;font-weight:700;color:#999;text-align:center;text-transform:uppercase;padding:4px 0}
+.dmcal-cell{aspect-ratio:1;border-radius:8px;border:1.5px solid #f0f0f0;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;background:#fff;transition:all .15s;padding:2px}
+.dmcal-cell:hover{border-color:#0E6655;background:#F8FFFE}
+.dmcal-cell.empty{border:none;cursor:default;background:transparent}
+.dmcal-cell.empty:hover{border:none;background:transparent}
+.dmcal-cell.today{border-color:#0E6655;background:#D1F2EB}
+.dmcal-cell.selected{background:#0E6655;border-color:#0E6655}
+.dmcal-cell.selected .dmcal-num{color:#fff}
+.dmcal-cell.selected .dmcal-dot{background:#fff!important}
+.dmcal-num{font-size:13px;font-weight:600;color:#1a1a1a}
+.dmcal-dots{display:flex;gap:2px;margin-top:2px;flex-wrap:wrap;justify-content:center;max-width:100%}
+.dmcal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+/* ── DELIVERIES WEEK VIEW ── */
+.dwcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.dwcal-day{border:1.5px solid #f0f0f0;border-radius:10px;padding:8px;min-height:90px;display:flex;flex-direction:column;gap:4px}
+.dwcal-day.today{border-color:#0E6655;background:#F8FFFE}
+.dwcal-day-hdr{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;text-align:center}
+.dwcal-day-num{font-size:15px;font-weight:700;color:#1a1a1a;text-align:center;margin-bottom:4px}
+.dwcal-day.today .dwcal-day-num{color:#0E6655}
+.dwcal-job{font-size:10px;font-weight:600;padding:3px 5px;border-radius:5px;cursor:pointer;line-height:1.3;display:flex;align-items:center;gap:3px;transition:filter .1s}
+.dwcal-job:hover{filter:brightness(0.92)}
+.dwcal-job.collection{background:#D5F5E3;color:#0B5E2F}
+.dwcal-job.delivery{background:#D6EAF8;color:#1A3A5C}
+.dwcal-job.done{background:#f2f3f4;color:#aaa;text-decoration:line-through}
+.dwcal-empty{font-size:10px;color:#ccc;text-align:center;padding-top:8px}
+@media(max-width:600px){
+  .dmcal-cell{border-radius:6px}
+  .dmcal-num{font-size:11px}
+  .dwcal-grid{grid-template-columns:1fr;gap:6px}
+  .dwcal-day{flex-direction:row;align-items:center;min-height:auto;gap:8px}
+  .dwcal-day-hdr,.dwcal-day-num{margin:0}
+  .dwcal-day-hdr{width:36px;flex-shrink:0}
+  .dwcal-day-num{width:24px;flex-shrink:0}
+  .dwcal-day > div:nth-child(3){display:flex;flex-direction:column;gap:3px;flex:1}
+}
 @media(max-width:600px){
   .mts{grid-template-columns:1fr 1fr}
   .g2,.g3{grid-template-columns:1fr}
@@ -474,6 +512,21 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <button class="btn bs bsm" onclick="loadDeliveries()">↻ Refresh</button>
     </div>
     <div class="mts" id="del-mets"></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="ch" style="margin-bottom:10px">
+        <span class="ct" id="del-cal-title">Loading...</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn bp bsm" id="del-view-month" onclick="delCalSetView('month')">Month</button>
+          <button class="btn bs bsm" id="del-view-week" onclick="delCalSetView('week')">Week</button>
+          <button class="btn bs bsm" onclick="delCalNav(-1)">‹</button>
+          <button class="btn bs bsm" onclick="delCalNav(0)">Today</button>
+          <button class="btn bs bsm" onclick="delCalNav(1)">›</button>
+        </div>
+      </div>
+      <div id="del-mini-cal"></div>
+      <div id="del-week-cal" style="display:none"></div>
+      <div id="del-cal-filter-banner" style="display:none;margin-top:10px;padding:8px 12px;background:#D1F2EB;border-radius:8px;font-size:12px;font-weight:600;color:#0E6655;display:flex;align-items:center;justify-content:space-between"></div>
+    </div>
     <div id="del-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
   </div>
 
@@ -492,6 +545,17 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="mh"><h3 id="evtitle">Job</h3><button class="mc" onclick="closeOv('evov')">×</button></div>
     <div id="evbody"></div>
     <div class="ma" id="evact"></div>
+  </div>
+</div>
+
+<!-- DELIVERY CARD PREVIEW -->
+<div class="ov" id="cardov">
+  <div class="modal" style="max-width:520px">
+    <div class="mh"><h3>📄 Delivery Card</h3><button class="mc" onclick="closeOv('cardov')">×</button></div>
+    <div id="card-preview-body" style="text-align:center;background:#f2f3f4;border-radius:8px;padding:10px;min-height:120px;display:flex;align-items:center;justify-content:center">
+      <div class="ld"><div class="sp"></div>Generating...</div>
+    </div>
+    <div class="ma" id="card-preview-actions" style="flex-wrap:wrap"></div>
   </div>
 </div>
 
@@ -643,9 +707,9 @@ async function uploadArtwork(jobId, file) {
     reader.readAsDataURL(file);
   });
 }
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','alerts'],fred:['stock','jobs','print','cal','deliveries'],warda:['myjobs','cal','deliveries']};
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','alerts'],fred:['stock','jobs','print','cal','deliveries'],warda:['stock','myjobs','cal','deliveries']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
-var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={};
+var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},delCalOff=0,delCalSelectedDate=null,delCalView='month';
 
 // South Africa public holidays
 var SA_HOLIDAYS={"2026-01-01":"New Years Day","2026-03-21":"Human Rights Day","2026-04-03":"Good Friday","2026-04-06":"Family Day","2026-04-27":"Freedom Day","2026-05-01":"Workers Day","2026-06-16":"Youth Day","2026-08-09":"Womens Day","2026-08-10":"Womens Day (obs.)","2026-09-24":"Heritage Day","2026-12-16":"Day of Reconciliation","2026-12-25":"Christmas Day","2026-12-26":"Day of Goodwill"};
@@ -667,7 +731,8 @@ function initRole(r){
   var order=['stock','pos','jobs','print','cal','myjobs','deliveries','alerts'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
-  if(r==='owner'||r==='fred'){document.getElementById('badd').style.display='flex';document.getElementById('bajob').style.display='flex';}
+  if(r==='owner'){document.getElementById('badd').style.display='flex';}
+  if(r==='owner'||r==='fred'){document.getElementById('bajob').style.display='flex';}
   var _wpd=document.getElementById('warda-print-date');if(_wpd){var _t=new Date();_wpd.value=_t.getFullYear()+'-'+String(_t.getMonth()+1).padStart(2,'0')+'-'+String(_t.getDate()).padStart(2,'0');}
   loadStock();loadPOs();loadPrint();loadJobs();
 }
@@ -2157,7 +2222,7 @@ document.addEventListener('mouseout', function(e) {
   if(ce) tipEl.classList.remove('show');
 });
 
-['evov','edov','qaov'].forEach(function(id){
+['evov','edov','qaov','cardov'].forEach(function(id){
   document.getElementById(id).addEventListener('click',function(e){
     if(e.target===this)closeOv(id);
   });
@@ -2291,11 +2356,179 @@ async function loadToday(){
   }
 }
 
+// ── DELIVERIES MINI CALENDAR ──
+function delCalNav(d){
+  if(d===0){delCalOff=0;delCalSelectedDate=null;}
+  else delCalOff+=d;
+  renderDelCal();
+  loadDeliveries();
+}
+
+function delCalSetView(v){
+  delCalView=v;
+  delCalOff=0;delCalSelectedDate=null;
+  document.getElementById('del-view-month').className='btn '+(v==='month'?'bp':'bs')+' bsm';
+  document.getElementById('del-view-week').className='btn '+(v==='week'?'bp':'bs')+' bsm';
+  document.getElementById('del-mini-cal').style.display=(v==='month')?'':'none';
+  document.getElementById('del-week-cal').style.display=(v==='week')?'':'none';
+  renderDelCal();
+  loadDeliveries();
+}
+
+function renderDelCal(){
+  if(delCalView==='week')renderDelWeekCal();
+  else renderDelMiniCal();
+}
+
+function delCalSelectDay(iso){
+  delCalSelectedDate=(delCalSelectedDate===iso)?null:iso;
+  renderDelCal();
+  loadDeliveries();
+}
+
+function renderDelMiniCal(){
+  var cal=document.getElementById('del-mini-cal');
+  var titleEl=document.getElementById('del-cal-title');
+  if(!cal)return;
+
+  var today=new Date();today.setHours(0,0,0,0);
+  var viewDate=new Date(today.getFullYear(),today.getMonth()+delCalOff,1);
+  var year=viewDate.getFullYear(),month=viewDate.getMonth();
+  var monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  if(titleEl)titleEl.textContent=monthNames[month]+' '+year;
+
+  var firstDay=new Date(year,month,1);
+  var startDow=(firstDay.getDay()+6)%7; // Monday=0
+  var daysInMonth=new Date(year,month+1,0).getDate();
+
+  // Build delivery map: date -> array of jobs
+  var jobsByDate={};
+  (prints||[]).forEach(function(j){
+    if(!j.delivery_date)return;
+    if(!jobsByDate[j.delivery_date])jobsByDate[j.delivery_date]=[];
+    jobsByDate[j.delivery_date].push(j);
+  });
+
+  var DOWS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var html='<div class="dmcal-grid">';
+  DOWS.forEach(function(d){html+='<div class="dmcal-dow">'+d+'</div>';});
+
+  for(var i=0;i<startDow;i++){html+='<div class="dmcal-cell empty"></div>';}
+
+  for(var day=1;day<=daysInMonth;day++){
+    var iso=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    var isToday=(iso===(today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0')));
+    var isSelected=(iso===delCalSelectedDate);
+    var dayJobs=jobsByDate[iso]||[];
+    var cls='dmcal-cell'+(isToday?' today':'')+(isSelected?' selected':'');
+    var dots='';
+    dayJobs.slice(0,4).forEach(function(j){
+      var isDone=j.status==='Done';
+      var col=isDone?'#ccc':(j.delivery_type==='Collection'?'#1E8449':j.delivery_type==='Delivery'?'#1E88E5':'#999');
+      dots+='<span class="dmcal-dot" style="background:'+col+'"></span>';
+    });
+    html+='<div class="'+cls+'" onclick="delCalSelectDay(\''+iso+'\')">'
+      +'<span class="dmcal-num">'+day+'</span>'
+      +(dots?'<div class="dmcal-dots">'+dots+'</div>':'')
+      +'</div>';
+  }
+  html+='</div>';
+  cal.innerHTML=html;
+
+  // Filter banner
+  var banner=document.getElementById('del-cal-filter-banner');
+  if(banner){
+    if(delCalSelectedDate){
+      var dp=new Date(delCalSelectedDate+'T00:00:00');
+      var dLabel=dp.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      banner.style.display='flex';
+      banner.innerHTML='<span>📅 Showing: '+dLabel+'</span><button class="btn bs bsm" onclick="delCalSelectDay(\''+delCalSelectedDate+'\')" style="padding:2px 8px;font-size:11px">✕ Clear filter</button>';
+    } else {
+      banner.style.display='none';
+    }
+  }
+}
+
+// ── DELIVERIES WEEK VIEW ──
+function renderDelWeekCal(){
+  var weekEl=document.getElementById('del-week-cal');
+  var titleEl=document.getElementById('del-cal-title');
+  if(!weekEl)return;
+
+  var today=new Date();today.setHours(0,0,0,0);
+  var todayISO=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+
+  var mon=getMon(delCalOff);
+  var days=[];
+  for(var i=0;i<7;i++){var d=new Date(mon);d.setDate(mon.getDate()+i);days.push(d);}
+
+  var fmt=function(d){return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});};
+  if(titleEl)titleEl.textContent=fmt(days[0])+' – '+fmt(days[6]);
+
+  // Build delivery map: date -> array of jobs
+  var jobsByDate={};
+  (prints||[]).forEach(function(j){
+    if(!j.delivery_date)return;
+    if(!jobsByDate[j.delivery_date])jobsByDate[j.delivery_date]=[];
+    jobsByDate[j.delivery_date].push(j);
+  });
+
+  var DOWS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var html='<div class="dwcal-grid">';
+  days.forEach(function(d,i){
+    var iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var isToday=(iso===todayISO);
+    var dayJobs=jobsByDate[iso]||[];
+    html+='<div class="dwcal-day'+(isToday?' today':'')+'">'
+      +'<div class="dwcal-day-hdr">'+DOWS[i]+'</div>'
+      +'<div class="dwcal-day-num">'+d.getDate()+'</div>'
+      +'<div>';
+    if(!dayJobs.length){
+      html+='<div class="dwcal-empty">—</div>';
+    } else {
+      dayJobs.forEach(function(j){
+        window['ev_'+j.id]=j;
+        var isDone=j.status==='Done';
+        var typeCls=isDone?'done':(j.delivery_type==='Collection'?'collection':j.delivery_type==='Delivery'?'delivery':'');
+        var icon=j.delivery_type==='Collection'?'📦':j.delivery_type==='Delivery'?'🚚':'•';
+        html+='<div class="dwcal-job '+typeCls+'" onclick="event.stopPropagation();downloadDeliveryCard(window[\'ev_'+j.id+'\'])" title="'+j.client+'">'
+          +icon+' '+j.client
+          +'</div>';
+      });
+    }
+    html+='</div></div>';
+  });
+  html+='</div>';
+  weekEl.innerHTML=html;
+
+  // Filter banner (week view doesn't filter by single day, but keep consistent)
+  var banner=document.getElementById('del-cal-filter-banner');
+  if(banner){
+    if(delCalSelectedDate){
+      var dp=new Date(delCalSelectedDate+'T00:00:00');
+      var dLabel=dp.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      banner.style.display='flex';
+      banner.innerHTML='<span>📅 Showing: '+dLabel+'</span><button class="btn bs bsm" onclick="delCalSelectDay(\''+delCalSelectedDate+'\')" style="padding:2px 8px;font-size:11px">✕ Clear filter</button>';
+    } else {
+      banner.style.display='none';
+    }
+  }
+}
+
 // ── DELIVERIES & COLLECTIONS TAB ──
 async function loadDeliveries(){
   var r=await DB().from('print_schedule').select('*').order('delivery_date',{ascending:true});
   if(!r.data)return;
+  prints=r.data;
+  renderDelCal();
+
   var all=r.data.filter(function(j){return j.delivery_date;});
+
+  // Apply day filter from mini calendar
+  if(delCalSelectedDate){
+    all=all.filter(function(j){return j.delivery_date===delCalSelectedDate;});
+  }
+
   var today=new Date();today.setHours(0,0,0,0);
   var todayISO=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
 
@@ -2458,35 +2691,10 @@ function downloadDeliveryCard(ev){
     }
   }
 
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Delivery Card — '+ev.client+'</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}'
-    +'body{padding:28px;color:#1a1a1a;font-size:13px;max-width:640px;margin:0 auto}'
-    +'.hdr{background:#0E6655;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between}'
-    +'.hdr h1{font-size:24px;font-weight:700;margin-top:3px}'
-    +'.hdr .sub{font-size:11px;opacity:0.75}'
-    +'.type-banner{padding:11px 22px;border-radius:0 0 12px 12px;background:'+typeBg+';color:'+typeColor+';font-weight:700;font-size:14px;text-align:center;letter-spacing:0.06em;margin-bottom:20px}'
-    +'.section-title{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px}'
-    +'.contact-box{background:'+typeBg+';border:1.5px solid '+typeColor+';border-radius:10px;padding:16px 20px;margin-bottom:16px}'
-    +'.contact-row{font-size:15px;font-weight:600;color:'+typeColor+';margin-bottom:6px;display:flex;align-items:center;gap:8px}'
-    +'.contact-row:last-child{margin-bottom:0}'
-    +'.cup-block{background:#f7f8fa;border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px}'
-    +'.cup-dot{width:48px;height:48px;border-radius:50%;flex-shrink:0;border:3px solid rgba(0,0,0,0.08)}'
-    +'.cup-info .main{font-size:20px;font-weight:700;color:#1a1a1a}'
-    +'.cup-info .sub2{font-size:13px;color:#666;margin-top:3px}'
-    +'.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}'
-    +'.field{background:#f7f8fa;border-radius:8px;padding:11px 14px}'
-    +'.field .lb{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px}'
-    +'.field .vl{font-size:15px;font-weight:700;color:#1a1a1a}'
-    +'.field.accent .vl{font-size:20px;color:#0E6655}'
-    +'.sign{border:1.5px dashed #ccc;border-radius:10px;padding:18px;margin-top:4px;min-height:72px}'
-    +'.sign .lb{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;margin-bottom:8px}'
-    +'.footer{margin-top:18px;font-size:10px;color:#bbb;text-align:center;border-top:1px solid #eee;padding-top:12px}'
-    +'@media print{body{padding:14px}}'
-    +'</style></head><body>'
-
+  // Build the card's inner HTML (used for both PNG capture and HTML fallback)
+  var cardInner=
     // Header
-    +'<div class="hdr">'
+    '<div class="hdr">'
     +'<div><div class="sub">SWIG CUPS — Order Card</div><h1>'+ev.client+'</h1></div>'
     +'<div style="text-align:right"><div style="font-size:11px;opacity:.75">'+(isDelivery?'Delivery date':'Collection date')+'</div>'
     +'<div style="font-size:26px;font-weight:700">'+(ev.delivery_date||'TBC')+'</div></div>'
@@ -2499,7 +2707,7 @@ function downloadDeliveryCard(ev){
       +'<div class="section-title">'+(isDelivery?'Delivery details':'Collection details')+'</div>'
       +(ev.delivery_address?'<div class="contact-row"><span style="font-size:18px">📍</span><span>'+ev.delivery_address+'</span></div>':'')
       +(ev.contact_name?'<div class="contact-row"><span style="font-size:18px">👤</span><span>'+ev.contact_name+'</span></div>':'')
-      +(ev.contact_phone?'<div class="contact-row"><span style="font-size:18px">📞</span><a href="tel:'+ev.contact_phone+'" style="color:'+typeColor+';font-size:15px;font-weight:600;text-decoration:none">'+ev.contact_phone+'</a></div>':'')
+      +(ev.contact_phone?'<div class="contact-row"><span style="font-size:18px">📞</span><span style="color:'+typeColor+';font-size:15px;font-weight:600">'+ev.contact_phone+'</span></div>':'')
       +'</div>'
     :'')
 
@@ -2521,15 +2729,127 @@ function downloadDeliveryCard(ev){
 
     // Signature
     +'<div class="sign"><div class="lb">Received by — signature & date</div></div>'
-    +'<div class="footer">Swig Cups — Greenvolved T/A · '+new Date().toLocaleDateString('en-GB')+'</div>'
-    +'</body></html>';
+    +'<div class="footer">Swig Cups — Greenvolved T/A · '+new Date().toLocaleDateString('en-GB')+'</div>';
 
-  var blob=new Blob([html],{type:'text/html'});
+  var cardCSS=
+    '*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}'
+    +'.hdr{background:#0E6655;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between}'
+    +'.hdr h1{font-size:24px;font-weight:700;margin-top:3px}'
+    +'.hdr .sub{font-size:11px;opacity:0.75}'
+    +'.type-banner{padding:11px 22px;border-radius:0 0 12px 12px;background:'+typeBg+';color:'+typeColor+';font-weight:700;font-size:14px;text-align:center;letter-spacing:0.06em;margin-bottom:20px}'
+    +'.section-title{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px}'
+    +'.contact-box{background:'+typeBg+';border:1.5px solid '+typeColor+';border-radius:10px;padding:16px 20px;margin-bottom:16px}'
+    +'.contact-row{font-size:15px;font-weight:600;color:'+typeColor+';margin-bottom:6px;display:flex;align-items:center;gap:8px}'
+    +'.contact-row:last-child{margin-bottom:0}'
+    +'.cup-block{background:#f7f8fa;border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px}'
+    +'.cup-dot{width:48px;height:48px;border-radius:50%;flex-shrink:0;border:3px solid rgba(0,0,0,0.08)}'
+    +'.cup-info .main{font-size:20px;font-weight:700;color:#1a1a1a}'
+    +'.cup-info .sub2{font-size:13px;color:#666;margin-top:3px}'
+    +'.field{background:#f7f8fa;border-radius:8px;padding:11px 14px}'
+    +'.field .lb{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px}'
+    +'.field .vl{font-size:15px;font-weight:700;color:#1a1a1a}'
+    +'.sign{border:1.5px dashed #ccc;border-radius:10px;padding:18px;margin-top:4px;min-height:72px}'
+    +'.sign .lb{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;margin-bottom:8px}'
+    +'.footer{margin-top:18px;font-size:10px;color:#bbb;text-align:center;border-top:1px solid #eee;padding-top:12px}';
+
+  var filename=ev.client.replace(/[^a-z0-9]/gi,'_')+'_DeliveryCard';
+
+  // Render offscreen for html2canvas capture
+  var offEl=document.createElement('div');
+  offEl.style.cssText='position:fixed;left:-9999px;top:0;width:640px;background:#fff;padding:28px;color:#1a1a1a;font-size:13px';
+  var styleEl=document.createElement('style');
+  styleEl.textContent=cardCSS;
+  offEl.appendChild(styleEl);
+  var contentEl=document.createElement('div');
+  contentEl.innerHTML=cardInner;
+  offEl.appendChild(contentEl);
+  document.body.appendChild(offEl);
+
+  function cleanup(){ if(offEl.parentNode) document.body.removeChild(offEl); }
+
+  // Open preview modal immediately with loading state
+  var previewBody=document.getElementById('card-preview-body');
+  var previewActions=document.getElementById('card-preview-actions');
+  previewBody.innerHTML='<div class="ld"><div class="sp"></div>Generating...</div>';
+  previewActions.innerHTML='';
+  document.getElementById('cardov').classList.add('op');
+
+  if(typeof html2canvas==='undefined'){
+    cleanup();
+    previewBody.innerHTML='<div style="padding:20px;color:#C0392B;font-size:13px">❌ PNG export unavailable — check connection</div>';
+    return;
+  }
+
+  html2canvas(offEl,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(function(canvas){
+    cleanup();
+    canvas.toBlob(function(blob){
+      if(!blob){
+        previewBody.innerHTML='<div style="padding:20px;color:#C0392B;font-size:13px">❌ Could not generate image</div>';
+        return;
+      }
+      var file=new File([blob],filename+'.png',{type:'image/png'});
+      var imgUrl=URL.createObjectURL(blob);
+
+      // Show preview image
+      previewBody.innerHTML='';
+      var img=document.createElement('img');
+      img.src=imgUrl;
+      img.style.cssText='max-width:100%;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12);display:block';
+      previewBody.appendChild(img);
+
+      // Action buttons: Download / Share / Print / Close
+      previewActions.innerHTML='';
+
+      var dlBtn=document.createElement('button');
+      dlBtn.className='btn bp';dlBtn.style.flex='1';dlBtn.textContent='⬇️ Download';
+      dlBtn.addEventListener('click',function(){
+        downloadBlob(blob,filename+'.png');
+        toast('✓ Downloaded','ok');
+      });
+      previewActions.appendChild(dlBtn);
+
+      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        var shBtn=document.createElement('button');
+        shBtn.className='btn bs';shBtn.style.flex='1';shBtn.textContent='📤 Share';
+        shBtn.addEventListener('click',function(){
+          navigator.share({
+            files:[file],
+            title:'Delivery Card — '+ev.client,
+            text:ev.client+' — '+(ev.delivery_type||'Delivery')+' — '+(ev.delivery_date||'')
+          }).catch(function(err){
+            if(err.name!=='AbortError') toast('Share cancelled','err');
+          });
+        });
+        previewActions.appendChild(shBtn);
+      }
+
+      var prBtn=document.createElement('button');
+      prBtn.className='btn bs';prBtn.style.flex='1';prBtn.textContent='🖨️ Print';
+      prBtn.addEventListener('click',function(){
+        var w=window.open('','_blank');
+        w.document.write('<html><head><title>'+filename+'</title><style>body{margin:0;display:flex;align-items:center;justify-content:center}img{max-width:100%}</style></head><body><img src="'+imgUrl+'" onload="window.print()"></body></html>');
+        w.document.close();
+      });
+      previewActions.appendChild(prBtn);
+
+      var clBtn=document.createElement('button');
+      clBtn.className='btn bs';clBtn.textContent='Close';
+      clBtn.addEventListener('click',function(){closeOv('cardov');});
+      previewActions.appendChild(clBtn);
+    },'image/png');
+  }).catch(function(err){
+    cleanup();
+    console.error('html2canvas error:',err);
+    previewBody.innerHTML='<div style="padding:20px;color:#C0392B;font-size:13px">❌ Could not generate image</div>';
+  });
+}
+
+function downloadBlob(blob,filename){
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
-  a.href=url;a.download=ev.client.replace(/[^a-z0-9]/gi,'_')+'_DeliveryCard.html';
-  a.click();URL.revokeObjectURL(url);
-  toast('✓ Delivery card downloaded','ok');
+  a.href=url;a.download=filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 
