@@ -441,6 +441,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       </div>
       <div id="stock-week-body"><div class="ld"><div class="sp"></div></div></div>
     </div>
+    <div class="card" style="margin-top:14px" id="posis-week-card">
+      <div class="ch">
+        <span class="ct" id="posis-week-title">⚠️ POSIS not received — this week</span>
+      </div>
+      <div id="posis-week-body"></div>
+    </div>
     <div class="card" style="margin-top:14px">
       <div class="ch"><span class="ct">Upcoming jobs</span></div>
       <div id="clist"><div class="ld"><div class="sp"></div></div></div>
@@ -1492,6 +1498,36 @@ function renderCal(){
         +'<span style="font-size:20px;font-weight:700;color:#C0392B">'+grandTotal.toLocaleString()+' units</span>'
         +'</div>';
       swBody.innerHTML=html;
+    }
+  }
+
+  // ── POSIS NOT RECEIVED THIS WEEK ──
+  var posisBody=document.getElementById('posis-week-body');
+  var posisTitle=document.getElementById('posis-week-title');
+  if(posisBody){
+    var posisMissing=weekJobs2.filter(function(j){return !j.posis_received;});
+    if(posisTitle){
+      var _wm2=getMon(calOff);
+      var _wn2='W'+Math.ceil((_wm2-new Date(_wm2.getFullYear(),0,1))/(7*86400000));
+      posisTitle.textContent='⚠️ POSIS not received — '+_wn2+' ('+posisMissing.length+')';
+    }
+    if(!posisMissing.length){
+      posisBody.innerHTML='<div style="color:#1E8449;font-size:13px;padding:8px 0;display:flex;align-items:center;gap:6px"><span style="font-size:16px">✅</span>All jobs this week have POSIS received</div>';
+    } else {
+      var pHtml='';
+      posisMissing.forEach(function(j){
+        window['ev_'+j.id]=j;
+        var isUrg=j.is_urgent||false;
+        pHtml+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="openEvDetail(window[\'ev_'+j.id+'\'])">'
+          +'<span style="font-size:16px">'+(isUrg?'🚨':'📋')+'</span>'
+          +'<div style="flex:1">'
+          +'<div style="font-weight:600;font-size:13px">'+j.client+'</div>'
+          +'<div style="font-size:11px;color:#666">'+(j.cup_size||'—')+' · '+(j.cup_colour||'—')+' · '+(j.qty_printed||0).toLocaleString()+' cups'+(j.print_date?' · Print: '+j.print_date:'')+'</div>'
+          +'</div>'
+          +'<span style="font-size:10px;font-weight:700;background:#FADBD8;color:#7B241C;padding:3px 8px;border-radius:10px">❌ POSIS</span>'
+          +'</div>';
+      });
+      posisBody.innerHTML=pHtml;
     }
   }
 
