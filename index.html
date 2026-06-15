@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Swig Cups</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;color:#1a1a1a;background:#f7f8fa;min-height:100vh}
@@ -299,7 +298,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   </div>
   <nav id="nav">
     <button class="act" onclick="showTab('stock',this)">📦 Stock</button>
-    <button onclick="showTab('chart',this)">📊 Chart</button>
     <button onclick="showTab('pos',this)">📋 Purchase Orders</button>
     <button onclick="showTab('jobs',this)">📝 Jobs</button>
     <button onclick="showTab('print',this)">🖨️ Print</button>
@@ -352,17 +350,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     </div>
     <div id="today-ph" style="display:none" class="todo-ph-banner"></div>
     <div id="today-content"></div>
-  </div>
-
-  <div id="tab-chart" class="sec">
-    <div class="card">
-      <div class="ch"><span class="ct">Stock levels — current vs end of week</span></div>
-      <div class="cw2"><canvas id="sc"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="ch"><span class="ct">End-of-week projection</span></div>
-      <table id="et"><tr><td class="ld">Loading...</td></tr></table>
-    </div>
   </div>
 
   <div id="tab-pos" class="sec">
@@ -650,9 +637,9 @@ async function uploadArtwork(jobId, file) {
     reader.readAsDataURL(file);
   });
 }
-var RTABS={owner:['stock','chart','pos','jobs','print','cal','deliveries','alerts'],fred:['stock','jobs','print','cal','deliveries'],warda:['myjobs','cal','deliveries']};
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','alerts'],fred:['stock','jobs','print','cal','deliveries'],warda:['myjobs','cal','deliveries']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
-var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',chartI=null;
+var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='';
 
 // South Africa public holidays
 var SA_HOLIDAYS={"2026-01-01":"New Years Day","2026-03-21":"Human Rights Day","2026-04-03":"Good Friday","2026-04-06":"Family Day","2026-04-27":"Freedom Day","2026-05-01":"Workers Day","2026-06-16":"Youth Day","2026-08-09":"Womens Day","2026-08-10":"Womens Day (obs.)","2026-09-24":"Heritage Day","2026-12-16":"Day of Reconciliation","2026-12-25":"Christmas Day","2026-12-26":"Day of Goodwill"};
@@ -671,7 +658,7 @@ function initRole(r){
   document.getElementById('rt').textContent=RLAB[r];
   var allowed=RTABS[r];
   var btns=document.querySelectorAll('nav button');
-  var order=['stock','chart','pos','jobs','print','cal','myjobs','deliveries','alerts'];
+  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','alerts'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
   if(r==='owner'||r==='fred'){document.getElementById('badd').style.display='flex';document.getElementById('bajob').style.display='flex';}
@@ -684,7 +671,6 @@ function showTab(n,b){
   document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('act');});
   document.getElementById('tab-'+n).classList.add('act');
   if(b)b.classList.add('act');
-  if(n==='chart')renderChart();
   if(n==='cal'){if(prints.length>0)renderCal();else loadCalData();}
   if(n==='alerts')loadAlerts();
   if(n==='today'){todayOff=0;loadToday();}
@@ -714,10 +700,12 @@ function sc2(sz, col) {
 async function loadStock(){
   var r=await DB().from('stock').select('*');
   if(!r.data)return;
-  var rpo=await DB().from('purchase_orders').select('product,qty_ordered,status').in('status',['Pending','Partial']);
+  var rpo=await DB().from('purchase_orders').select('product,qty_ordered,status');
   var pendByProduct={};
   if(rpo.data){
     rpo.data.forEach(function(p){
+      var s=(p.status||'').toLowerCase();
+      if(s!=='pending'&&s!=='partial')return;
       var key=p.product||'';
       pendByProduct[key]=(pendByProduct[key]||0)+(p.qty_ordered||0);
     });
@@ -1237,53 +1225,6 @@ async function loadAlerts(){
 }
 
 // ── CHART ──
-function renderChart(){
-  if(!stock||!stock.length){loadStock().then(function(){renderChart();});return;}
-  var PTOW={'500ml Frosted cups':9450,'500ml Black cups':3675,'500ml Red cups':2100};
-  var items=stock.filter(function(p){return(p.total_received||0)>0||(PTOW[p.product]||0)>0;});
-  var labels=items.map(function(p){return p.product.replace(' cups','');});
-  var cur=items.map(function(p){return Math.max(0,(p.total_received||0)-(p.total_outgoing||0));});
-  var eow=items.map(function(p){return Math.max(0,(p.total_received||0)-(p.total_outgoing||0)-(PTOW[p.product]||0));});
-  var thr=new Array(items.length).fill(5000);
-  var CUP_COLORS = {
-    'frosted':'#0E6655','black':'#37474F','red':'#E53935','pink':'#E91E63',
-    'blue':'#1E88E5','purple':'#8E24AA','yellow':'#F9A825','white':'#C8B89A',
-    'green':'#43A047','orange':'#FF9800'
-  };
-  var CUP_COLORS_LIGHT = {
-    'frosted':'#A5D6A7','black':'#78909C','red':'#EF9A9A','pink':'#F48FB1',
-    'blue':'#90CAF9','purple':'#CE93D8','yellow':'#FFF59D','white':'#E8DDD0',
-    'green':'#C8E6C9','orange':'#FFCC80'
-  };
-  var barColors = items.map(function(p){
-    var col = (p.colour||'').toLowerCase();
-    return CUP_COLORS[col] || '#0E6655';
-  });
-  var barColorsLight = items.map(function(p){
-    var col = (p.colour||'').toLowerCase();
-    return CUP_COLORS_LIGHT[col] || '#52BE80';
-  });
-  if(chartI)chartI.destroy();
-  chartI=new Chart(document.getElementById('sc'),{
-    type:'bar',data:{labels:labels,datasets:[
-      {label:'Current',data:cur,backgroundColor:barColors,borderRadius:3},
-      {label:'End of week',data:eow,backgroundColor:barColorsLight,borderRadius:3},
-      {label:'Threshold',data:thr,type:'line',borderColor:'#E24B4A',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,backgroundColor:'#E24B4A'}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:true,position:'top',labels:{usePointStyle:true,font:{size:11}}}},
-      scales:{x:{ticks:{font:{size:10},maxRotation:45},grid:{display:false}},y:{ticks:{callback:function(v){return v>=1000?(v/1000)+'k':v;},font:{size:10}}}}}
-  });
-  var eowR=items.map(function(p,i){
-    var st=eow[i]<5000&&(p.product||'').indexOf('Frosted')>-1?'low':eow[i]<10000?'warn':'ok';
-    return '<tr><td><strong>'+p.product+'</strong></td><td class="nr">'+cur[i].toLocaleString()+'</td>'+
-      '<td class="nr" style="color:#D35400">'+(PTOW[p.product]?'−'+PTOW[p.product].toLocaleString():'—')+'</td>'+
-      '<td class="nr" style="color:'+(st==='low'?'#C0392B':st==='warn'?'#D35400':'inherit')+';font-weight:600">'+eow[i].toLocaleString()+'</td>'+
-      '<td>'+pill(st)+'</td></tr>';
-  }).join('');
-  document.getElementById('et').innerHTML='<thead><tr><th>Product</th><th class="nr">Current</th><th class="nr">Print</th><th class="nr">End of week</th><th>Status</th></tr></thead><tbody>'+eowR+'</tbody>';
-}
-
 // ── CALENDAR ──
 function getMon(off){
   var t=new Date();t.setHours(0,0,0,0);
