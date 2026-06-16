@@ -583,6 +583,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
           <label>Link to (optional)</label>
           <select id="msg-ref-type">
             <option value="">— None —</option>
+            <option value="general">General</option>
             <option value="job">Job</option>
             <option value="delivery">Delivery</option>
             <option value="po">Purchase Order</option>
@@ -3368,7 +3369,8 @@ async function sendMessage(){
   // Owner always CC'd on all messages between Fred and Warda
   if(role!=='owner'&&toRoles.indexOf('owner')===-1)toRoles.push('owner');
   var refId=null,refLabel=null;
-  if(refType&&refItem&&refItem.value){
+  if(refType==='general'){refLabel='General';}
+  else if(refType&&refItem&&refItem.value){
     refId=refItem.value;
     refLabel=refItem.options[refItem.selectedIndex].text;
   }
@@ -3396,6 +3398,7 @@ document.addEventListener('change',function(e){
   if(!type){wrap.style.display='none';sel.innerHTML='';return;}
   wrap.style.display='';
   sel.innerHTML='<option value="">Loading...</option>';
+  if(type==='general'){wrap.style.display='none';sel.innerHTML='';return;}
   if(type==='job'){
     DB().from('print_schedule').select('id,client,cup_size,delivery_date').order('created_at',{ascending:false}).then(function(r){
       sel.innerHTML='<option value="">— Select job —</option>';
