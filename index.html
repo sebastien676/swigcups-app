@@ -271,6 +271,34 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   .dwcal-day-num{width:24px;flex-shrink:0}
   .dwcal-day > div:nth-child(3){display:flex;flex-direction:column;gap:3px;flex:1}
 }
+/* ── MESSAGES ── */
+.msg-thread{background:#fff;border:1px solid #e0e0e0;border-radius:10px;margin-bottom:10px;overflow:hidden}
+.msg-thread-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f7f8fa;border-bottom:1px solid #e0e0e0;cursor:pointer}
+.msg-thread-hdr:hover{background:#f0f0f0}
+.msg-thread-title{font-size:13px;font-weight:700;color:#1a1a1a}
+.msg-thread-meta{font-size:11px;color:#888;margin-top:2px}
+.msg-unread-badge{background:#C0392B;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700}
+.msg-bubble-wrap{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.msg-bubble{max-width:80%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.5}
+.msg-bubble.mine{background:#0E6655;color:#fff;border-radius:12px 12px 2px 12px;align-self:flex-end}
+.msg-bubble.theirs{background:#f2f3f4;color:#1a1a1a;border-radius:12px 12px 12px 2px;align-self:flex-start}
+.msg-bubble .msg-sender{font-size:10px;font-weight:700;opacity:0.75;margin-bottom:3px}
+.msg-bubble .msg-time{font-size:10px;opacity:0.6;margin-top:3px;text-align:right}
+.msg-bubble .msg-ref{font-size:10px;background:rgba(255,255,255,0.2);border-radius:4px;padding:2px 6px;margin-bottom:4px;display:inline-block}
+.msg-bubble.theirs .msg-ref{background:rgba(0,0,0,0.08)}
+.msg-read-bar{padding:6px 14px;font-size:10px;color:#aaa;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between}
+.msg-read-btn{font-size:11px;color:#0E6655;font-weight:600;background:none;border:none;cursor:pointer;padding:0}
+.msg-read-btn:hover{text-decoration:underline}
+.msg-thread.urgent-thread{border-left:4px solid #C0392B}
+.msg-thread.urgent-thread .msg-thread-hdr{background:#FFF5F5}
+.msg-urgent-badge{background:#C0392B;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:6px}
+.msg-thread.archived{opacity:0.45}
+.msg-archive-btn{font-size:11px;color:#aaa;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px}
+.msg-archive-btn:hover{color:#444;background:#f0f0f0}
+.msg-reply-row{display:flex;gap:6px;padding:8px 14px;border-top:1px solid #e0e0e0}
+.msg-reply-row input{flex:1;font-size:13px;padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:20px;font-family:inherit}
+.msg-reply-row input:focus{outline:none;border-color:#0E6655}
+.msg-reply-btn{background:#0E6655;color:#fff;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 @media(max-width:600px){
   .mts{grid-template-columns:1fr 1fr}
   .g2,.g3{grid-template-columns:1fr}
@@ -341,6 +369,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <button onclick="showTab('cal',this)">📅 Calendar</button>
     <button onclick="showTab('myjobs',this)" id="wmj" style="display:none">✅ My Jobs</button>
     <button onclick="showTab('deliveries',this)">🚚 Deliveries</button>
+    <button onclick="showTab('messages',this)">💬 Messages <span class="ab" id="msgbn" style="display:none">!</span></button>
     <button onclick="showTab('alerts',this)">🚨 Alerts <span class="ab" id="abn">!</span></button>
   </nav>
 
@@ -527,6 +556,55 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div id="del-cal-filter-banner" style="display:none;margin-top:10px;padding:8px 12px;background:#D1F2EB;border-radius:8px;font-size:12px;font-weight:600;color:#0E6655;display:flex;align-items:center;justify-content:space-between"></div>
     </div>
     <div id="del-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
+  </div>
+
+  <div id="tab-messages" class="sec">
+    <div class="ch" style="margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:700">💬 Messages</h2>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:12px;color:#888;display:flex;align-items:center;gap:4px">
+          <input type="checkbox" id="msg-show-archived" onchange="loadMessages()" style="accent-color:#888">
+          Show archived
+        </label>
+        <button class="btn bs bsm" onclick="loadMessages()">↻</button>
+      </div>
+    </div>
+    <!-- Compose -->
+    <div class="card" style="margin-bottom:14px" id="msg-compose-card">
+      <div class="ch" style="margin-bottom:10px"><span class="ct">New message</span></div>
+      <div class="g2" style="margin-bottom:8px">
+        <div class="fg">
+          <label>To</label>
+          <select id="msg-to">
+            <option value="">— Select —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Link to (optional)</label>
+          <select id="msg-ref-type">
+            <option value="">— None —</option>
+            <option value="job">Job</option>
+            <option value="delivery">Delivery</option>
+            <option value="po">Purchase Order</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:8px" id="msg-ref-select-wrap" style="display:none">
+        <label>Select item</label>
+        <select id="msg-ref-item"></select>
+      </div>
+      <div class="fg" style="margin-bottom:8px">
+        <label>Message</label>
+        <textarea id="msg-text" rows="3" placeholder="Type your message..."></textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <input type="checkbox" id="msg-urgent" style="width:16px;height:16px;cursor:pointer;accent-color:#C0392B">
+        <label for="msg-urgent" style="font-size:13px;font-weight:600;color:#C0392B;cursor:pointer">🚨 Mark as urgent</label>
+      </div>
+      <button class="btn bp" onclick="sendMessage()">📤 Send</button>
+    </div>
+    <!-- Threads -->
+    <div id="msg-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
   </div>
 
   <div id="tab-alerts" class="sec">
@@ -724,7 +802,7 @@ async function uploadArtwork(jobId, file) {
     reader.readAsDataURL(file);
   });
 }
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','alerts'],fred:['stock','jobs','print','cal','deliveries'],warda:['stock','myjobs','cal','deliveries']};
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','alerts'],fred:['stock','jobs','print','cal','deliveries','messages'],warda:['stock','myjobs','cal','deliveries','messages']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
 var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},delCalOff=0,delCalSelectedDate=null,delCalView='month';
 
@@ -745,13 +823,13 @@ function initRole(r){
   document.getElementById('rt').textContent=RLAB[r];
   var allowed=RTABS[r];
   var btns=document.querySelectorAll('nav button');
-  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','alerts'];
+  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','alerts'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
   if(r==='owner'){document.getElementById('badd').style.display='flex';}
   if(r==='owner'||r==='fred'){document.getElementById('bajob').style.display='flex';}
   var _wpd=document.getElementById('warda-print-date');if(_wpd){var _t=new Date();_wpd.value=_t.getFullYear()+'-'+String(_t.getMonth()+1).padStart(2,'0')+'-'+String(_t.getDate()).padStart(2,'0');}
-  loadStock();loadPOs();loadPrint();loadJobs();
+  loadStock();loadPOs();loadPrint();loadJobs();setTimeout(checkUnreadMessages,1500);
 }
 
 function showTab(n,b){
@@ -764,6 +842,7 @@ function showTab(n,b){
   if(n==='today'){todayOff=0;loadToday();}
   if(n==='myjobs')loadMyJobs();
   if(n==='deliveries')loadDeliveries();
+  if(n==='messages')loadMessages();
 }
 
 function togglePnl(id){document.getElementById(id).classList.toggle('op');}
@@ -3104,7 +3183,256 @@ async function downloadWardaDayList(){
 }
 
 
+// ── MESSAGES ──
+var MSG_NAMES={owner:'Sébastien',fred:'Fred',warda:'Warda'};
+
+function msgToOptions(){
+  // Owner can message Fred or Warda (or both)
+  // Fred can message Owner or Warda
+  // Warda can message Owner or Fred
+  var sel=document.getElementById('msg-to');
+  if(!sel)return;
+  sel.innerHTML='<option value="">— Select —</option>';
+  var opts=[];
+  if(role==='owner'){opts=[{v:'fred',l:'Fred'},{v:'warda',l:'Warda'},{v:'fred,warda',l:'Fred + Warda'}];}
+  else if(role==='fred'){opts=[{v:'owner',l:'Sébastien'},{v:'warda',l:'Warda'}];}
+  else if(role==='warda'){opts=[{v:'owner',l:'Sébastien'},{v:'fred',l:'Fred'}];}
+  opts.forEach(function(o){sel.innerHTML+='<option value="'+o.v+'">'+o.l+'</option>';});
+}
+
+async function loadMessages(){
+  msgToOptions();
+  var el=document.getElementById('msg-list');
+  el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
+
+  // Fetch all messages where current role is sender or recipient
+  var r=await DB().from('messages').select('*').order('created_at',{ascending:false});
+  if(!r.data){el.innerHTML='<div class="ld">Error loading messages</div>';return;}
+
+  // Filter: owner sees all; others see messages they sent or received
+  var showArchived=document.getElementById('msg-show-archived')&&document.getElementById('msg-show-archived').checked;
+  var msgs=r.data.filter(function(m){
+    var visible=(role==='owner')||(m.from_role===role||m.to_roles.indexOf(role)>-1);
+    if(!visible)return false;
+    var isArchived=(m.archived_by||[]).indexOf(role)>-1;
+    return showArchived?isArchived:!isArchived;
+  });
+
+  // Count unread
+  var unread=msgs.filter(function(m){return m.from_role!==role&&m.read_by.indexOf(role)===-1;});
+  var badge=document.getElementById('msgbn');
+  if(badge){badge.style.display=unread.length?'':'none';badge.textContent=unread.length||'';}
+
+  if(!msgs.length){el.innerHTML='<div style="text-align:center;padding:32px;color:#aaa;font-size:13px">No messages yet</div>';return;}
+
+  // Group into threads by participants set
+  var threads={};var threadOrder=[];
+  msgs.forEach(function(m){
+    var participants=[m.from_role].concat(m.to_roles).filter(function(r2,i,a){return a.indexOf(r2)===i;}).sort().join(',');
+    if(!threads[participants]){threads[participants]=[];threadOrder.push(participants);}
+    threads[participants].push(m);
+  });
+  // Sort threads by most recent message
+  threadOrder.sort(function(a,b){
+    return new Date(threads[b][0].created_at)-new Date(threads[a][0].created_at);
+  });
+
+  el.innerHTML='';
+  threadOrder.forEach(function(participants){
+    var threadMsgs=threads[participants].slice().reverse(); // oldest first
+    var parts=participants.split(',');
+    var names=parts.map(function(p){return MSG_NAMES[p]||p;}).join(' & ');
+    var threadUnread=threadMsgs.filter(function(m){return m.from_role!==role&&m.read_by.indexOf(role)===-1;});
+    var lastMsg=threads[participants][0];
+    var lastTime=new Date(lastMsg.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+
+    var threadUrgent=threadMsgs.some(function(m){return m.is_urgent;});
+    var threadArchived=threadMsgs.every(function(m){return (m.archived_by||[]).indexOf(role)>-1;});
+    var wrap=document.createElement('div');
+    wrap.className='msg-thread'+(threadUrgent?' urgent-thread':'')+(threadArchived?' archived':'');
+
+    // Header
+    var hdr=document.createElement('div');hdr.className='msg-thread-hdr';
+    hdr.innerHTML='<div><div class="msg-thread-title">'+(threadUrgent?'🚨 ':'💬 ')+names+(threadUrgent?'<span class="msg-urgent-badge">URGENT</span>':'')+'</div>'
+      +'<div class="msg-thread-meta">'+lastTime+(threadUnread.length?' · <strong style="color:#C0392B">'+threadUnread.length+' unread</strong>':'')+'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +(threadUnread.length?'<span class="msg-unread-badge">'+threadUnread.length+'</span>':'')
+      +'<button class="msg-archive-btn" title="'+(threadArchived?'Unarchive':'Archive')+'" onclick="event.stopPropagation();archiveThread('+JSON.stringify(threadMsgs.map(function(m){return m.id;}))+','+threadArchived+')">'+(threadArchived?'↩️':'🗂️')+'</button>'
+      +'</div>';
+
+    // Messages bubbles (collapsed by default, expand on click)
+    var bubblesWrap=document.createElement('div');
+    bubblesWrap.className='msg-bubble-wrap';
+    bubblesWrap.style.display='none';
+
+    threadMsgs.forEach(function(m){
+      var isMine=m.from_role===role;
+      var bub=document.createElement('div');
+      bub.className='msg-bubble '+(isMine?'mine':'theirs');
+      if(m.is_urgent&&!isMine)bub.style.cssText='border:2px solid #C0392B';
+      var refHtml=(m.is_urgent?'<div style="font-size:10px;font-weight:700;color:#C0392B;margin-bottom:4px">🚨 URGENT</div>':'')+(m.ref_label?'<div class="msg-ref">📎 '+m.ref_label+'</div>':'');
+      var readHtml='';
+      if(isMine){
+        var readers=m.to_roles.filter(function(r2){return m.read_by.indexOf(r2)>-1;});
+        readHtml='<div class="msg-time">'+(readers.length?'✓✓ Read by '+readers.map(function(r2){return MSG_NAMES[r2];}).join(', '):'Sent')+'</div>';
+      }
+      var time=new Date(m.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      bub.innerHTML='<div class="msg-sender">'+MSG_NAMES[m.from_role]+'</div>'+refHtml+m.message+'<div class="msg-time">'+time+'</div>'+readHtml;
+      bubblesWrap.appendChild(bub);
+    });
+
+    // Mark read bar
+    if(threadUnread.length){
+      var readBar=document.createElement('div');readBar.className='msg-read-bar';
+      readBar.innerHTML='<span>'+threadUnread.length+' unread message'+(threadUnread.length>1?'s':'')+'</span>';
+      var readBtn=document.createElement('button');readBtn.className='msg-read-btn';readBtn.textContent='✓ Mark all as read';
+      (function(tmsgs){readBtn.addEventListener('click',function(e){
+        e.stopPropagation();
+        markThreadRead(tmsgs);
+      });})(threadMsgs.filter(function(m){return m.from_role!==role&&m.read_by.indexOf(role)===-1;}));
+      readBar.appendChild(readBtn);
+      wrap.appendChild(hdr);
+      wrap.appendChild(readBar);
+    } else {
+      wrap.appendChild(hdr);
+    }
+    wrap.appendChild(bubblesWrap);
+
+    // Reply row
+    var replyRow=document.createElement('div');replyRow.className='msg-reply-row';
+    replyRow.style.display='none';
+    var replyInput=document.createElement('input');replyInput.type='text';replyInput.placeholder='Reply...';
+    var replyBtn=document.createElement('button');replyBtn.className='msg-reply-btn';replyBtn.textContent='↑';
+    (function(toRoles,inp){
+      replyBtn.addEventListener('click',function(){quickReply(toRoles,inp);});
+      inp.addEventListener('keydown',function(e){if(e.key==='Enter')quickReply(toRoles,inp);});
+    })(parts.filter(function(p){return p!==role;}),replyInput);
+    replyRow.appendChild(replyInput);replyRow.appendChild(replyBtn);
+    wrap.appendChild(replyRow);
+
+    // Toggle expand
+    hdr.addEventListener('click',function(){
+      var open=bubblesWrap.style.display!=='none';
+      bubblesWrap.style.display=open?'none':'flex';
+      bubblesWrap.style.flexDirection='column';
+      replyRow.style.display=open?'none':'flex';
+      if(!open&&threadUnread.length){
+        markThreadRead(threadMsgs.filter(function(m){return m.from_role!==role&&m.read_by.indexOf(role)===-1;}));
+      }
+    });
+
+    el.appendChild(wrap);
+  });
+}
+
+async function markThreadRead(msgs){
+  for(var i=0;i<msgs.length;i++){
+    var m=msgs[i];
+    if(m.read_by.indexOf(role)===-1){
+      var newRead=m.read_by.concat([role]);
+      await DB().from('messages').update({read_by:newRead}).eq('id',m.id);
+    }
+  }
+  loadMessages();
+}
+
+async function quickReply(toRoles,input){
+  var txt=input.value.trim();
+  if(!txt)return;
+  await DB().from('messages').insert([{from_role:role,to_roles:toRoles,message:txt,read_by:[]}]);
+  input.value='';
+  loadMessages();
+}
+
+async function archiveThread(ids,isArchived){
+  for(var i=0;i<ids.length;i++){
+    var r2=await DB().from('messages').select('archived_by').eq('id',ids[i]).single();
+    if(!r2.data)continue;
+    var ab=r2.data.archived_by||[];
+    if(isArchived){ab=ab.filter(function(r3){return r3!==role;});}
+    else if(ab.indexOf(role)===-1){ab=ab.concat([role]);}
+    await DB().from('messages').update({archived_by:ab}).eq('id',ids[i]);
+  }
+  toast(isArchived?'↩️ Unarchived':'🗂️ Archived','ok');
+  loadMessages();
+}
+
+async function sendMessage(){
+  var toVal=document.getElementById('msg-to').value;
+  var txt=document.getElementById('msg-text').value.trim();
+  var refType=document.getElementById('msg-ref-type').value;
+  var refItem=document.getElementById('msg-ref-item');
+  if(!toVal){toast('Select a recipient','err');return;}
+  if(!txt){toast('Message cannot be empty','err');return;}
+  var toRoles=toVal.split(',');
+  // Owner always CC'd on all messages between Fred and Warda
+  if(role!=='owner'&&toRoles.indexOf('owner')===-1)toRoles.push('owner');
+  var refId=null,refLabel=null;
+  if(refType&&refItem&&refItem.value){
+    refId=refItem.value;
+    refLabel=refItem.options[refItem.selectedIndex].text;
+  }
+  var isUrgent=document.getElementById('msg-urgent')&&document.getElementById('msg-urgent').checked;
+  await DB().from('messages').insert([{
+    from_role:role,to_roles:toRoles,message:txt,
+    ref_type:refType||null,ref_id:refId,ref_label:refLabel,
+    is_urgent:isUrgent,read_by:[]
+  }]);
+  if(document.getElementById('msg-urgent'))document.getElementById('msg-urgent').checked=false;
+  document.getElementById('msg-text').value='';
+  document.getElementById('msg-to').value='';
+  document.getElementById('msg-ref-type').value='';
+  document.getElementById('msg-ref-item').innerHTML='';
+  toast('✉️ Message sent','ok');
+  loadMessages();
+}
+
+// Populate ref item dropdown when ref type changes
+document.addEventListener('change',function(e){
+  if(e.target.id!=='msg-ref-type')return;
+  var wrap=document.getElementById('msg-ref-select-wrap');
+  var sel=document.getElementById('msg-ref-item');
+  var type=e.target.value;
+  if(!type){wrap.style.display='none';sel.innerHTML='';return;}
+  wrap.style.display='';
+  sel.innerHTML='<option value="">Loading...</option>';
+  if(type==='job'){
+    DB().from('print_schedule').select('id,client,cup_size,delivery_date').order('created_at',{ascending:false}).then(function(r){
+      sel.innerHTML='<option value="">— Select job —</option>';
+      (r.data||[]).filter(function(j){return j.status!=='Done';}).forEach(function(j){
+        sel.innerHTML+='<option value="'+j.id+'">'+j.client+' ('+( j.cup_size||'')+(j.delivery_date?' — '+j.delivery_date:'')+')</option>';
+      });
+    });
+  } else if(type==='delivery'){
+    DB().from('print_schedule').select('id,client,delivery_date,delivery_type').not('delivery_date','is',null).order('delivery_date').then(function(r){
+      sel.innerHTML='<option value="">— Select delivery —</option>';
+      (r.data||[]).forEach(function(j){
+        sel.innerHTML+='<option value="'+j.id+'">'+j.client+' — '+(j.delivery_date||'')+'</option>';
+      });
+    });
+  } else if(type==='po'){
+    DB().from('purchase_orders').select('id,po_number,product').order('po_date',{ascending:false}).then(function(r){
+      sel.innerHTML='<option value="">— Select PO —</option>';
+      (r.data||[]).forEach(function(p){
+        sel.innerHTML+='<option value="'+p.id+'">'+p.po_number+' — '+(p.product||'')+'</option>';
+      });
+    });
+  }
+});
+
+// Check unread on init
+async function checkUnreadMessages(){
+  var r=await DB().from('messages').select('id,from_role,to_roles,read_by');
+  if(!r.data)return;
+  var unread=r.data.filter(function(m){
+    if(role==='owner')return m.from_role!==role&&m.read_by.indexOf(role)===-1;
+    return (m.to_roles.indexOf(role)>-1)&&m.from_role!==role&&m.read_by.indexOf(role)===-1;
+  });
+  var badge=document.getElementById('msgbn');
+  if(badge){badge.style.display=unread.length?'':'none';badge.textContent=unread.length||'';}
+}
+
+
 </script>
 </body>
 </html>
-
