@@ -840,8 +840,8 @@ async function loadStock(){
     else if(normKey(p.colour)==='dark blue'||prodName==='500ml Blue cups')srcLabel='Blue';
     else srcLabel=p.colour||p.product;
     var existing=consolidated[key].split.find(function(s){return s.name===srcLabel;});
-    if(existing){existing.qty+=origQty;}
-    else{consolidated[key].split.push({name:srcLabel,qty:origQty});}
+    if(existing){existing.qty+=origQty;existing.ids.push(p.id);}
+    else{consolidated[key].split.push({name:srcLabel,qty:origQty,ids:[p.id]});}
   });
   var merged=order.map(function(k){return consolidated[k];});
 
@@ -950,31 +950,20 @@ function openStockEdit(p){
 
 async function saveStockEdit(){
   var p=JSON.parse(document.getElementById('stk-data').value||'{}');
-  var split=p.split&&p.split.length>1?p.split:[{name:'Stock',origProduct:p.product}];
-
-  // For each split source, find matching DB rows by original product name and update
+  var split=p.split&&p.split.length>1?p.split:[{name:'Stock',ids:p.ids||[p.id]}];
+  var anyFail=false;
   for(var i=0;i<split.length;i++){
     var newQty=parseInt(document.getElementById('stk-val-'+i).value)||0;
-    var srcName=split[i].name; // "New", "Washed", or "Stock"
-    // Find underlying DB rows matching this source
-    // We need to fetch raw stock to find matching row IDs
-    var r2=await DB().from('stock').select('id,product,colour');
-    if(!r2.data)continue;
-    var matchRows=r2.data.filter(function(row){
-      var pn=(row.product||'').toLowerCase();
-      if(srcName==='New')return pn.indexOf('washed')===-1&&pn.indexOf(((p.size||'').toLowerCase())||'500ml')>-1&&(pn.indexOf('frosted')>-1||pn.indexOf((p.colour||'').toLowerCase())>-1);
-      if(srcName==='Washed')return pn.indexOf('washed')>-1;
-      // Single stock: use all ids
-      return (p.ids||[p.id]).indexOf(row.id)>-1;
-    });
-    // If no match found, fall back to first underlying id
-    var idsToUpdate=matchRows.length?matchRows.map(function(r){return r.id;}):(i===0?[p.ids[0]||p.id]:[]);
+    var idsToUpdate=split[i].ids||[];
+    if(!idsToUpdate.length){console.warn('No IDs for split',split[i].name);continue;}
     for(var j=0;j<idsToUpdate.length;j++){
       var upd={physical_stock:(j===0?newQty:0),total_received:0,total_outgoing:0};
-      await DB().from('stock').update(upd).eq('id',idsToUpdate[j]);
+      var res=await DB().from('stock').update(upd).eq('id',idsToUpdate[j]);
+      if(res.error){console.error('Stock update error',res.error);anyFail=true;}
     }
   }
-  toast('✅ Stock updated','ok');
+  if(anyFail){toast('⚠️ Some rows may not have saved — check console','err');}
+  else{toast('✅ Stock updated','ok');}
   closeOv('stkov');
   loadStock();
   loadAlerts();
