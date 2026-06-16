@@ -814,7 +814,7 @@ async function loadStock(){
     consolidated[key].total_outgoing+=(p.total_outgoing||0);
     consolidated[key].ids.push(p.id);
     // Track split source for display, normalized: "Washed Frosted"->"Washed", "Frosted"->"New", colour aliases unified
-    var origQty=(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0);
+    var origQty=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
     var srcLabel;
     var pNorm=normKey(p.product);
     if(pNorm.indexOf('washed frosted')>-1)srcLabel='Washed';
@@ -845,7 +845,7 @@ async function loadStock(){
   stock=merged;
   var LOW=5000,tot=0,lowc=0,pendc=0;
   merged.forEach(function(p){
-    var cur=(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0);
+    var cur=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
     var pending=pendByProduct[p.product]||0;
     tot+=cur;
     if(cur>0&&cur<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1)lowc++;
@@ -871,7 +871,7 @@ async function loadStock(){
       rows+='<tr style="background:#e6f2ef"><td colspan="6" style="padding:6px 10px;font-size:11px;font-weight:700;color:#0a4033;text-transform:uppercase;letter-spacing:0.06em">'+p.size+'</td></tr>';
       lastSize=p.size;
     }
-    var cur=(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0);
+    var cur=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
     var pending=pendByProduct[p.product]||0;
     var after=cur+pending;
     var max=Math.max(after,cur,1);
@@ -887,12 +887,10 @@ async function loadStock(){
       : '<span style="color:#999">'+after.toLocaleString()+'</span>';
     // Build split detail line if this product merges multiple sources
     var splitHtml='';
-    if(p.split&&p.split.length>1){
+    var splitAll=p.split||[];
+    if(splitAll.length>1){
       splitHtml='<div style="font-size:10px;color:#999;margin-top:2px;font-weight:400">'
-        +p.split.map(function(s){
-          var label=s.name.replace('500ml ','').replace('330ml ','').replace('250ml ','').replace(' cups','');
-          return label+': '+s.qty.toLocaleString();
-        }).join(' · ')
+        +splitAll.map(function(s){return s.name+': '+s.qty.toLocaleString();}).join(' · ')
         +'</div>';
     }
     rows+='<tr><td><strong>'+dot+p.product+'</strong>'+splitHtml+'</td><td style="color:#666">'+p.size+'</td>'+
@@ -1289,16 +1287,78 @@ function makeAlert(cls,html,key){
 async function loadAlerts(){
   var rs=await DB().from('stock').select('*');
   var rp=await DB().from('purchase_orders').select('*');
-  if(!rs.data||!rp.data)return;
+  var rj=await DB().from('print_schedule').select('*');
+  if(!rs.data||!rp.data||!rj.data)return;
   var el=document.getElementById('alist');el.innerHTML='';
-  var LOW=5000;
-  var low=rs.data.filter(function(p){var e=(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0);return e>0&&e<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1;});
-  if(low.length){
-    var key='low_stock_'+low.map(function(p){return p.product;}).join('_');
-    if(_dismissedAlerts.indexOf(key)===-1){
-      el.appendChild(makeAlert('','<h4>🔴 Low stock — reorder from Africa Plastics</h4><p>'+low.map(function(p){return '<strong>'+p.product+'</strong>: '+Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0)).toLocaleString()+' units';}).join('<br>')+'</p>',key));
+
+  // ── Build stock map: size+colour -> available (current + incoming POs) ──
+  var ALIASES_NORM={'500ml washed frosted cups':'500ml frosted cups','330ml washed frosted cups':'330ml frosted cups','250ml washed frosted cups':'250ml frosted cups','500ml blue cups':'500ml blue cups','500ml dark blue cups':'500ml blue cups'};
+  function normProd(p){return (p||'').toLowerCase().replace(/\s+/g,' ').trim();}
+  
+  var stockMap={}; // key: size+'||'+normColour -> {available, incoming}
+  rs.data.forEach(function(s){
+    var cur=Math.max(0,(s.physical_stock||0)+(s.total_received||0)-(s.total_outgoing||0));
+    var sz=(s.size||'').toLowerCase();
+    var col=(s.colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
+    var k=sz+'||'+col;
+    if(!stockMap[k])stockMap[k]={available:0,incoming:0};
+    stockMap[k].available+=cur;
+  });
+  rp.data.forEach(function(p){
+    var s=(p.status||'').toLowerCase();
+    if(s!=='pending'&&s!=='partial')return;
+    var pnorm=normProd(ALIASES_NORM[normProd(p.product)]||p.product);
+    var sz=(p.size||'').toLowerCase();
+    var col=(p.colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
+    var k=sz+'||'+col;
+    if(!stockMap[k])stockMap[k]={available:0,incoming:0};
+    stockMap[k].incoming+=(p.qty_ordered||0);
+  });
+
+  // ── Build demand map from upcoming non-Done jobs ──
+  var demandMap={}; // same key -> needed stock
+  rj.data.forEach(function(j){
+    if(j.status==='Done'||j.status==='Cancelled')return;
+    var sz=(j.cup_size||'').toLowerCase();
+    var col=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
+    var k=sz+'||'+col;
+    if(!demandMap[k])demandMap[k]={needed:0,clients:[]};
+    demandMap[k].needed+=Math.round((j.qty_printed||0)*1.05);
+    if(demandMap[k].clients.indexOf(j.client)===-1)demandMap[k].clients.push(j.client);
+  });
+
+  // ── Compare stock vs demand ──
+  var shortfalls=[];
+  Object.keys(demandMap).forEach(function(k){
+    var demand=demandMap[k];
+    var supply=stockMap[k]||{available:0,incoming:0};
+    var total=supply.available+supply.incoming;
+    if(total<demand.needed){
+      var parts=k.split('||');
+      shortfalls.push({
+        size:parts[0],colour:parts[1],
+        available:supply.available,incoming:supply.incoming,total:total,
+        needed:demand.needed,gap:demand.needed-total,
+        clients:demand.clients
+      });
     }
+  });
+
+  if(shortfalls.length){
+    shortfalls.forEach(function(sf){
+      var key='shortfall_'+sf.size+'_'+sf.colour;
+      if(_dismissedAlerts.indexOf(key)>-1)return;
+      var clients=sf.clients.slice(0,4).join(', ')+(sf.clients.length>4?' +'+( sf.clients.length-4)+' more':'');
+      el.appendChild(makeAlert('',
+        '<h4>🔴 Stock shortfall — '+sf.size+' '+sf.colour+'</h4>'
+        +'<p>Need <strong>'+sf.needed.toLocaleString()+'</strong> units · Available: '+sf.available.toLocaleString()+' + '+sf.incoming.toLocaleString()+' incoming = <strong>'+sf.total.toLocaleString()+'</strong><br>'
+        +'Gap: <strong style="color:#C0392B">'+sf.gap.toLocaleString()+' units short</strong><br>'
+        +'Jobs: '+clients+'</p>',
+        key));
+    });
   }
+
+  // ── POs not delivered ──
   var nd=rp.data.filter(function(p){return p.status==='Not delivered';});
   nd.forEach(function(p){
     var key='nd_'+p.id;
@@ -1306,6 +1366,8 @@ async function loadAlerts(){
       el.appendChild(makeAlert('','<h4>❌ Not delivered — '+p.po_number+'</h4><p>'+p.product+' — '+(p.qty_ordered||0).toLocaleString()+' units</p>',key));
     }
   });
+
+  // ── Masterbatch ──
   var mb=rp.data.filter(function(p){return p.notes&&p.notes.toLowerCase().indexOf('masterbatch')>-1;});
   if(mb.length){
     var key2='masterbatch';
@@ -1313,10 +1375,16 @@ async function loadAlerts(){
       el.appendChild(makeAlert('warn','<h4>⚠️ Masterbatch photos required</h4><p>'+[...new Set(mb.map(function(p){return p.po_number;}))].join(', ')+'</p>',key2));
     }
   }
+
   if(!el.children.length){
-    el.innerHTML='<div class="ai ok"><h4>✅ All clear</h4><p>No active alerts.</p></div>';
+    el.innerHTML='<div class="ai ok"><h4>✅ All clear</h4><p>Stock covers all upcoming jobs.</p></div>';
   }
-  // Reset dismissed button
+
+  // Alert badge count
+  var alertCount=el.querySelectorAll('.ai').length;
+  var abn=document.getElementById('abn');
+  if(abn)abn.textContent=alertCount||'';
+
   if(_dismissedAlerts.length){
     var rb=document.createElement('button');
     rb.className='btn bs bsm';rb.style.marginTop='14px';
@@ -2057,15 +2125,23 @@ async function toggleDone(id,st){
   // Adjust stock total_outgoing when toggling Done
   if(job){
     var used=Math.round((job.qty_printed||0)*1.05);
-    var prod=(job.cup_size||'')+' '+(job.cup_colour||'')+' cups';
-    // Find matching stock row (case-insensitive, flexible match)
+    var jobColourNorm=(job.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
+    // Find matching merged stock row (case-insensitive, handles Frosted/Washed Frosted aliases)
     var srow=(stock||[]).find(function(s){
-      return (s.size===job.cup_size)&&((s.colour||'').toLowerCase()===(job.cup_colour||'').toLowerCase());
+      if(s.size!==job.cup_size)return false;
+      var sc=(s.colour||'').toLowerCase();
+      var jc=jobColourNorm;
+      return sc===jc||sc==='frosted'&&(jc==='frosted'||jc==='washed frosted'||jc==='new frosted');
     });
     if(srow&&used>0){
-      var delta=ns==='Done'?used:-used; // Done = consume stock; Undo = give it back
-      var newOut=Math.max(0,(srow.total_outgoing||0)+delta);
-      await DB().from('stock').update({total_outgoing:newOut}).eq('id',srow.id);
+      var delta=ns==='Done'?used:-used;
+      // Update ALL underlying DB rows for this merged stock entry
+      var idsToUpdate=srow.ids&&srow.ids.length?srow.ids:[srow.id];
+      // Distribute delta proportionally across rows — simplest: add all to first row with enough stock
+      var firstId=idsToUpdate[0];
+      var curOut=srow.total_outgoing||0;
+      var newOut=Math.max(0,curOut+delta);
+      await DB().from('stock').update({total_outgoing:newOut}).eq('id',firstId);
     }
   }
 
