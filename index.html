@@ -802,7 +802,6 @@ async function loadStock(){
   // Manual aliases: map old name -> canonical name (merges into canonical)
   // Case/whitespace-insensitive alias lookup
   var STOCK_ALIASES_NORM={
-    '500ml dark blue cups':'500ml Blue cups',
     '500ml washed frosted cups':'500ml Frosted cups',
     '330ml washed frosted cups':'330ml Frosted cups',
     '250ml washed frosted cups':'250ml Frosted cups'
@@ -813,10 +812,8 @@ async function loadStock(){
   r.data.forEach(function(p){
     var prodName=STOCK_ALIASES_NORM[normKey(p.product)]||p.product;
     var colourName=p.colour;
-    if(normKey(colourName)==='dark blue')colourName='Blue';
     if(prodName!==p.product){
-      if(prodName==='500ml Blue cups')colourName='Blue';
-      else if(prodName.indexOf('Frosted')>-1)colourName='Frosted';
+      if(prodName.indexOf('Frosted')>-1)colourName='Frosted';
     }
     // Normalize key for grouping: lowercase product+size+colour to catch case/whitespace dupes
     var key=normKey(prodName)+'||'+normKey(p.size)+'||'+normKey(colourName);
@@ -837,7 +834,6 @@ async function loadStock(){
     var pNorm=normKey(p.product);
     if(pNorm.indexOf('washed frosted')>-1)srcLabel='Washed';
     else if(pNorm.indexOf('frosted')>-1)srcLabel='New';
-    else if(normKey(p.colour)==='dark blue'||prodName==='500ml Blue cups')srcLabel='Blue';
     else srcLabel=p.colour||p.product;
     var existing=consolidated[key].split.find(function(s){return s.name===srcLabel;});
     if(existing){existing.qty+=origQty;existing.ids.push(p.id);}
@@ -1364,7 +1360,7 @@ async function loadAlerts(){
   var el=document.getElementById('alist');el.innerHTML='';
 
   // ── Build stock map: size+colour -> available (current + incoming POs) ──
-  var ALIASES_NORM={'500ml washed frosted cups':'500ml frosted cups','330ml washed frosted cups':'330ml frosted cups','250ml washed frosted cups':'250ml frosted cups','500ml blue cups':'500ml blue cups','500ml dark blue cups':'500ml blue cups'};
+  var ALIASES_NORM={'500ml washed frosted cups':'500ml frosted cups','330ml washed frosted cups':'330ml frosted cups','250ml washed frosted cups':'250ml frosted cups'};
   function normProd(p){return (p||'').toLowerCase().replace(/\s+/g,' ').trim();}
   
   var stockMap={}; // key: size+'||'+normColour -> {available, incoming}
@@ -2197,7 +2193,7 @@ async function toggleDone(id,st){
   // Adjust stock total_outgoing when toggling Done
   if(job){
     var used=Math.round((job.qty_printed||0)*1.05);
-    var jobColourNorm=(job.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
+    var jobColourNorm=(job.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted').replace('dark blue','blue');
     // Find matching merged stock row (case-insensitive, handles Frosted/Washed Frosted aliases)
     var srow=(stock||[]).find(function(s){
       if(s.size!==job.cup_size)return false;
@@ -3111,3 +3107,4 @@ async function downloadWardaDayList(){
 </script>
 </body>
 </html>
+
