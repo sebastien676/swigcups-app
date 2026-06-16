@@ -538,6 +538,24 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   </div>
 </div>
 
+<!-- STOCK EDIT -->
+<div class="ov" id="stkov">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><h3>✏️ Edit stock</h3><button class="mc" onclick="closeOv('stkov')">×</button></div>
+    <input type="hidden" id="stk-data">
+    <div style="font-size:13px;font-weight:600;color:#0E6655;margin-bottom:14px" id="stk-product"></div>
+    <div id="stk-fields"></div>
+    <div style="font-size:11px;color:#888;margin-bottom:14px;padding:8px 10px;background:#f7f8fa;border-radius:6px">
+      ℹ️ Saving resets received &amp; outgoing to 0 — movements tracked from this point.<br>
+      <strong>Outgoing</strong> = cups consumed by print jobs marked Done.
+    </div>
+    <div class="ma">
+      <button class="btn bp bfl" onclick="saveStockEdit()">💾 Save</button>
+      <button class="btn bs" onclick="closeOv('stkov')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- EVENT DETAIL -->
 <div class="ov" id="evov">
   <div class="modal">
@@ -893,13 +911,73 @@ async function loadStock(){
         +splitAll.map(function(s){return s.name+': '+s.qty.toLocaleString();}).join(' · ')
         +'</div>';
     }
+    window['stk_'+p.id]=p;
+    var editBtn=(role==='owner')
+      ?'<td><button class="btn bs bsm" onclick="openStockEdit(window[\'stk_'+p.id+'\'])">✏️</button></td>'
+      :'<td></td>';
     rows+='<tr><td><strong>'+dot+p.product+'</strong>'+splitHtml+'</td><td style="color:#666">'+p.size+'</td>'+
       '<td class="nr">'+cur.toLocaleString()+'</td>'+
       '<td class="nr">'+afterCell+'</td>'+
       '<td><div class="bar"><div class="barf" style="width:'+pct+'%;background:'+alertBc+'"></div></div></td>'+
-      '<td>'+pill(st==='ok'?'ok':st==='low'?'low':st==='warn'?'warn':'pend')+'</td></tr>';
+      '<td>'+pill(st==='ok'?'ok':st==='low'?'low':st==='warn'?'warn':'pend')+'</td>'+editBtn+'</tr>';
   });
-  document.getElementById('stbl').innerHTML='<table><thead><tr><th>Product</th><th>Size</th><th class="nr">Physical</th><th class="nr">After delivery</th><th>Level</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  document.getElementById('stbl').innerHTML='<table><thead><tr><th>Product</th><th>Size</th><th class="nr">Physical</th><th class="nr">After delivery</th><th>Level</th><th>Status</th>'+(role==='owner'?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+// ── STOCK EDIT ──
+function openStockEdit(p){
+  if(typeof p==='string'){try{p=JSON.parse(p);}catch(e){return;}}
+  document.getElementById('stk-product').textContent=p.product||'';
+  document.getElementById('stk-data').value=JSON.stringify(p);
+  var fieldsEl=document.getElementById('stk-fields');
+  fieldsEl.innerHTML='';
+  var split=p.split&&p.split.length>1?p.split:[{name:'Stock',qty:Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0))}];
+  split.forEach(function(s,i){
+    var row=document.createElement('div');
+    row.className='g2';
+    row.style.marginBottom='10px';
+    var labelDiv=document.createElement('div');
+    labelDiv.className='fg';
+    labelDiv.style.gridColumn='1/-1';
+    labelDiv.innerHTML='<label>'+s.name+' cups</label>'
+      +'<input type="number" id="stk-val-'+i+'" value="'+s.qty+'" min="0" placeholder="0" style="font-size:15px">'
+      +'<div style="font-size:11px;color:#999;margin-top:3px">Current: '+s.qty.toLocaleString()+' units</div>';
+    fieldsEl.appendChild(labelDiv);
+  });
+  document.getElementById('stkov').classList.add('op');
+  setTimeout(function(){var first=document.getElementById('stk-val-0');if(first)first.select();},100);
+}
+
+async function saveStockEdit(){
+  var p=JSON.parse(document.getElementById('stk-data').value||'{}');
+  var split=p.split&&p.split.length>1?p.split:[{name:'Stock',origProduct:p.product}];
+
+  // For each split source, find matching DB rows by original product name and update
+  for(var i=0;i<split.length;i++){
+    var newQty=parseInt(document.getElementById('stk-val-'+i).value)||0;
+    var srcName=split[i].name; // "New", "Washed", or "Stock"
+    // Find underlying DB rows matching this source
+    // We need to fetch raw stock to find matching row IDs
+    var r2=await DB().from('stock').select('id,product,colour');
+    if(!r2.data)continue;
+    var matchRows=r2.data.filter(function(row){
+      var pn=(row.product||'').toLowerCase();
+      if(srcName==='New')return pn.indexOf('washed')===-1&&pn.indexOf(((p.size||'').toLowerCase())||'500ml')>-1&&(pn.indexOf('frosted')>-1||pn.indexOf((p.colour||'').toLowerCase())>-1);
+      if(srcName==='Washed')return pn.indexOf('washed')>-1;
+      // Single stock: use all ids
+      return (p.ids||[p.id]).indexOf(row.id)>-1;
+    });
+    // If no match found, fall back to first underlying id
+    var idsToUpdate=matchRows.length?matchRows.map(function(r){return r.id;}):(i===0?[p.ids[0]||p.id]:[]);
+    for(var j=0;j<idsToUpdate.length;j++){
+      var upd={physical_stock:(j===0?newQty:0),total_received:0,total_outgoing:0};
+      await DB().from('stock').update(upd).eq('id',idsToUpdate[j]);
+    }
+  }
+  toast('✅ Stock updated','ok');
+  closeOv('stkov');
+  loadStock();
+  loadAlerts();
 }
 
 function calcDel(){
@@ -2297,7 +2375,7 @@ document.addEventListener('mouseout', function(e) {
   if(ce) tipEl.classList.remove('show');
 });
 
-['evov','edov','qaov','cardov'].forEach(function(id){
+['evov','edov','qaov','cardov','stkov'].forEach(function(id){
   document.getElementById(id).addEventListener('click',function(e){
     if(e.target===this)closeOv(id);
   });
