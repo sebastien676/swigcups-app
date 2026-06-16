@@ -952,14 +952,19 @@ async function saveStockEdit(){
   var p=JSON.parse(document.getElementById('stk-data').value||'{}');
   var split=p.split&&p.split.length>1?p.split:[{name:'Stock',ids:p.ids||[p.id]}];
   var anyFail=false;
+  console.log('saveStockEdit split:', JSON.stringify(split));
   for(var i=0;i<split.length;i++){
     var newQty=parseInt(document.getElementById('stk-val-'+i).value)||0;
     var idsToUpdate=split[i].ids||[];
+    console.log('Source:', split[i].name, 'qty:', newQty, 'ids:', idsToUpdate);
     if(!idsToUpdate.length){console.warn('No IDs for split',split[i].name);continue;}
     for(var j=0;j<idsToUpdate.length;j++){
+      var rowId=idsToUpdate[j];
       var upd={physical_stock:(j===0?newQty:0),total_received:0,total_outgoing:0};
-      var res=await DB().from('stock').update(upd).eq('id',idsToUpdate[j]);
-      if(res.error){console.error('Stock update error',res.error);anyFail=true;}
+      console.log('Updating id:', rowId, 'with:', upd);
+      var res=await DB().from('stock').update(upd).eq('id',rowId);
+      console.log('Result for id', rowId, ':', res.error||'OK', 'count:', res.count);
+      if(res.error){console.error('Stock update error id',rowId,res.error);anyFail=true;}
     }
   }
   if(anyFail){toast('⚠️ Some rows may not have saved — check console','err');}
