@@ -1801,9 +1801,28 @@ function renderCal(){
         var srow=(stock||[]).find(function(s){
           return (s.size===r.size)&&((s.colour||'').toLowerCase()===r.colour.toLowerCase());
         });
-        var available=srow?(srow.physical_stock||0)+(srow.total_received||0)-(srow.total_outgoing||0):0;
+        var available=srow?Math.max(0,(srow.physical_stock||0)+(srow.total_received||0)-(srow.total_outgoing||0)):0;
         var incoming=srow?(pendByProduct[srow.product]||0):0;
-        var afterDelivery=available+incoming;
+
+        // Deduct stock already committed to jobs in PREVIOUS weeks (before this viewed week)
+        var viewMon=getMon(calOff);
+        var alreadyCommitted=0;
+        (prints||[]).forEach(function(j){
+          if(j.status==='Done'||j.status==='Cancelled')return;
+          // Only jobs scheduled BEFORE the viewed week
+          var jMon=parseMonday(j.date_period);
+          if(!jMon||jMon>=viewMon)return;
+          // Same size+colour (normalized)
+          var jSz=(j.cup_size||'').toLowerCase();
+          var jCol=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
+          var rSz=r.size.toLowerCase();
+          var rCol=r.colour.toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
+          if(jSz===rSz&&jCol===rCol){
+            alreadyCommitted+=Math.round((j.qty_printed||0)*1.05);
+          }
+        });
+
+        var afterDelivery=Math.max(0,available+incoming-alreadyCommitted);
         var needed=r.stock;
         var shortfall=needed-afterDelivery;
         var availClass=shortfall>0?'#C0392B':'#1E8449';
@@ -1825,9 +1844,46 @@ function renderCal(){
         +'<span style="font-size:20px;font-weight:700;color:#C0392B">'+grandTotal.toLocaleString()+' units</span>'
         +'</div>';
       if(grandShortfall>0){
-        html+='<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 12px;background:#FADBD8;border-radius:8px;border-left:3px solid #C0392B">'
-          +'<span style="font-size:16px">⚠️</span>'
-          +'<span style="font-size:12px;font-weight:600;color:#7B241C">Shortfall of '+grandShortfall.toLocaleString()+' units across one or more colours — check Africa Plastics deliveries</span>'
+        // Build split by size+colour
+        var shortfallLines=rows2.filter(function(r){
+          var srow2=(stock||[]).find(function(s){return (s.size===r.size)&&((s.colour||'').toLowerCase()===r.colour.toLowerCase());});
+          var avail2=srow2?Math.max(0,(srow2.physical_stock||0)+(srow2.total_received||0)-(srow2.total_outgoing||0)):0;
+          var inc2=srow2?(pendByProduct[srow2.product]||0):0;
+          var viewMon2=getMon(calOff);
+          var comm2=0;
+          (prints||[]).forEach(function(j){
+            if(j.status==='Done'||j.status==='Cancelled')return;
+            var jMon2=parseMonday(j.date_period);
+            if(!jMon2||jMon2>=viewMon2)return;
+            var jSz=(j.cup_size||'').toLowerCase();
+            var jCol=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
+            if(jSz===r.size.toLowerCase()&&jCol===r.colour.toLowerCase())comm2+=Math.round((j.qty_printed||0)*1.05);
+          });
+          var af2=Math.max(0,avail2+inc2-comm2);
+          return r.stock>af2;
+        }).map(function(r){
+          var srow2=(stock||[]).find(function(s){return (s.size===r.size)&&((s.colour||'').toLowerCase()===r.colour.toLowerCase());});
+          var avail2=srow2?Math.max(0,(srow2.physical_stock||0)+(srow2.total_received||0)-(srow2.total_outgoing||0)):0;
+          var inc2=srow2?(pendByProduct[srow2.product]||0):0;
+          var viewMon2=getMon(calOff);
+          var comm2=0;
+          (prints||[]).forEach(function(j){
+            if(j.status==='Done'||j.status==='Cancelled')return;
+            var jMon2=parseMonday(j.date_period);
+            if(!jMon2||jMon2>=viewMon2)return;
+            var jSz=(j.cup_size||'').toLowerCase();
+            var jCol=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
+            if(jSz===r.size.toLowerCase()&&jCol===r.colour.toLowerCase())comm2+=Math.round((j.qty_printed||0)*1.05);
+          });
+          var af2=Math.max(0,avail2+inc2-comm2);
+          return r.size+' '+r.colour+': <strong>'+(r.stock-af2).toLocaleString()+' short</strong>';
+        }).join('<br>');
+        html+='<div style="margin-top:8px;padding:10px 14px;background:#FADBD8;border-radius:8px;border-left:3px solid #C0392B">'
+          +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+          +'<span style="font-size:15px">⚠️</span>'
+          +'<span style="font-size:12px;font-weight:700;color:#7B241C">Shortfall — '+grandShortfall.toLocaleString()+' units total</span>'
+          +'</div>'
+          +'<div style="font-size:12px;color:#7B241C;line-height:1.8">'+shortfallLines+'</div>'
           +'</div>';
       } else {
         html+='<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 12px;background:#D5F5E3;border-radius:8px;border-left:3px solid #1E8449">'
@@ -2274,22 +2330,57 @@ async function toggleDone(id,st){
   if(job){
     var used=Math.round((job.qty_printed||0)*1.05);
     var jobColourNorm=(job.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted').replace('dark blue','blue');
-    // Find matching merged stock row (case-insensitive, handles Frosted/Washed Frosted aliases)
-    var srow=(stock||[]).find(function(s){
-      if(s.size!==job.cup_size)return false;
-      var sc=(s.colour||'').toLowerCase();
-      var jc=jobColourNorm;
-      return sc===jc||sc==='frosted'&&(jc==='frosted'||jc==='washed frosted'||jc==='new frosted');
-    });
-    if(srow&&used>0){
-      var delta=ns==='Done'?used:-used;
-      // Update ALL underlying DB rows for this merged stock entry
-      var idsToUpdate=srow.ids&&srow.ids.length?srow.ids:[srow.id];
-      // Distribute delta proportionally across rows — simplest: add all to first row with enough stock
-      var firstId=idsToUpdate[0];
-      var curOut=srow.total_outgoing||0;
-      var newOut=Math.max(0,curOut+delta);
-      await DB().from('stock').update({total_outgoing:newOut}).eq('id',firstId);
+    var isFrosted=jobColourNorm==='frosted';
+    var delta=ns==='Done'?used:-used;
+
+    if(isFrosted){
+      // Fetch live DB values for New and Washed rows
+      var rawR=await DB().from('stock').select('id,product,physical_stock,total_received,total_outgoing')
+        .eq('size',job.cup_size).ilike('product','%frosted%');
+      if(rawR.data&&rawR.data.length){
+        // Separate New (not washed) and Washed rows
+        var newRows=rawR.data.filter(function(r){return r.product.toLowerCase().indexOf('washed')===-1;});
+        var washedRows=rawR.data.filter(function(r){return r.product.toLowerCase().indexOf('washed')>-1;});
+        var remaining=Math.abs(delta);
+        var sign=delta>0?1:-1;
+
+        // Deduct from New first
+        for(var i=0;i<newRows.length&&remaining>0;i++){
+          var nr=newRows[i];
+          var newStock=Math.max(0,(nr.physical_stock||0)+(nr.total_received||0)-(nr.total_outgoing||0));
+          var canTake=delta>0?Math.min(remaining,newStock):remaining;
+          if(canTake>0||delta<0){
+            var takeAmt=delta>0?canTake:remaining;
+            var newOut=Math.max(0,(nr.total_outgoing||0)+sign*takeAmt);
+            await DB().from('stock').update({total_outgoing:newOut}).eq('id',nr.id);
+            remaining-=takeAmt;
+          }
+        }
+        // Fallback to Washed if New exhausted
+        for(var j=0;j<washedRows.length&&remaining>0;j++){
+          var wr=washedRows[j];
+          var washedStock=Math.max(0,(wr.physical_stock||0)+(wr.total_received||0)-(wr.total_outgoing||0));
+          var canTakeW=delta>0?Math.min(remaining,washedStock):remaining;
+          if(canTakeW>0||delta<0){
+            var takeAmtW=delta>0?canTakeW:remaining;
+            var newOutW=Math.max(0,(wr.total_outgoing||0)+sign*takeAmtW);
+            await DB().from('stock').update({total_outgoing:newOutW}).eq('id',wr.id);
+            remaining-=takeAmtW;
+          }
+        }
+      }
+    } else {
+      // Non-Frosted: simple single-row update
+      var srow=(stock||[]).find(function(s){
+        if(s.size!==job.cup_size)return false;
+        return (s.colour||'').toLowerCase()===jobColourNorm;
+      });
+      if(srow&&used>0){
+        var idsToUpdate=srow.ids&&srow.ids.length?srow.ids:[srow.id];
+        var curOut=srow.total_outgoing||0;
+        var newOut=Math.max(0,curOut+delta);
+        await DB().from('stock').update({total_outgoing:newOut}).eq('id',idsToUpdate[0]);
+      }
     }
   }
 
