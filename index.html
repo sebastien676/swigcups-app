@@ -1171,12 +1171,21 @@ async function loadAPDeliveries(){
   // Match movements to POs via notes or reference field containing PO number
   var delivsByPO={};
   movs.forEach(function(m){
-    // Try to extract PO number from reference or notes
-    var ref=(m.reference||'')+(m.notes||'');
-    var match=ref.match(/PO-?\d+/i);
-    var poKey=match?match[0].toUpperCase().replace('-','').replace('PO','PO-'):'UNMATCHED';
-    if(!delivsByPO[poKey])delivsByPO[poKey]=[];
-    delivsByPO[poKey].push(m);
+    // Extract ALL PO numbers from reference + notes (e.g. "PO-361+363" = two POs)
+    var combined=(m.reference||'')+' '+(m.notes||'');
+    // Match patterns: PO-361, PO361, then also "+363" after a PO number
+    var poNums=[];
+    // Full PO numbers
+    var full=combined.match(/PO-?(\d+)/gi)||[];
+    full.forEach(function(p){poNums.push('PO-'+p.replace(/[^0-9]/g,''));});
+    // Short numbers after + (e.g. "PO-361+363" → also PO-363)
+    var shorts=combined.match(/\+(\d{3,})/g)||[];
+    shorts.forEach(function(s){poNums.push('PO-'+s.replace(/[^0-9]/g,''));});
+    if(!poNums.length)poNums=['UNMATCHED'];
+    poNums.forEach(function(poKey){
+      if(!delivsByPO[poKey])delivsByPO[poKey]=[];
+      delivsByPO[poKey].push(m);
+    });
   });
 
   // Metrics
@@ -1226,37 +1235,34 @@ async function loadAPDeliveries(){
     html+='<table style="margin-bottom:20px">';
     html+='<thead><tr>'
       +'<th>PO#</th><th>Date</th><th>Product</th>'
-      +'<th class="nr">PO Qty</th><th>Delivery Ref</th>'
-      +'<th class="nr">Qty Received</th><th class="nr" style="color:#C0392B">Still to receive</th>'
+      +'<th class="nr">Ordered</th>'
+      +'<th class="nr" style="color:#1E8449">Received</th>'
+      +'<th class="nr" style="color:#C0392B">Still due</th>'
       +'<th>Status</th>'
+      +(role==='owner'?'<th></th>':'')
       +'</tr></thead><tbody>';
 
     pendPOOrder.forEach(function(pn){
       var lines=pendByPO[pn];
       var isFirst=true;
       lines.forEach(function(p){
-        // Qty received: from movements if available, else infer from status
+        // Match movements to this PO by product name (exact)
         var dels=delivsByPO[pn]||[];
         var prodDels=dels.filter(function(m){
-          var mn=(m.product||'').toLowerCase();
-          var pn2=(p.product||'').toLowerCase();
-          return mn===pn2||mn.indexOf(pn2.split(' ')[1]||'___')>-1;
+          return (m.product||'').toLowerCase()===(p.product||'').toLowerCase();
         });
         var qtyReceived=prodDels.reduce(function(s,m){return s+(m.qty_in||0);},0);
-        // For Partial status with notes, try to parse received from notes
-        if(!qtyReceived&&p.status==='Partial'&&p.notes){
-          var m2=p.notes.match(/(\d[\d\s]*)\s*received/i)||p.notes.match(/rcvd[:\s]+(\d[\d\s]*)/i)||p.notes.match(/(\d[\d ]+)\s*cup/i);
-          if(m2)qtyReceived=parseInt(m2[1].replace(/\s/g,''))||0;
-        }
         var stillLeft=Math.max(0,(p.qty_ordered||0)-qtyReceived);
-        var delRef=prodDels.length
-          ?prodDels.map(function(m){return '<span style="white-space:nowrap">'+m.date+(m.reference?' — '+m.reference:'')+'</span>';}).join('<br>')
-          :(p.delivery_date?p.delivery_date+(p.notes?'<br><span style="font-size:10px;color:#888">'+p.notes+'</span>':''):'<span style="color:#aaa">—</span>');
         var bg=SBG[p.status]||'#fff';
-        // Received display
+        // Deduplicate movement refs
+        var seenP={};
+        var delRef=prodDels.length
+          ?prodDels.filter(function(m){var k=(m.date||'')+(m.reference||'');if(seenP[k])return false;seenP[k]=true;return true;})
+              .map(function(m){return '<span style="white-space:nowrap;font-size:11px">'+(m.date||'')+(m.reference?' · '+m.reference:'')+'</span>';}).join('<br>')
+          :(p.delivery_date?'<span style="font-size:11px;color:#888">'+p.delivery_date+'</span>':'<span style="color:#ccc">—</span>');
         var rcvDisplay=qtyReceived
           ?'<span style="color:#1E8449;font-weight:700">'+qtyReceived.toLocaleString()+'</span>'
-          :(p.status==='Partial'?'<span style="color:#D35400">check notes</span>':'<span style="color:#ccc">—</span>');
+          :'<span style="color:#ccc">—</span>';
         var stillDisplay=stillLeft
           ?'<span style="color:#C0392B;font-weight:700">'+stillLeft.toLocaleString()+'</span>'
           :'<span style="color:#1E8449;font-weight:700">✅ 0</span>';
@@ -1322,15 +1328,16 @@ async function loadAPDeliveries(){
       // Find actual deliveries for this PO
       var dels=delivsByPO[p.po_number||'']||[];
       var prodDels=dels.filter(function(m){
-        var mn=(m.product||'').toLowerCase();
-        var pn2=(p.product||'').toLowerCase();
-        return mn===pn2||mn.indexOf(pn2.split(' ')[1]||'x')>-1;
+        return (m.product||'').toLowerCase()===(p.product||'').toLowerCase();
       });
       var qtyReceived=prodDels.reduce(function(s,m){return s+(m.qty_in||0);},0);
-      var stillLeft=Math.max(0,(p.qty_ordered||0)-qtyReceived);
+      var isFullyDelivered=(p.status==='Delivered'||p.status==='Over-delivered');
+      var stillLeft=isFullyDelivered?0:Math.max(0,(p.qty_ordered||0)-qtyReceived);
+      var seenH={};
       var delRef=prodDels.length
-        ?prodDels.map(function(m){return (m.date||'')+(m.reference?' — '+m.reference:'');}).join('<br>')
-        :(p.delivery_date?p.delivery_date:'—');
+        ?prodDels.filter(function(m){var k=(m.date||'')+(m.reference||'');if(seenH[k])return false;seenH[k]=true;return true;})
+            .map(function(m){return '<span style="font-size:11px">'+(m.date||'')+(m.reference?' · '+m.reference:'')+'</span>';}).join('<br>')
+        :(p.delivery_date||'—');
       var bg=p.status==='Done'||p.status==='Delivered'||p.status==='Over-delivered'?'#fff':SBG[p.status]||'#fff';
       html+='<tr style="background:'+bg+'">'
         +'<td style="font-weight:700;color:#1F4E79">'+(p.po_number||'—')+'</td>'
@@ -1493,6 +1500,57 @@ async function editInvoice(id){
   await DB().from('purchase_orders').update({invoice_number:val||null}).eq('id',id);
   toast('✅ Invoice number saved','ok');
   loadPOs();
+}
+
+async function receiveDelivery(id, totalOrdered){
+  // Get current PO
+  var r=await DB().from('purchase_orders').select('*').eq('id',id).single();
+  if(!r.data){toast('Error loading PO','err');return;}
+  var p=r.data;
+  var alreadyReceived=p.qty_received||0;
+  var stillDue=totalOrdered-alreadyReceived;
+  var d=new Date();
+  var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+
+  var qtyStr=prompt('Qty received today (still due: '+stillDue.toLocaleString()+'):',''+stillDue);
+  if(qtyStr===null)return;
+  var qty=parseInt(qtyStr)||0;
+  if(!qty){toast('Enter a valid quantity','err');return;}
+
+  var ref=prompt('Delivery reference (e.g. Ronald #68):', '');
+  if(ref===null)return;
+
+  var delivDate=prompt('Delivery date:', ds);
+  if(delivDate===null)return;
+
+  var newReceived=alreadyReceived+qty;
+  var isComplete=newReceived>=(totalOrdered*0.99); // 99% = complete
+  var newStatus=isComplete?'Delivered':'Partial';
+
+  // Update PO
+  var update={qty_received:newReceived, status:newStatus, delivery_date:delivDate||ds};
+  await DB().from('purchase_orders').update(update).eq('id',id);
+
+  // Also record in movements table
+  await DB().from('movements').insert([{
+    date:delivDate||ds,
+    type:'Delivery',
+    reference:ref||'',
+    product:p.product,
+    qty_in:qty,
+    notes:p.po_number+(ref?' — '+ref:'')
+  }]);
+
+  // Update stock total_received
+  var sRes=await DB().from('stock').select('id,product,total_received').ilike('product',p.product);
+  if(sRes.data&&sRes.data.length){
+    var srow=sRes.data[0];
+    await DB().from('stock').update({total_received:(srow.total_received||0)+qty}).eq('id',srow.id);
+  }
+
+  toast(isComplete?'✅ PO fully delivered!':'📦 Partial delivery recorded — '+qty.toLocaleString()+' units','ok');
+  loadAPDeliveries();
+  loadStock();
 }
 
 async function markPaid(id,alreadyPaid){
