@@ -3120,17 +3120,49 @@ function downloadDeliveryCard(ev){
   // Action buttons
   previewActions.innerHTML='';
 
-  // Download as HTML
+  // ── Helper: generate PNG via lazy-loaded html2canvas ──
+  function generateCardPng(cb){
+    function doCapture(){
+      var tmp=document.createElement('div');
+      tmp.style.cssText='position:fixed;left:-9999px;top:0;width:640px;background:#fff;padding:28px;font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a';
+      var st=document.createElement('style');st.textContent=cardCSS;tmp.appendChild(st);
+      var bd=document.createElement('div');bd.innerHTML=cardInner;tmp.appendChild(bd);
+      document.body.appendChild(tmp);
+      html2canvas(tmp,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false}).then(function(canvas){
+        if(tmp.parentNode)document.body.removeChild(tmp);
+        cb(null,canvas);
+      }).catch(function(err){
+        if(tmp.parentNode)document.body.removeChild(tmp);
+        cb(err,null);
+      });
+    }
+    if(window.html2canvas){doCapture();}
+    else{
+      var s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+      s.onload=function(){doCapture();};
+      s.onerror=function(){cb(new Error('html2canvas unavailable'),null);};
+      document.head.appendChild(s);
+    }
+  }
+
+  // ⬇️ Download PNG
   var dlBtn=document.createElement('button');
-  dlBtn.className='btn bp';dlBtn.style.flex='1';dlBtn.textContent='⬇️ Download';
+  dlBtn.className='btn bp';dlBtn.style.flex='1';dlBtn.textContent='⬇️ PNG';
   dlBtn.addEventListener('click',function(){
-    var blob=new Blob([fullHtml],{type:'text/html'});
-    downloadBlob(blob,filename+'.html');
-    toast('✓ Downloaded','ok');
+    dlBtn.textContent='⏳...';dlBtn.disabled=true;
+    generateCardPng(function(err,canvas){
+      dlBtn.textContent='⬇️ PNG';dlBtn.disabled=false;
+      if(err||!canvas){toast('❌ PNG failed — check connection','err');return;}
+      canvas.toBlob(function(blob){
+        if(blob)downloadBlob(blob,filename+'.png');
+        toast('✓ PNG downloaded','ok');
+      },'image/png');
+    });
   });
   previewActions.appendChild(dlBtn);
 
-  // Print
+  // 🖨️ Print
   var prBtn=document.createElement('button');
   prBtn.className='btn bs';prBtn.style.flex='1';prBtn.textContent='🖨️ Print';
   prBtn.addEventListener('click',function(){
@@ -3141,13 +3173,29 @@ function downloadDeliveryCard(ev){
   });
   previewActions.appendChild(prBtn);
 
-  // Share (text-based via Web Share)
+  // 📤 Share — PNG on mobile, text fallback on desktop
   if(navigator.share){
     var shBtn=document.createElement('button');
     shBtn.className='btn bs';shBtn.style.flex='1';shBtn.textContent='📤 Share';
     shBtn.addEventListener('click',function(){
-      var shareText='Swig Cups - '+(ev.delivery_type||'Delivery')+' | Client: '+ev.client+' | Date: '+(ev.delivery_date||'TBC')+(ev.delivery_address?' | '+ev.delivery_address:'')+(ev.contact_name?' | '+ev.contact_name:'')+(ev.contact_phone?' | '+ev.contact_phone:'')+' | Qty: '+(ev.qty_printed||0).toLocaleString()+' cups ('+(ev.cup_size||'')+' '+(ev.cup_colour||'')+')';      navigator.share({title:'Delivery Card — '+ev.client,text:shareText})
-        .catch(function(){});
+      shBtn.textContent='⏳...';shBtn.disabled=true;
+      var shareText='Swig Cups - '+(ev.delivery_type||'Delivery')+' | Client: '+ev.client+' | Date: '+(ev.delivery_date||'TBC')+(ev.delivery_address?' | '+ev.delivery_address:'')+(ev.contact_name?' | '+ev.contact_name:'')+(ev.contact_phone?' | '+ev.contact_phone:'')+' | Qty: '+(ev.qty_printed||0).toLocaleString()+' cups ('+(ev.cup_size||'')+' '+(ev.cup_colour||'')+')';
+      generateCardPng(function(err,canvas){
+        shBtn.textContent='📤 Share';shBtn.disabled=false;
+        if(err||!canvas){
+          navigator.share({title:'Delivery Card — '+ev.client,text:shareText}).catch(function(){});
+          return;
+        }
+        canvas.toBlob(function(blob){
+          if(!blob){navigator.share({title:'Delivery Card — '+ev.client,text:shareText}).catch(function(){});return;}
+          var file=new File([blob],filename+'.png',{type:'image/png'});
+          if(navigator.canShare&&navigator.canShare({files:[file]})){
+            navigator.share({files:[file],title:'Delivery Card — '+ev.client,text:shareText}).catch(function(){});
+          } else {
+            navigator.share({title:'Delivery Card — '+ev.client,text:shareText}).catch(function(){});
+          }
+        },'image/png');
+      });
     });
     previewActions.appendChild(shBtn);
   }
