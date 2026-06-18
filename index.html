@@ -370,6 +370,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <button onclick="showTab('myjobs',this)" id="wmj" style="display:none">✅ My Jobs</button>
     <button onclick="showTab('deliveries',this)">🚚 Deliveries</button>
     <button onclick="showTab('messages',this)">💬 Messages <span class="ab" id="msgbn" style="display:none">!</span></button>
+    <button onclick="showTab('stats',this)">📊 Stats</button>
     <button onclick="showTab('alerts',this)">🚨 Alerts <span class="ab" id="abn">!</span></button>
   </nav>
 
@@ -608,6 +609,22 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div id="msg-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
   </div>
 
+  <div id="tab-stats" class="sec">
+    <div class="ch" style="margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:700">📊 Warda Capacity Stats</h2>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="stats-weeks" onchange="loadStats()" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px">
+          <option value="4">Last 4 weeks</option>
+          <option value="8" selected>Last 8 weeks</option>
+          <option value="12">Last 12 weeks</option>
+          <option value="26">Last 26 weeks</option>
+        </select>
+        <button class="btn bs bsm" onclick="loadStats()">↻</button>
+      </div>
+    </div>
+    <div id="stats-content"><div class="ld"><div class="sp"></div>Loading...</div></div>
+  </div>
+
   <div id="tab-alerts" class="sec">
     <div class="ch" style="margin-bottom:14px">
       <h2 style="font-size:16px;font-weight:700">🚨 Alerts & Actions</h2>
@@ -803,7 +820,7 @@ async function uploadArtwork(jobId, file) {
     reader.readAsDataURL(file);
   });
 }
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','alerts'],fred:['stock','jobs','print','cal','deliveries','messages'],warda:['stock','myjobs','cal','deliveries','messages']};
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','stats','alerts'],fred:['stock','jobs','print','cal','deliveries','messages'],warda:['stock','myjobs','cal','deliveries','messages']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
 var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},delCalOff=0,delCalSelectedDate=null,delCalView='month';
 
@@ -824,7 +841,7 @@ function initRole(r){
   document.getElementById('rt').textContent=RLAB[r];
   var allowed=RTABS[r];
   var btns=document.querySelectorAll('nav button');
-  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','alerts'];
+  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','stats','alerts'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
   if(r==='owner'){document.getElementById('badd').style.display='flex';}
@@ -844,6 +861,7 @@ function showTab(n,b){
   if(n==='myjobs')loadMyJobs();
   if(n==='deliveries')loadDeliveries();
   if(n==='messages')loadMessages();
+  if(n==='stats')loadStats();
 }
 
 function togglePnl(id){document.getElementById(id).classList.toggle('op');}
@@ -3524,6 +3542,162 @@ async function checkUnreadMessages(){
   });
   var badge=document.getElementById('msgbn');
   if(badge){badge.style.display=unread.length?'':'none';badge.textContent=unread.length||'';}
+}
+
+
+// ── WARDA CAPACITY STATS ──
+async function loadStats(){
+  var el=document.getElementById('stats-content');
+  el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
+  var weeksEl=document.getElementById('stats-weeks');
+  var nWeeks=weeksEl?parseInt(weeksEl.value)||8:8;
+
+  // Fetch all Done jobs
+  var r=await DB().from('print_schedule').select('*').eq('status','Done');
+  if(!r.data){el.innerHTML='<div class="ld">Error</div>';return;}
+
+  var jobs=r.data.filter(function(j){return j.print_date;});
+  if(!jobs.length){el.innerHTML='<div style="text-align:center;padding:40px;color:#aaa">No completed jobs yet</div>';return;}
+
+  // Filter to nWeeks
+  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-nWeeks*7);
+  var cutISO=cutoff.getFullYear()+'-'+String(cutoff.getMonth()+1).padStart(2,'0')+'-'+String(cutoff.getDate()).padStart(2,'0');
+  var filtered=jobs.filter(function(j){return j.print_date>=cutISO;});
+
+  // ── By print date ──
+  var byDate={};
+  filtered.forEach(function(j){
+    var d=j.print_date;
+    if(!byDate[d])byDate[d]={jobs:0,cups:0,prints:0,colours:{}};
+    byDate[d].jobs++;
+    byDate[d].cups+=(j.qty_printed||0);
+    byDate[d].prints+=(j.qty_printed||0)*(j.num_colours||1);
+    var nc=j.num_colours||1;
+    byDate[d].colours[nc]=(byDate[d].colours[nc]||0)+1;
+  });
+
+  var dates=Object.keys(byDate).sort();
+  var nDays=dates.length;
+
+  // ── Averages ──
+  var totalJobs=filtered.length;
+  var totalCups=filtered.reduce(function(s,j){return s+(j.qty_printed||0);},0);
+  var totalPrints=filtered.reduce(function(s,j){return s+(j.qty_printed||0)*(j.num_colours||1);},0);
+  var avgJobsDay=nDays?(totalJobs/nDays).toFixed(1):0;
+  var avgCupsDay=nDays?Math.round(totalCups/nDays):0;
+  var avgPrintsDay=nDays?Math.round(totalPrints/nDays):0;
+
+  // ── By day of week ──
+  var DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var byDow={0:{jobs:0,cups:0,days:0},1:{jobs:0,cups:0,days:0},2:{jobs:0,cups:0,days:0},3:{jobs:0,cups:0,days:0},4:{jobs:0,cups:0,days:0},5:{jobs:0,cups:0,days:0},6:{jobs:0,cups:0,days:0}};
+  dates.forEach(function(d){
+    var dt=new Date(d+'T00:00:00');
+    var dow=(dt.getDay()+6)%7; // Mon=0
+    byDow[dow].jobs+=byDate[d].jobs;
+    byDow[dow].cups+=byDate[d].cups;
+    byDow[dow].days++;
+  });
+
+  // ── By num colours ──
+  var byColours={1:0,2:0,3:0,4:0};
+  filtered.forEach(function(j){var nc=Math.min(j.num_colours||1,4);byColours[nc]++;});
+
+  // ── Weekly trend ──
+  var byWeek={};
+  filtered.forEach(function(j){
+    var dt=new Date(j.print_date+'T00:00:00');
+    var dow=dt.getDay();
+    var mon=new Date(dt);mon.setDate(dt.getDate()-(dow===0?6:dow-1));
+    var wk=mon.getFullYear()+'-'+String(mon.getMonth()+1).padStart(2,'0')+'-'+String(mon.getDate()).padStart(2,'0');
+    if(!byWeek[wk])byWeek[wk]={jobs:0,cups:0,prints:0};
+    byWeek[wk].jobs++;
+    byWeek[wk].cups+=(j.qty_printed||0);
+    byWeek[wk].prints+=(j.qty_printed||0)*(j.num_colours||1);
+  });
+  var weeks=Object.keys(byWeek).sort().slice(-nWeeks);
+
+  // ── Render ──
+  var maxBarJobs=Math.max.apply(null,dates.map(function(d){return byDate[d].jobs;}))||1;
+  var maxBarCups=Math.max.apply(null,dates.map(function(d){return byDate[d].cups;}))||1;
+
+  var html='';
+
+  // Summary metrics
+  html+='<div class="mts" style="margin-bottom:16px">'
+    +'<div class="mt gn"><div class="lb">Avg jobs/day</div><div class="vl">'+avgJobsDay+'</div><div class="sb2">active days</div></div>'
+    +'<div class="mt"><div class="lb">Avg cups/day</div><div class="vl">'+avgCupsDay.toLocaleString()+'</div><div class="sb2">printed</div></div>'
+    +'<div class="mt or"><div class="lb">Avg prints/day</div><div class="vl">'+avgPrintsDay.toLocaleString()+'</div><div class="sb2">qty × colours</div></div>'
+    +'<div class="mt"><div class="lb">Active days</div><div class="vl">'+nDays+'</div><div class="sb2">in period</div></div>'
+    +'</div>';
+
+  // By day of week
+  html+='<div class="card" style="margin-bottom:14px">'
+    +'<div class="ch" style="margin-bottom:12px"><span class="ct">Average by day of week</span></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">';
+  for(var d=0;d<7;d++){
+    var dw=byDow[d];
+    var avgJ=dw.days?(dw.jobs/dw.days).toFixed(1):'-';
+    var avgC=dw.days?Math.round(dw.cups/dw.days).toLocaleString():'-';
+    var pct=dw.days?(dw.jobs/dw.days)/3*100:0; // 3 = approx max
+    html+='<div style="text-align:center;background:#f7f8fa;border-radius:8px;padding:10px 6px">'
+      +'<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:6px">'+DAYS[d]+'</div>'
+      +'<div style="font-size:18px;font-weight:700;color:#0E6655">'+avgJ+'</div>'
+      +'<div style="font-size:10px;color:#aaa;margin-top:2px">jobs/day</div>'
+      +'<div style="font-size:11px;font-weight:600;color:#444;margin-top:4px">'+avgC+'</div>'
+      +'<div style="font-size:10px;color:#aaa">cups avg</div>'
+      +'<div style="margin-top:6px;height:4px;background:#e0e0e0;border-radius:2px;overflow:hidden">'
+      +'<div style="height:100%;background:#0E6655;border-radius:2px;width:'+Math.min(100,pct)+'%"></div>'
+      +'</div>'
+      +'</div>';
+  }
+  html+='</div></div>';
+
+  // By number of colours
+  html+='<div class="card" style="margin-bottom:14px">'
+    +'<div class="ch" style="margin-bottom:12px"><span class="ct">Jobs by number of colours</span><span style="font-size:11px;color:#888">Impact on Warda time</span></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">';
+  var colLabels={1:'1 colour',2:'2 colours',3:'3 colours',4:'4 colours'};
+  var colColors={1:'#0E6655',2:'#D35400',3:'#C0392B',4:'#8E24AA'};
+  var totalC=totalJobs||1;
+  for(var nc=1;nc<=4;nc++){
+    var cnt=byColours[nc]||0;
+    var pctC=Math.round(cnt/totalC*100);
+    var avgCupsC=cnt?Math.round(filtered.filter(function(j){return (j.num_colours||1)===nc;}).reduce(function(s,j){return s+(j.qty_printed||0);},0)/cnt):0;
+    html+='<div style="text-align:center;background:#f7f8fa;border-radius:8px;padding:12px 6px;border-top:3px solid '+colColors[nc]+'">'
+      +'<div style="font-size:10px;font-weight:700;color:#888;margin-bottom:6px">'+colLabels[nc]+'</div>'
+      +'<div style="font-size:22px;font-weight:700;color:'+colColors[nc]+'">'+cnt+'</div>'
+      +'<div style="font-size:10px;color:#aaa">jobs ('+pctC+'%)</div>'
+      +'<div style="font-size:12px;font-weight:600;color:#444;margin-top:6px">'+avgCupsC.toLocaleString()+'</div>'
+      +'<div style="font-size:10px;color:#aaa">avg cups</div>'
+      +'</div>';
+  }
+  html+='</div></div>';
+
+  // Weekly trend table
+  html+='<div class="card">'
+    +'<div class="ch" style="margin-bottom:12px"><span class="ct">Weekly trend</span></div>'
+    +'<div style="overflow-x:auto"><table>'
+    +'<thead><tr>'
+    +'<th>Week of</th><th class="nr">Jobs</th><th class="nr">Cups</th><th class="nr">Prints</th><th>Load</th>'
+    +'</tr></thead><tbody>';
+  var maxWJobs=Math.max.apply(null,weeks.map(function(w){return byWeek[w].jobs;}))||1;
+  weeks.slice().reverse().forEach(function(w){
+    var wk=byWeek[w];
+    var pctW=Math.round(wk.jobs/maxWJobs*100);
+    var loadCol=wk.jobs>=10?'#C0392B':wk.jobs>=6?'#D35400':'#1E8449';
+    html+='<tr>'
+      +'<td style="font-size:12px;color:#666">'+w+'</td>'
+      +'<td class="nr" style="font-weight:700">'+wk.jobs+'</td>'
+      +'<td class="nr">'+wk.cups.toLocaleString()+'</td>'
+      +'<td class="nr">'+wk.prints.toLocaleString()+'</td>'
+      +'<td style="min-width:120px"><div style="height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden">'
+      +'<div style="height:100%;background:'+loadCol+';border-radius:3px;width:'+pctW+'%"></div>'
+      +'</div><span style="font-size:10px;color:'+loadCol+';font-weight:600;margin-left:4px">'+wk.jobs+' jobs</span></td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div></div>';
+
+  el.innerHTML=html;
 }
 
 
