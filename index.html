@@ -1128,14 +1128,51 @@ async function saveDel(){
   var date=document.getElementById('dd').value;
   var ref=document.getElementById('dr').value;
   var notes=document.getElementById('dn2').value;
+
+  // 1. Record movement
   await DB().from('movements').insert([{date:date,type:'Delivery',reference:ref,product:prod,qty_in:tot,notes:notes}]);
-  var item=stock.find(function(p){return p.product===prod;});
-  if(item)await DB().from('stock').update({total_received:(item.total_received||0)+tot}).eq('id',item.id);
+
+  // 2. Update stock — fetch raw DB rows for this product (not consolidated)
+  // For Frosted: add to "New" row (not Washed)
+  var prodNorm=(prod||'').toLowerCase();
+  var isFrosted=prodNorm.indexOf('frosted')>-1&&prodNorm.indexOf('washed')===-1;
+  var stockQuery=isFrosted
+    ?await DB().from('stock').select('id,product,total_received').eq('product',prod)
+    :await DB().from('stock').select('id,product,total_received').ilike('product',prod);
+  if(stockQuery.data&&stockQuery.data.length){
+    // Update all matching rows (usually 1)
+    var srow=stockQuery.data[0];
+    await DB().from('stock').update({total_received:(srow.total_received||0)+tot}).eq('id',srow.id);
+  }
+
+  // 3. Try to auto-update matching PO status based on ref/notes
+  // Extract PO numbers from ref + notes
+  var combined=(ref||'')+' '+(notes||'');
+  var poMatches=combined.match(/PO-(\d+)/gi)||[];
+  var isComplete=combined.toLowerCase().indexOf('complet')>-1||combined.toLowerCase().indexOf('complete')>-1;
+  if(poMatches.length){
+    for(var pi=0;pi<poMatches.length;pi++){
+      var poNum=poMatches[pi].toUpperCase();
+      // Find matching PO with this product
+      var poRes=await DB().from('purchase_orders').select('id,qty_ordered,status')
+        .eq('po_number',poNum).ilike('product',prod.split(' ')[0]+'%');
+      if(poRes.data&&poRes.data.length){
+        var po=poRes.data[0];
+        // If marked COMPLETE or full qty received → mark Delivered
+        var newStatus=isComplete?'Delivered':'Partial';
+        if(po.status!=='Delivered'&&po.status!=='Over-delivered'){
+          await DB().from('purchase_orders').update({status:newStatus,delivery_date:date}).eq('id',po.id);
+        }
+      }
+    }
+  }
+
   toast('✓ '+tot.toLocaleString()+' units recorded','ok');
   togglePnl('pdel');
   document.getElementById('dbx').value='';
   document.getElementById('dcalc').textContent='Total: — units';
   loadStock();
+  loadPOs();
 }
 
 // ── PURCHASE ORDERS SUB-TABS ──
