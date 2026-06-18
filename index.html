@@ -1207,18 +1207,24 @@ async function loadAPDeliveries(){
   // Build delivery map: po_number -> [{date, qty_in, reference}]
   // Match movements to POs via notes or reference field containing PO number
   var delivsByPO={};
+  function extractPONums(str){
+    var nums=[];
+    // Match: PO-372, PO372, P.O 372, P.O. 372, P.O372, po-372 etc.
+    var rx=/p\.?\s*o\.?\s*[-#]?\s*(\d{3,})/gi;
+    var m2;
+    while((m2=rx.exec(str))!==null){nums.push('PO-'+m2[1]);}
+    // Also match +363 after a PO number (e.g. "PO-361+363")
+    var rx2=/\+(\d{3,})/g;
+    while((m2=rx2.exec(str))!==null){nums.push('PO-'+m2[1]);}
+    return nums;
+  }
   movs.forEach(function(m){
-    // Extract ALL PO numbers from reference + notes (e.g. "PO-361+363" = two POs)
     var combined=(m.reference||'')+' '+(m.notes||'');
-    // Match patterns: PO-361, PO361, then also "+363" after a PO number
-    var poNums=[];
-    // Full PO numbers
-    var full=combined.match(/PO-?(\d+)/gi)||[];
-    full.forEach(function(p){poNums.push('PO-'+p.replace(/[^0-9]/g,''));});
-    // Short numbers after + (e.g. "PO-361+363" → also PO-363)
-    var shorts=combined.match(/\+(\d{3,})/g)||[];
-    shorts.forEach(function(s){poNums.push('PO-'+s.replace(/[^0-9]/g,''));});
+    var poNums=extractPONums(combined);
     if(!poNums.length)poNums=['UNMATCHED'];
+    // Deduplicate PO numbers for this movement
+    var seen={};
+    poNums=poNums.filter(function(p){if(seen[p])return false;seen[p]=true;return true;});
     poNums.forEach(function(poKey){
       if(!delivsByPO[poKey])delivsByPO[poKey]=[];
       delivsByPO[poKey].push(m);
@@ -1273,6 +1279,7 @@ async function loadAPDeliveries(){
     html+='<thead><tr>'
       +'<th>PO#</th><th>Date</th><th>Product</th>'
       +'<th class="nr">Ordered</th>'
+      +'<th>Delivery ref</th>'
       +'<th class="nr" style="color:#1E8449">Received</th>'
       +'<th class="nr" style="color:#C0392B">Still due</th>'
       +'<th>Status</th>'
@@ -2726,7 +2733,9 @@ async function loadMyJobs(){
 
 async function toggleDone(id,st){
   var ns=st==='Done'?'In progress':'Done';
-  var job=(prints||[]).find(function(p){return String(p.id)===String(id);})||window['ev_'+id]||window['p_'+id]||window['j_'+id];
+  // Always fetch job fresh from DB to ensure accurate qty
+  var jobR=await DB().from('print_schedule').select('*').eq('id',id).single();
+  var job=jobR.data||((prints||[]).find(function(p){return String(p.id)===String(id);})||window['ev_'+id]||window['p_'+id]||window['j_'+id]);
   await DB().from('print_schedule').update({status:ns}).eq('id',id);
 
   // Adjust stock total_outgoing when toggling Done
@@ -2773,16 +2782,21 @@ async function toggleDone(id,st){
         }
       }
     } else {
-      // Non-Frosted: simple single-row update
-      var srow=(stock||[]).find(function(s){
-        if(s.size!==job.cup_size)return false;
-        return (s.colour||'').toLowerCase()===jobColourNorm;
-      });
-      if(srow&&used>0){
-        var idsToUpdate=srow.ids&&srow.ids.length?srow.ids:[srow.id];
-        var curOut=srow.total_outgoing||0;
-        var newOut=Math.max(0,curOut+delta);
-        await DB().from('stock').update({total_outgoing:newOut}).eq('id',idsToUpdate[0]);
+      // Non-Frosted: fetch live from DB by size + colour
+      var colourSearch=jobColourNorm.charAt(0).toUpperCase()+jobColourNorm.slice(1);
+      var nonFrR=await DB().from('stock').select('id,product,total_outgoing')
+        .eq('size',job.cup_size).ilike('colour',colourSearch);
+      if(nonFrR.data&&nonFrR.data.length){
+        var srow2=nonFrR.data[0];
+        var newOut2=Math.max(0,(srow2.total_outgoing||0)+delta);
+        var upRes=await DB().from('stock').update({total_outgoing:newOut2}).eq('id',srow2.id);
+        if(upRes.error){
+          console.error('Stock update error:',upRes.error);
+          toast('⚠️ Stock update failed: '+upRes.error.message,'err');
+        }
+      } else {
+        console.warn('No stock row found for',job.cup_size,colourSearch);
+        toast('⚠️ Stock row not found for '+job.cup_size+' '+colourSearch,'err');
       }
     }
   }
