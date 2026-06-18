@@ -205,21 +205,50 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 .pj.urg-card { border-left: 4px solid #C0392B !important; background:#FFF5F5 !important; }
 .urg-lock { font-size:9px;color:#C0392B;font-weight:700;margin-top:1px }
 /* ── PURCHASE ORDERS: month separators + greyed done rows ── */
-.po-done { opacity: 0.38; }
-.po-done td { color: #bbb !important; }
+.po-done { background:#fafafa !important; }
+.po-done td { color: #999 !important; }
+.po-done td:not(:nth-child(2)) { opacity:0.6 }
 .po-done .btn { display: none !important; }
+.po-done .btn-inv { display: inline-flex !important; opacity:1 !important; }
 .po-month-sep td {
-  background: #e6f2ef !important;
-  color: #0a4033 !important;
+  background: #1a4a3a !important;
+  color: #fff !important;
   font-weight: 700 !important;
   font-size: 11px !important;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  padding: 5px 10px !important;
-  border-top: 2px solid #0E6655 !important;
+  letter-spacing: 0.1em;
+  padding: 6px 10px !important;
+  text-align: center !important;
   pointer-events: none;
 }
-.po-month-sep:hover td { background: #e6f2ef !important; }
+.po-month-sep:hover td { background: #1a4a3a !important; }
+/* Compact PO table */
+#pol table { font-size:12px; border-collapse:collapse; table-layout:auto }
+#pol th { font-size:10px; padding:5px 6px; background:#1a3a5c; color:#fff; font-weight:700; letter-spacing:0.03em; white-space:nowrap }
+#pol td { padding:4px 6px; vertical-align:middle; border-bottom:1px solid #f0f0f0; white-space:nowrap; font-size:11px }
+#pol tr:hover td { background:#f0f6ff }
+#pol tfoot td { padding:6px; }
+/* Sticky PO# column */
+#pol th:first-child, #pol td:first-child { position:sticky; left:0; z-index:2; background:#1a3a5c; color:#fff; font-weight:700; min-width:70px }
+#pol td:first-child { background:#f0f4f8; color:#1F4E79; z-index:1 }
+#pol tr:hover td:first-child { background:#e3eef8 }
+#pol .po-done td:first-child { background:#f0f0f0; color:#999 }
+#pol .po-month-sep td:first-child { background:#1a4a3a !important; color:#fff !important; position:sticky; left:0; z-index:2 }
+/* Column widths — fit content */
+#pol .pol-wrap { overflow-x:auto }
+#pol table { width:1px; min-width:100%; table-layout:fixed }
+#pol th, #pol td { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+#pol th:first-child, #pol td:first-child { width:70px }
+#pol th:nth-child(2), #pol td:nth-child(2) { width:80px }   /* Invoice */
+#pol th:nth-child(3), #pol td:nth-child(3) { width:76px }   /* Date */
+#pol th:nth-child(4), #pol td:nth-child(4) { width:140px }  /* Product */
+#pol th:nth-child(5), #pol td:nth-child(5) { width:52px; text-align:right }   /* Qty */
+#pol th:nth-child(6), #pol td:nth-child(6) { width:40px; text-align:right }   /* Unit */
+#pol th:nth-child(7), #pol td:nth-child(7) { width:76px; text-align:right }   /* ex VAT */
+#pol th:nth-child(8), #pol td:nth-child(8) { width:60px; text-align:right }   /* VAT */
+#pol th:nth-child(9), #pol td:nth-child(9) { width:80px; text-align:right }   /* TOTAL */
+#pol th:nth-child(10), #pol td:nth-child(10) { width:108px }  /* Payment */
+#pol th:nth-child(11), #pol td:nth-child(11) { width:28px }   /* Edit */
 /* ── DELIVERIES TAB ── */
 .del-day-hdr{font-size:11px;font-weight:700;color:#0E6655;background:#D1F2EB;padding:5px 12px;border-radius:20px;display:inline-block;margin:14px 0 8px}
 .del-card{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:13px 16px;margin-bottom:8px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer;transition:border-color .15s}
@@ -421,9 +450,25 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 
   <div id="tab-pos" class="sec">
     <div class="mts" id="pmets"></div>
-    <div class="card">
-      <div class="ch"><span class="ct">Purchase orders — Africa Plastics</span><button class="btn bs bsm" onclick="loadPOs()">↻</button></div>
-      <div id="pol"><div class="ld"><div class="sp"></div></div></div>
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:0;margin-bottom:14px;background:#fff;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+      <button id="pos-subtab-orders" onclick="posSubTab('orders')" style="flex:1;padding:11px 14px;border:none;font-size:13px;font-weight:600;cursor:pointer;background:#0E6655;color:#fff;border-right:1px solid #e0e0e0">📋 Purchase Orders</button>
+      <button id="pos-subtab-deliveries" onclick="posSubTab('deliveries')" style="flex:1;padding:11px 14px;border:none;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#666">🚚 AP Deliveries</button>
+    </div>
+    <!-- Orders panel -->
+    <div id="pos-panel-orders">
+      <div class="card">
+        <div class="ch"><span class="ct">Purchase orders — Africa Plastics</span><button class="btn bs bsm" onclick="loadPOs()">↻</button></div>
+        <div id="pol"><div class="ld"><div class="sp"></div></div></div>
+      </div>
+    </div>
+    <!-- AP Deliveries panel -->
+    <div id="pos-panel-deliveries" style="display:none">
+      <div class="mts" id="ap-del-mets"></div>
+      <div class="card">
+        <div class="ch"><span class="ct">Deliveries received — Africa Plastics</span><button class="btn bs bsm" onclick="loadAPDeliveries()">↻</button></div>
+        <div id="ap-del-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
+      </div>
     </div>
   </div>
 
@@ -1093,10 +1138,220 @@ async function saveDel(){
   loadStock();
 }
 
+// ── PURCHASE ORDERS SUB-TABS ──
+function posSubTab(tab){
+  var isOrders=(tab==='orders');
+  document.getElementById('pos-panel-orders').style.display=isOrders?'':'none';
+  document.getElementById('pos-panel-deliveries').style.display=isOrders?'none':'';
+  var btnO=document.getElementById('pos-subtab-orders');
+  var btnD=document.getElementById('pos-subtab-deliveries');
+  btnO.style.background=isOrders?'#0E6655':'#fff';
+  btnO.style.color=isOrders?'#fff':'#666';
+  btnD.style.background=isOrders?'#fff':'#0E6655';
+  btnD.style.color=isOrders?'#666':'#fff';
+  if(!isOrders)loadAPDeliveries();
+}
+
+async function loadAPDeliveries(){
+  var el=document.getElementById('ap-del-list');
+  var mets=document.getElementById('ap-del-mets');
+  el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
+
+  // Fetch POs and movements in parallel
+  var [rpo, rmov] = await Promise.all([
+    DB().from('purchase_orders').select('*').order('po_date',{ascending:false}),
+    DB().from('movements').select('*').eq('type','Delivery').order('date',{ascending:false})
+  ]);
+  if(!rpo.data){el.innerHTML='<div class="ld">Error</div>';return;}
+
+  var pos=rpo.data||[];
+  var movs=rmov.data||[];
+
+  // Build delivery map: po_number -> [{date, qty_in, reference}]
+  // Match movements to POs via notes or reference field containing PO number
+  var delivsByPO={};
+  movs.forEach(function(m){
+    // Try to extract PO number from reference or notes
+    var ref=(m.reference||'')+(m.notes||'');
+    var match=ref.match(/PO-?\d+/i);
+    var poKey=match?match[0].toUpperCase().replace('-','').replace('PO','PO-'):'UNMATCHED';
+    if(!delivsByPO[poKey])delivsByPO[poKey]=[];
+    delivsByPO[poKey].push(m);
+  });
+
+  // Metrics
+  var totalReceived=movs.reduce(function(s,m){return s+(m.qty_in||0);},0);
+  var pendingPOs=pos.filter(function(p){return p.status==='Pending'||p.status==='Partial';});
+  var totalPending=pendingPOs.reduce(function(s,p){return s+(p.qty_ordered||0);},0);
+  var totalOrdered=pos.reduce(function(s,p){return s+(p.qty_ordered||0);},0);
+  var stillToReceive=pos.filter(function(p){return p.status!=='Delivered'&&p.status!=='Over-delivered'&&p.status!=='Cancelled';})
+    .reduce(function(s,p){return s+(p.qty_ordered||0);},0)-totalReceived;
+  stillToReceive=Math.max(0,stillToReceive);
+
+  if(mets){
+    mets.innerHTML=
+      '<div class="mt gn"><div class="lb">Total received</div><div class="vl">'+totalReceived.toLocaleString()+'</div><div class="sb2">all time</div></div>'+
+      '<div class="mt '+(pendingPOs.length?'or':'gn')+'"><div class="lb">Pending POs</div><div class="vl">'+pendingPOs.length+'</div><div class="sb2">awaiting delivery</div></div>'+
+      '<div class="mt rd"><div class="lb">Still to receive</div><div class="vl">'+stillToReceive.toLocaleString()+'</div><div class="sb2">units</div></div>'+
+      '<div class="mt"><div class="lb">Total ordered</div><div class="vl">'+totalOrdered.toLocaleString()+'</div><div class="sb2">all POs</div></div>';
+  }
+
+  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE','green':'#43A047','orange':'#FF9800','turquoise':'#1ABC9C'};
+  function dotFor(product){
+    var pl=(product||'').toLowerCase();
+    var col='#888';
+    Object.keys(cupColours).forEach(function(k){if(pl.indexOf(k)>-1)col=cupColours[k];});
+    return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+col+';margin-right:5px;vertical-align:middle"></span>';
+  }
+
+  var SICO={'Delivered':'✅','Over-delivered':'✅','Partial':'⚠️','Not delivered':'❌','To verify':'❓','Pending':'🔜'};
+  var SBG={'Delivered':'#D5F5E3','Over-delivered':'#D5F5E3','Partial':'#FDEBD0','Not delivered':'#FADBD8','To verify':'#FEF9E7','Pending':'#D6EAF8'};
+
+  // ── Section 1: PENDING POs (awaiting delivery) ──
+  var pendPos=pos.filter(function(p){return p.status==='Pending'||p.status==='Partial'||p.status==='Not delivered';});
+  // Sort pending by PO number DESC
+  pendPos.sort(function(a,b){return (b.po_number||'').localeCompare(a.po_number||'',undefined,{numeric:true});});
+  // Group pending by PO number
+  var pendByPO={},pendPOOrder=[];
+  pendPos.forEach(function(p){
+    var pn=p.po_number||'—';
+    if(!pendByPO[pn]){pendByPO[pn]=[];pendPOOrder.push(pn);}
+    pendByPO[pn].push(p);
+  });
+
+  var html='<div style="overflow-x:auto">';
+
+  if(pendPOOrder.length){
+    html+='<div style="font-size:12px;font-weight:700;color:#C0392B;background:#FADBD8;border-left:3px solid #C0392B;padding:8px 14px;border-radius:0 8px 8px 0;margin-bottom:10px">🔜 '+pendPOOrder.length+' PO'+(pendPOOrder.length>1?'s':'')+' pending delivery</div>';
+    html+='<table style="margin-bottom:20px">';
+    html+='<thead><tr>'
+      +'<th>PO#</th><th>Date</th><th>Product</th>'
+      +'<th class="nr">PO Qty</th><th>Delivery Ref</th>'
+      +'<th class="nr">Qty Received</th><th class="nr" style="color:#C0392B">Still to receive</th>'
+      +'<th>Status</th>'
+      +'</tr></thead><tbody>';
+
+    pendPOOrder.forEach(function(pn){
+      var lines=pendByPO[pn];
+      var isFirst=true;
+      lines.forEach(function(p){
+        // Qty received: from movements if available, else infer from status
+        var dels=delivsByPO[pn]||[];
+        var prodDels=dels.filter(function(m){
+          var mn=(m.product||'').toLowerCase();
+          var pn2=(p.product||'').toLowerCase();
+          return mn===pn2||mn.indexOf(pn2.split(' ')[1]||'___')>-1;
+        });
+        var qtyReceived=prodDels.reduce(function(s,m){return s+(m.qty_in||0);},0);
+        // For Partial status with notes, try to parse received from notes
+        if(!qtyReceived&&p.status==='Partial'&&p.notes){
+          var m2=p.notes.match(/(\d[\d\s]*)\s*received/i)||p.notes.match(/rcvd[:\s]+(\d[\d\s]*)/i)||p.notes.match(/(\d[\d ]+)\s*cup/i);
+          if(m2)qtyReceived=parseInt(m2[1].replace(/\s/g,''))||0;
+        }
+        var stillLeft=Math.max(0,(p.qty_ordered||0)-qtyReceived);
+        var delRef=prodDels.length
+          ?prodDels.map(function(m){return '<span style="white-space:nowrap">'+m.date+(m.reference?' — '+m.reference:'')+'</span>';}).join('<br>')
+          :(p.delivery_date?p.delivery_date+(p.notes?'<br><span style="font-size:10px;color:#888">'+p.notes+'</span>':''):'<span style="color:#aaa">—</span>');
+        var bg=SBG[p.status]||'#fff';
+        // Received display
+        var rcvDisplay=qtyReceived
+          ?'<span style="color:#1E8449;font-weight:700">'+qtyReceived.toLocaleString()+'</span>'
+          :(p.status==='Partial'?'<span style="color:#D35400">check notes</span>':'<span style="color:#ccc">—</span>');
+        var stillDisplay=stillLeft
+          ?'<span style="color:#C0392B;font-weight:700">'+stillLeft.toLocaleString()+'</span>'
+          :'<span style="color:#1E8449;font-weight:700">✅ 0</span>';
+        html+='<tr style="background:'+bg+'">'
+          +'<td style="font-weight:700;color:#1F4E79">'+(isFirst?pn:'↳')+'</td>'
+          +'<td style="font-size:11px;color:#666;white-space:nowrap">'+(p.po_date||'—')+'</td>'
+          +'<td>'+dotFor(p.product)+'<strong>'+(p.product||'—')+'</strong></td>'
+          +'<td class="nr" style="font-weight:700">'+(p.qty_ordered||0).toLocaleString()+'</td>'
+          +'<td style="font-size:11px">'+delRef+'</td>'
+          +'<td class="nr">'+rcvDisplay+'</td>'
+          +'<td class="nr">'+stillDisplay+'</td>'
+          +'<td style="white-space:nowrap">'+(SICO[p.status]||'')+'&nbsp;'+(p.status||'—')+'</td>'
+          +'</tr>';
+        isFirst=false;
+      });
+    });
+    html+='</tbody></table>';
+  }
+
+  // ── Section 2: All deliveries received (history) ──
+  html+='<div style="font-size:12px;font-weight:700;color:#0E6655;background:#D1F2EB;border-left:3px solid #0E6655;padding:8px 14px;border-radius:0 8px 8px 0;margin-bottom:10px">✅ Deliveries history</div>';
+  html+='<table>';
+  html+='<thead><tr>'
+    +'<th>PO#</th><th>Date</th><th>Product</th>'
+    +'<th class="nr">PO Qty</th><th>Delivery Ref</th>'
+    +'<th class="nr">Qty Delivered</th><th class="nr">Still to receive</th>'
+    +'<th>Status</th>'
+    +'</tr></thead><tbody>';
+
+  // Group delivered POs by PO number
+  var deliveredPos=pos.filter(function(p){return p.status==='Delivered'||p.status==='Over-delivered'||p.status==='Partial';});
+  var delByPO={},delPOOrder=[];
+  deliveredPos.forEach(function(p){
+    var pn=p.po_number||'—';
+    if(!delByPO[pn]){delByPO[pn]=[];delPOOrder.push(pn);}
+    delByPO[pn].push(p);
+  });
+
+  if(!delPOOrder.length){
+    html+='<tr><td colspan="8" style="padding:20px;text-align:center;color:#aaa;font-size:13px">No completed deliveries yet</td></tr>';
+  }
+
+  // Group by month for delivered POs
+  var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var byMonth={},monthOrder=[];
+  // Sort delivered POs by PO number DESC
+  deliveredPos.sort(function(a,b){return (b.po_number||'').localeCompare(a.po_number||'',undefined,{numeric:true});});
+  deliveredPos.forEach(function(p){
+    var mk=(p.po_date||'other').substring(0,7);
+    if(!byMonth[mk]){byMonth[mk]=[];monthOrder.push(mk);}
+    byMonth[mk].push(p);
+  });
+  // Remove duplicates in monthOrder, keep DESC (most recent month first)
+  monthOrder=monthOrder.filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(a,b){return b.localeCompare(a);});
+
+  monthOrder.forEach(function(mk){
+    var label='—';
+    if(mk!=='other'){var pts=mk.split('-');label=MONTHS[parseInt(pts[1])-1]+' '+pts[0];}
+    var mQty=byMonth[mk].reduce(function(s,p){return s+(p.qty_ordered||0);},0);
+    html+='<tr style="background:#e6f2ef"><td colspan="8" style="padding:5px 10px;font-size:11px;font-weight:700;color:#0a4033;text-transform:uppercase;letter-spacing:0.07em">📅 '+label.toUpperCase()+' — '+mQty.toLocaleString()+' units ordered</td></tr>';
+
+    byMonth[mk].forEach(function(p){
+      // Find actual deliveries for this PO
+      var dels=delivsByPO[p.po_number||'']||[];
+      var prodDels=dels.filter(function(m){
+        var mn=(m.product||'').toLowerCase();
+        var pn2=(p.product||'').toLowerCase();
+        return mn===pn2||mn.indexOf(pn2.split(' ')[1]||'x')>-1;
+      });
+      var qtyReceived=prodDels.reduce(function(s,m){return s+(m.qty_in||0);},0);
+      var stillLeft=Math.max(0,(p.qty_ordered||0)-qtyReceived);
+      var delRef=prodDels.length
+        ?prodDels.map(function(m){return (m.date||'')+(m.reference?' — '+m.reference:'');}).join('<br>')
+        :(p.delivery_date?p.delivery_date:'—');
+      var bg=p.status==='Done'||p.status==='Delivered'||p.status==='Over-delivered'?'#fff':SBG[p.status]||'#fff';
+      html+='<tr style="background:'+bg+'">'
+        +'<td style="font-weight:700;color:#1F4E79">'+(p.po_number||'—')+'</td>'
+        +'<td style="font-size:11px;color:#666">'+(p.po_date||'—')+'</td>'
+        +'<td>'+dotFor(p.product)+'<strong>'+(p.product||'—')+'</strong></td>'
+        +'<td class="nr" style="font-weight:700">'+(p.qty_ordered||0).toLocaleString()+'</td>'
+        +'<td style="font-size:11px;color:#444">'+delRef+'</td>'
+        +'<td class="nr" style="color:#1E8449;font-weight:700">'+(qtyReceived?qtyReceived.toLocaleString():(p.delivery_date?'—':'—'))+'</td>'
+        +'<td class="nr" style="color:'+(stillLeft?'#D35400':'#1E8449')+';font-weight:700">'+(stillLeft?stillLeft.toLocaleString():'✅ 0')+'</td>'
+        +'<td>'+(SICO[p.status]||'')+'&nbsp;'+(p.status||'—')+'</td>'
+        +'</tr>';
+    });
+  });
+
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+}
 // ── PURCHASE ORDERS ──
 async function loadPOs(){
   // Sort DESC: most recent first
-  var r=await DB().from('purchase_orders').select('*').order('po_date',{ascending:false});
+  var r=await DB().from('purchase_orders').select('*').order('po_number',{ascending:false});
   if(!r.data)return;
   var tot=r.data.reduce(function(s,p){return s+(p.qty_ordered||0);},0);
   var val=r.data.reduce(function(s,p){return s+(p.qty_ordered||0)*(p.unit_price||0)*1.15;},0);
@@ -1133,7 +1388,7 @@ async function loadPOs(){
       var d=new Date(parseInt(pts[0]),parseInt(pts[1])-1,1);
       label=d.toLocaleString('en-GB',{month:'long',year:'numeric'}).toUpperCase();
     }
-    rows+='<tr class="po-month-sep"><td colspan="14">📅 '+label+'</td></tr>';
+    rows+='<tr class="po-month-sep"><td colspan="11">— '+label+' —</td></tr>';
 
     var last='';
     var mHT=0,mVAT=0,mTot=0;
@@ -1150,34 +1405,42 @@ async function loadPOs(){
       if(!mCups[ck])mCups[ck]={size:p.size||'?',colour:p.colour||'?',qty:0};
       mCups[ck].qty+=(p.qty_ordered||0);
       // Grey out if paid AND fully delivered
-      var isDone=p.paid&&(p.status==='Delivered'||p.status==='Over-delivered');
+      var isDone=p.paid; // Grey out if paid
       var bg=isDone?'#f5f5f5':(SBG[p.status]||'#fff');
       var doneClass=isDone?'po-done':'';
       var paid=role==='owner'
         ?(p.paid?'<button class="btn bs bsm" style="color:#1E8449;border-color:#1E8449" onclick="markPaid(\''+p.id+'\',true)" title="Undo payment">✅ Paid</button>'
                 :'<button class="btn bs bsm" onclick="markPaid(\''+p.id+'\',false)">Mark paid</button>')
         :'';
-      rows+='<tr class="'+doneClass+'" style="background:'+bg+'">'+
-        '<td style="font-weight:700;color:#1F4E79">'+(isN?p.po_number:'↳')+'</td>'+
-        '<td style="font-size:12px;color:#666">'+(p.po_date||'—')+'</td>'+
-        '<td style="font-weight:500">'+(p.product||'—')+'</td>'+
-        '<td style="text-align:center">'+(p.size||'—')+'</td>'+
-        '<td style="text-align:center">'+(p.colour||'—')+'</td>'+
-        '<td class="nr" style="color:#1F4E79;font-weight:700">'+(p.qty_ordered||0).toLocaleString()+'</td>'+
-        '<td class="nr" style="color:#1E8449">'+(p.unit_price?p.unit_price.toFixed(2):'—')+'</td>'+
-        '<td class="nr">'+(ht?ht.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'+
-        '<td class="nr" style="color:#666">'+(vat?vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'+
-        '<td class="nr" style="font-weight:700">'+(tot2?tot2.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'+
-        '<td style="text-align:center;font-size:12px">'+(p.delivery_date||'—')+'</td>'+
-        '<td style="font-weight:600;font-size:12px">'+(SICO[p.status]||'')+'&nbsp;'+(p.status||'—')+'<br>'+
-        (role==='owner'?(
-          (p.status==='Delivered'||p.status==='Over-delivered'||p.status==='Partial')
-            ?'<button class="btn bs bsm" style="margin-top:4px;font-size:10px;color:#D35400;border-color:#D35400" onclick="markDelivered(\''+p.id+'\',true)">↩️ Undo</button>'
-            :'<button class="btn bs bsm" style="margin-top:4px;font-size:10px" onclick="markDelivered(\''+p.id+'\',false)">🚚 Mark delivered</button>'
-        ):'')+'</td>'+
-        (role==='owner'?'<td>'+paid+'</td>':'<td></td>')+
-        (role==='owner'?'<td><button class="btn bs bsm" onclick="editPO(\''+p.id+'\')">✏️</button></td>':'<td></td>')+
-        '</tr>';
+      var paidCellHtml;
+      if(role==='owner'){
+        paidCellHtml=p.paid
+          ?('<td style="white-space:nowrap"><span style="color:#1E8449;font-weight:700;font-size:11px">✅ '+(p.paid_date||'Paid')+'</span> <button class="btn bs bsm" style="font-size:10px;padding:1px 5px;color:#D35400" onclick="markPaid('+p.id+',true)">↩</button></td>')
+          :('<td><button class="btn bs bsm" style="font-size:11px;padding:3px 7px" onclick="markPaid('+p.id+',false)">💳 Mark paid</button></td>');
+      } else {
+        paidCellHtml='<td style="font-size:11px;color:'+(p.paid?'#1E8449':'#aaa')+'">'+(p.paid?'✅ '+(p.paid_date||'Paid'):'—')+'</td>';
+      }
+      var invCell=isN
+        ?(role==='owner'
+          ?(p.invoice_number
+            ?'<td style="font-size:11px;font-weight:600;color:#444">'+p.invoice_number+' <button class="btn bs bsm btn-inv" style="font-size:10px;padding:1px 4px" onclick="editInvoice('+p.id+')">✏️</button></td>'
+            :'<td><button class="btn bs bsm btn-inv" style="font-size:10px;padding:2px 6px" onclick="editInvoice('+p.id+')">+</button></td>')
+          :'<td style="font-size:11px;color:#666">'+(p.invoice_number||'—')+'</td>')
+        :'<td></td>';
+      rows+='<tr class="'+doneClass+'" style="background:'+bg+'">'
+        +'<td style="font-weight:700;color:#1F4E79">'+(isN?p.po_number:'↳')+'</td>'
+        +invCell
+        +'<td style="font-size:12px;color:#666;white-space:nowrap">'+(p.po_date||'—')+'</td>'
+        +'<td style="font-weight:500">'+(p.product||'—')+'</td>'
+
+        +'<td class="nr" style="color:#1F4E79;font-weight:700">'+(p.qty_ordered||0).toLocaleString()+'</td>'
+        +'<td class="nr" style="color:#1E8449">'+(p.unit_price?p.unit_price.toFixed(2):'—')+'</td>'
+        +'<td class="nr">'+(ht?ht.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'
+        +'<td class="nr" style="color:#666">'+(vat?vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'
+        +'<td class="nr" style="font-weight:700">'+(tot2?tot2.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'
+        +paidCellHtml
+        +(role==='owner'?'<td><button class="btn bs bsm" style="font-size:10px;padding:2px 6px" onclick="editPO('+p.id+')">✏️</button></td>':'<td></td>')
+        +'</tr>';
     });
     // Month summary row
     var cupSummary=Object.values(mCups).sort(function(a,b){
@@ -1185,24 +1448,51 @@ async function loadPOs(){
       var sd=(so[a.size]||9)-(so[b.size]||9);
       return sd!==0?sd:a.colour.localeCompare(b.colour);
     }).map(function(c){return '<span style="display:inline-block;margin:1px 3px;background:#e6f2ef;color:#0a4033;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">'+c.size+' '+c.colour+' : '+c.qty.toLocaleString()+'</span>';}).join('');
-    rows+='<tr style="background:#e6f2ef;border-top:2px solid #0E6655">'+
-      '<td colspan="7" style="padding:8px 10px;font-size:11px;font-weight:700;color:#0a4033">📊 '+label+' SUMMARY<br><div style="margin-top:4px;font-weight:400">'+cupSummary+'</div></td>'+
-      '<td style="text-align:right;padding:8px 10px;font-size:12px;font-weight:700;color:#0a4033">'+mHT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
-      '<td style="text-align:right;padding:8px 10px;font-size:12px;color:#666">'+mVAT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
-      '<td style="text-align:right;padding:8px 10px;font-size:13px;font-weight:700;color:#0E6655">'+mTot.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
-      '<td colspan="4" style="padding:8px 10px;font-size:11px;color:#666">ZAR incl. VAT</td>'+
+    rows+='<tr style="background:#e8f5ef;border-top:1px solid #0E6655">'+
+      '<td colspan="4" style="padding:5px 8px;font-size:10px;font-weight:700;color:#0a4033;text-transform:uppercase;letter-spacing:0.05em">'+cupSummary+'</td>'+
+      '<td style="text-align:right;padding:5px 8px;font-size:11px;font-weight:700;color:#0a4033">'+mHT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
+      '<td style="text-align:right;padding:5px 8px;font-size:11px;color:#666">'+mVAT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
+      '<td style="text-align:right;padding:5px 8px;font-size:12px;font-weight:700;color:#0E6655">'+mTot.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
+      '<td colspan="2" style="padding:5px 8px;font-size:10px;color:#888">ZAR incl. VAT</td>'+
       '</tr>';
   });
 
-  document.getElementById('pol').innerHTML='<div style="overflow-x:auto"><table>'+
-    '<thead><tr><th>PO#</th><th>Date</th><th>Product</th><th>Size</th><th>Colour</th><th class="nr">Qty</th><th class="nr">Unit</th><th class="nr">ex VAT</th><th class="nr">VAT</th><th class="nr">TOTAL ZAR</th><th>Delivery</th><th>Status</th>'+(role==='owner'?'<th>💳</th><th></th>':'<th></th>')+'</tr></thead>'+
+  if(role!=='owner'){
+    // Fred/Warda: simple view — PO# + product + qty only
+    var simpleRows='';
+    r.data.forEach(function(p){
+      var cupColours2={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE','green':'#43A047','orange':'#FF9800'};
+      var bc=cupColours2[(p.colour||'').toLowerCase()]||'#888';
+      var dot='<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+bc+';margin-right:6px;vertical-align:middle"></span>';
+      simpleRows+='<tr><td style="font-weight:700;color:#1F4E79">'+p.po_number+'</td>'+
+        '<td>'+dot+'<strong>'+(p.product||'—')+'</strong></td>'+
+        '<td class="nr" style="font-weight:700;color:#1F4E79">'+(p.qty_ordered||0).toLocaleString()+'</td>'+
+        '</tr>';
+    });
+    document.getElementById('pol').innerHTML='<div class="pol-wrap" style="overflow-x:auto"><table>'+
+      '<thead><tr><th>PO#</th><th>Product</th><th class="nr">Qty</th></tr></thead>'+
+      '<tbody>'+simpleRows+'</tbody></table></div>';
+    return;
+  }
+  document.getElementById('pol').innerHTML='<div class="pol-wrap" style="overflow-x:auto"><table>'+
+    '<thead><tr><th>PO#</th><th>Invoice #</th><th>Date</th><th>Product</th><th class="nr">Qty</th><th class="nr">Unit</th><th class="nr">ex VAT</th><th class="nr">VAT</th><th class="nr">TOTAL ZAR</th><th>💳 Payment</th><th></th></tr></thead>'+
     '<tbody>'+rows+'</tbody>'+
     '<tfoot><tr style="background:#0E6655;color:#fff;font-weight:700">'+
-    '<td colspan="7" style="text-align:right;padding:10px">TOTAL</td>'+
+    '<td colspan="6" style="text-align:right;padding:10px">TOTAL</td>'+
     '<td style="text-align:right;padding:10px">'+sumHT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
     '<td style="text-align:right;padding:10px">'+sumV.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
     '<td style="text-align:right;padding:10px">'+sumT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
-    '<td colspan="4" style="padding:10px"></td></tr></tfoot></table></div>';
+    '<td colspan="2" style="padding:10px"></td></tr></tfoot></table></div>';
+}
+
+async function editInvoice(id){
+  var existing=await DB().from('purchase_orders').select('invoice_number').eq('id',id).single();
+  var current=(existing.data&&existing.data.invoice_number)||'';
+  var val=prompt('Invoice number (Africa Plastics):', current);
+  if(val===null)return;
+  await DB().from('purchase_orders').update({invoice_number:val||null}).eq('id',id);
+  toast('✅ Invoice number saved','ok');
+  loadPOs();
 }
 
 async function markPaid(id,alreadyPaid){
@@ -3724,7 +4014,7 @@ async function loadStats(){
   // Weekly trend table
   html+='<div class="card">'
     +'<div class="ch" style="margin-bottom:12px"><span class="ct">Weekly trend</span></div>'
-    +'<div style="overflow-x:auto"><table>'
+    +'<div class="pol-wrap" style="overflow-x:auto"><table>'
     +'<thead><tr>'
     +'<th>Week of</th><th class="nr">Jobs</th><th class="nr">Cups</th><th class="nr">Prints</th><th>Load</th>'
     +'</tr></thead><tbody>';
