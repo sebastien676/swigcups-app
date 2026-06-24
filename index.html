@@ -2089,18 +2089,29 @@ function renderCal(){
         ev.posis_received?'✅ POSIS received':'❌ POSIS not received',
         ev.artwork_url?'📎 Artwork uploaded':''
       ].filter(Boolean).join('\n');
+      // ✓ check button (top-right)
       var checkBtn = document.createElement('div');
       checkBtn.style.cssText = 'position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:9px;cursor:pointer;opacity:0.6';
       checkBtn.textContent = isDone ? '✓' : '○';
       checkBtn.title = isDone ? 'Mark as In Progress' : 'Mark as Done';
       ce.appendChild(checkBtn);
+      // ⬇️ download button (bottom-right)
+      var dlBtn = document.createElement('div');
+      dlBtn.style.cssText = 'position:absolute;bottom:3px;right:3px;font-size:9px;cursor:pointer;opacity:0.55;line-height:1;padding:1px 2px;border-radius:3px';
+      dlBtn.textContent = '⬇️';
+      dlBtn.title = 'Download job card';
+      ce.appendChild(dlBtn);
       ce.style.paddingRight = '22px';
+      ce.style.paddingBottom = '14px';
       (function(eid, est){
         ce.addEventListener('dragstart',function(){if(window['ev_'+eid]&&window['ev_'+eid].is_urgent){toast('🔒 Urgent job — cannot be moved','err');return;}dragId=eid;this.classList.add('drag');});
         ce.addEventListener('dragend',function(){this.classList.remove('drag');});
         ce.addEventListener('click',function(e){
           if(e.target === checkBtn || checkBtn.contains(e.target)) {
             toggleDone(eid, est);
+          } else if(e.target === dlBtn || dlBtn.contains(e.target)) {
+            e.stopPropagation();
+            downloadJobCard(window['ev_'+eid]);
           } else {
             openEvDetail(window['ev_'+eid]);
           }
