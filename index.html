@@ -931,37 +931,14 @@ function sc2(sz, col) {
 async function loadStock(){
   var r=await DB().from('stock').select('*');
   if(!r.data)return;
-  var rpo=await DB().from('purchase_orders').select('product,qty_ordered,status,po_number');
-  var rmov=await DB().from('movements').select('product,qty_in,reference,notes').eq('type','Delivery');
+  var rpo=await DB().from('purchase_orders').select('product,qty_ordered,status');
   pendByProduct={};
   if(rpo.data){
-    // Build received map per PO number from movements
-    var receivedByPO={};
-    if(rmov.data){
-      rmov.data.forEach(function(m){
-        var combined=(m.reference||'')+' '+(m.notes||'');
-        var rx=/p\.?\s*o\.?\s*[-#]?\s*(\d{3,})/gi;
-        var match;
-        while((match=rx.exec(combined))!==null){
-          var poKey='PO-'+match[1];
-          if(!receivedByPO[poKey])receivedByPO[poKey]={};
-          var prod=m.product||'';
-          receivedByPO[poKey][prod]=(receivedByPO[poKey][prod]||0)+(m.qty_in||0);
-        }
-      });
-    }
     rpo.data.forEach(function(p){
       var s=(p.status||'').toLowerCase();
       if(s!=='pending'&&s!=='partial')return;
       var key=p.product||'';
-      var ordered=p.qty_ordered||0;
-      // For Partial: subtract already received to get true remaining
-      if(s==='partial'){
-        var poRec=(receivedByPO[p.po_number]||{});
-        var received=poRec[key]||0;
-        ordered=Math.max(0,ordered-received);
-      }
-      pendByProduct[key]=(pendByProduct[key]||0)+ordered;
+      pendByProduct[key]=(pendByProduct[key]||0)+(p.qty_ordered||0);
     });
   }
   // ── Consolidate duplicate rows (same product+size+colour) ──
@@ -1065,8 +1042,14 @@ async function loadStock(){
     var afterCell = pending>0
       ? '<span style="font-weight:700;color:#0E6655">'+after.toLocaleString()+'</span><div style="font-size:10px;color:#D35400">+'+pending.toLocaleString()+' incoming</div>'
       : '<span style="color:#999">'+after.toLocaleString()+'</span>';
-    // No split display
+    // Build split detail line if this product merges multiple sources
     var splitHtml='';
+    var splitAll=p.split||[];
+    if(splitAll.length>1){
+      splitHtml='<div style="font-size:10px;color:#999;margin-top:2px;font-weight:400">'
+        +splitAll.map(function(s){return s.name+': '+s.qty.toLocaleString();}).join(' · ')
+        +'</div>';
+    }
     window['stk_'+p.id]=p;
     var editBtn=(role==='owner')
       ?'<td><button class="btn bs bsm" onclick="openStockEdit(window[\'stk_'+p.id+'\'])">✏️</button></td>'
@@ -2763,13 +2746,40 @@ async function toggleDone(id,st){
     var delta=ns==='Done'?used:-used;
 
     if(isFrosted){
-      // Frosted: update first matching row (ignore Washed distinction)
-      var rawR=await DB().from('stock').select('id,product,total_outgoing')
-        .eq('size',job.cup_size).ilike('product','%frosted%').not('product','ilike','%washed%');
+      // Fetch live DB values for New and Washed rows
+      var rawR=await DB().from('stock').select('id,product,physical_stock,total_received,total_outgoing')
+        .eq('size',job.cup_size).ilike('product','%frosted%');
       if(rawR.data&&rawR.data.length){
-        var fr=rawR.data[0];
-        var newOutFr=Math.max(0,(fr.total_outgoing||0)+delta);
-        await DB().from('stock').update({total_outgoing:newOutFr}).eq('id',fr.id);
+        // Separate New (not washed) and Washed rows
+        var newRows=rawR.data.filter(function(r){return r.product.toLowerCase().indexOf('washed')===-1;});
+        var washedRows=rawR.data.filter(function(r){return r.product.toLowerCase().indexOf('washed')>-1;});
+        var remaining=Math.abs(delta);
+        var sign=delta>0?1:-1;
+
+        // Deduct from New first
+        for(var i=0;i<newRows.length&&remaining>0;i++){
+          var nr=newRows[i];
+          var newStock=Math.max(0,(nr.physical_stock||0)+(nr.total_received||0)-(nr.total_outgoing||0));
+          var canTake=delta>0?Math.min(remaining,newStock):remaining;
+          if(canTake>0||delta<0){
+            var takeAmt=delta>0?canTake:remaining;
+            var newOut=Math.max(0,(nr.total_outgoing||0)+sign*takeAmt);
+            await DB().from('stock').update({total_outgoing:newOut}).eq('id',nr.id);
+            remaining-=takeAmt;
+          }
+        }
+        // Fallback to Washed if New exhausted
+        for(var j=0;j<washedRows.length&&remaining>0;j++){
+          var wr=washedRows[j];
+          var washedStock=Math.max(0,(wr.physical_stock||0)+(wr.total_received||0)-(wr.total_outgoing||0));
+          var canTakeW=delta>0?Math.min(remaining,washedStock):remaining;
+          if(canTakeW>0||delta<0){
+            var takeAmtW=delta>0?canTakeW:remaining;
+            var newOutW=Math.max(0,(wr.total_outgoing||0)+sign*takeAmtW);
+            await DB().from('stock').update({total_outgoing:newOutW}).eq('id',wr.id);
+            remaining-=takeAmtW;
+          }
+        }
       }
     } else {
       // Non-Frosted: fetch live from DB by size + colour
