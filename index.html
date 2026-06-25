@@ -892,7 +892,16 @@ function initRole(r){
   if(r==='owner'){document.getElementById('badd').style.display='flex';}
   if(r==='owner'||r==='fred'){document.getElementById('bajob').style.display='flex';}
   var _wpd=document.getElementById('warda-print-date');if(_wpd){var _t=new Date();_wpd.value=_t.getFullYear()+'-'+String(_t.getMonth()+1).padStart(2,'0')+'-'+String(_t.getDate()).padStart(2,'0');}
-  loadStock();loadPOs();loadPrint();loadJobs();loadCalData();setTimeout(checkUnreadMessages,1500);
+  // Load data in parallel — owner loads everything, Fred/Warda load lighter set
+  if(r==='owner'){
+    Promise.all([loadStock(), loadPOs(), loadCalData(), loadJobs(), loadPrint()]);
+  } else if(r==='warda'){
+    Promise.all([loadStock(), loadCalData(), loadMyJobs()]);
+  } else {
+    // Fred: load essentials first, defer POs
+    Promise.all([loadStock(), loadCalData(), loadJobs(), loadPrint()]);
+  }
+  setTimeout(checkUnreadMessages, 2000);
 }
 
 function showTab(n,b){
@@ -929,10 +938,12 @@ function sc2(sz, col) {
 
 // ── STOCK ──
 async function loadStock(){
-  var r=await DB().from('stock').select('*');
+  var [r, rpo, rmov] = await Promise.all([
+    DB().from('stock').select('*'),
+    DB().from('purchase_orders').select('product,qty_ordered,status,po_number'),
+    DB().from('movements').select('product,qty_in,reference,notes').eq('type','Delivery')
+  ]);
   if(!r.data)return;
-  var rpo=await DB().from('purchase_orders').select('product,qty_ordered,status,po_number');
-  var rmov=await DB().from('movements').select('product,qty_in,reference,notes').eq('type','Delivery');
   pendByProduct={};
   if(rpo.data){
     // Build received map per PO number from movements
