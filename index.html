@@ -406,12 +406,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   <div id="tab-stock" class="sec act">
     <div class="mts" id="smets"></div>
     <div class="card">
-      <div class="ch" style="flex-wrap:wrap;gap:8px"><span class="ct">Stock by product</span>
-        <div style="display:flex;gap:6px;align-items:center">
-          <div id="stk-filters" style="display:flex;gap:6px"></div>
-          <button class="btn bs bsm" onclick="loadStock(true)">↻</button>
-        </div>
-      </div>
+      <div class="ch"><span class="ct">Stock by product</span><button class="btn bs bsm" onclick="loadStock()">↻</button></div>
       <div id="stbl"><div class="ld"><div class="sp"></div>Loading...</div></div>
     </div>
     <button class="badd" id="badd" style="display:none" onclick="togglePnl('pdel')">+ Record delivery</button>
@@ -438,10 +433,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
         <button class="btn bs" onclick="togglePnl('pdel')">Cancel</button>
       </div>
     </div>
-    <div class="card" style="margin-top:14px" id="hist-card">
-      <div class="ch"><span class="ct">📜 Stock history & audit</span><button class="btn bs bsm" onclick="loadHistory()">Load history</button></div>
-      <div id="hist-body" style="font-size:12px;color:#888">Manual counts, deliveries and print deductions — who, when, what. Click "Load history".</div>
-    </div>
   </div>
 
   <div id="tab-today" class="sec">
@@ -467,12 +458,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <!-- Orders panel -->
     <div id="pos-panel-orders">
       <div class="card">
-        <div class="ch" style="flex-wrap:wrap;gap:8px"><span class="ct">Purchase orders</span>
-          <div style="display:flex;gap:6px;align-items:center">
-            <div id="po-filters"></div>
-            <button class="btn bs bsm" onclick="loadPOs(true)">↻</button>
-          </div>
-        </div>
+        <div class="ch"><span class="ct">Purchase orders — Africa Plastics</span><button class="btn bs bsm" onclick="loadPOs()">↻</button></div>
         <div id="pol"><div class="ld"><div class="sp"></div></div></div>
       </div>
     </div>
@@ -480,7 +466,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div id="pos-panel-deliveries" style="display:none">
       <div class="mts" id="ap-del-mets"></div>
       <div class="card">
-        <div class="ch"><span class="ct">Deliveries received — Africa Plastics</span><button class="btn bs bsm" onclick="loadAPDeliveries(true)">↻</button></div>
+        <div class="ch"><span class="ct">Deliveries received — Africa Plastics</span><button class="btn bs bsm" onclick="loadAPDeliveries()">↻</button></div>
         <div id="ap-del-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
       </div>
     </div>
@@ -518,14 +504,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       </div>
     </div>
     <div class="card" style="margin-top:14px">
-      <div class="ch"><span class="ct">All orders</span><button class="btn bs bsm" onclick="loadJobs(true)">↻</button></div>
+      <div class="ch"><span class="ct">All orders</span><button class="btn bs bsm" onclick="loadJobs()">↻</button></div>
       <div id="jlist"><div class="ld"><div class="sp"></div></div></div>
     </div>
   </div>
 
   <div id="tab-print" class="sec">
     <div class="card">
-      <div class="ch"><span class="ct">Print schedule — Blink (Warda)</span><button class="btn bs bsm" onclick="loadPrint(true)">↻</button></div>
+      <div class="ch"><span class="ct">Print schedule — Blink (Warda)</span><button class="btn bs bsm" onclick="loadPrint()">↻</button></div>
       <div id="plist"><div class="ld"><div class="sp"></div></div></div>
     </div>
   </div>
@@ -597,7 +583,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   <div id="tab-deliveries" class="sec">
     <div class="ch" style="margin-bottom:14px">
       <h2 style="font-size:16px;font-weight:700">🚚 Deliveries & Collections</h2>
-      <button class="btn bs bsm" onclick="loadDeliveries(true)">↻ Refresh</button>
+      <button class="btn bs bsm" onclick="loadDeliveries()">↻ Refresh</button>
     </div>
     <div class="mts" id="del-mets"></div>
     <div class="card" style="margin-bottom:14px">
@@ -687,7 +673,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   <div id="tab-alerts" class="sec">
     <div class="ch" style="margin-bottom:14px">
       <h2 style="font-size:16px;font-weight:700">🚨 Alerts & Actions</h2>
-      <button class="btn bs bsm" onclick="loadAlerts(true)">↻ Refresh</button>
+      <button class="btn bs bsm" onclick="loadAlerts()">↻ Refresh</button>
     </div>
     <div id="alist"><div class="ld"><div class="sp"></div></div></div>
   </div>
@@ -831,114 +817,6 @@ var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 var db=null;
 function DB(){if(!db)db=supabase.createClient(SB_URL,SB_KEY);return db;}
 
-// ═══════════════════ DATA LAYER — cache + optimized queries ═══════════════════
-// Perf fix #1: never select('*') on print_schedule — artwork_url holds base64 blobs (100KB+ each).
-// Perf fix #2: 60s cache + in-flight dedup so parallel tab loads collapse into ONE network request.
-var PS_COLS='id,client,week_label,date_period,print_date,delivery_date,cup_size,cup_colour,qty_printed,num_colours,print_colour,artwork,print_type,status,delivery_status,notes,delivery_type,delivery_address,contact_name,contact_phone,is_urgent,posis_received,created_by,last_edited_by';
-var STOCK_COLS='id,product,size,colour,physical_stock,physical_date,total_received,total_outgoing';
-var PO_COLS='id,po_number,invoice_number,po_date,product,size,colour,qty_ordered,qty_received,unit_price,status,delivery_date,paid,paid_date,notes,supplier';
-var MOV_COLS='id,date,type,reference,product,qty_in,notes';
-
-var _cache={},_inflight={},CACHE_TTL=60000;
-function cacheBust(keys){
-  if(!keys){_cache={};return;}
-  (Array.isArray(keys)?keys:[keys]).forEach(function(k){delete _cache[k];});
-}
-async function cachedQuery(key,cols,fallbackCols,builder,force){
-  if(!force&&_cache[key]&&(Date.now()-_cache[key].t)<CACHE_TTL)return _cache[key].d;
-  if(_inflight[key])return _inflight[key];
-  _inflight[key]=(async function(){
-    try{
-      var r=await builder(cols);
-      if(r.error&&fallbackCols){console.warn('Column list failed for '+key+', falling back:',r.error.message);r=await builder(fallbackCols);}
-      var d=r.data||[];
-      _cache[key]={d:d,t:Date.now()};
-      return d;
-    } finally { delete _inflight[key]; }
-  })();
-  return _inflight[key];
-}
-function fetchSchedule(force){
-  return cachedQuery('ps',PS_COLS,'*',function(cols){
-    return DB().from('print_schedule').select(cols).order('id');
-  },force);
-}
-function fetchStock(force){
-  return cachedQuery('stock',STOCK_COLS,'*',function(cols){
-    return DB().from('stock').select(cols);
-  },force);
-}
-// Canonical PO statuses — normalizes historical mixed-case values at read time.
-// The SQL migration fixes the data at source; this keeps the app safe against any future stray casing.
-var PO_CANON={'pending':'Pending','partial':'Partial','delivered':'Delivered','over-delivered':'Over-delivered','overdelivered':'Over-delivered','not delivered':'Not delivered','to verify':'To verify','cancelled':'Cancelled'};
-async function fetchPOs(force){
-  var d=await cachedQuery('po',PO_COLS,'*',function(cols){
-    return DB().from('purchase_orders').select(cols).order('po_number',{ascending:false});
-  },force);
-  d.forEach(function(p){
-    var c=PO_CANON[normStatus(p.status)];
-    if(c)p.status=c;
-  });
-  return d;
-}
-function fetchMovements(force){
-  // Only last 12 months — old history stays queryable in Supabase but is never shipped to the client
-  var cut=new Date();cut.setMonth(cut.getMonth()-12);
-  var cutISO=cut.getFullYear()+'-'+String(cut.getMonth()+1).padStart(2,'0')+'-01';
-  return cachedQuery('mov',MOV_COLS,'*',function(cols){
-    return DB().from('movements').select(cols).eq('type','Delivery').gte('date',cutISO).order('date',{ascending:false});
-  },force);
-}
-// Artwork ids fetched once (ids only — a few bytes), blobs lazily per job on demand
-var _artIds=null,_artCache={};
-async function fetchArtworkIds(force){
-  if(_artIds&&!force)return _artIds;
-  var r=await DB().from('print_schedule').select('id').not('artwork_url','is',null);
-  _artIds=new Set((r.data||[]).map(function(x){return String(x.id);}));
-  return _artIds;
-}
-async function fetchArtwork(id){
-  var k=String(id);
-  if(_artCache[k]!==undefined)return _artCache[k];
-  var r=await DB().from('print_schedule').select('artwork_url').eq('id',id).single();
-  _artCache[k]=(r.data&&r.data.artwork_url)||null;
-  return _artCache[k];
-}
-async function withArtwork(ev){
-  if(!ev)return ev;
-  if(ev.artwork_url!==undefined)return ev;
-  try{
-    var ids=await fetchArtworkIds();
-    ev.artwork_url=ids.has(String(ev.id))?await fetchArtwork(ev.id):null;
-  }catch(e){ev.artwork_url=null;}
-  return ev;
-}
-function bustSchedule(){cacheBust('ps');prints=[];}
-function bustStock(){cacheBust(['stock','mov']);}
-function bustPOs(){cacheBust(['po','mov']);}
-
-// ── STOCK HELPERS — single source of truth ──
-// Current stock = last physical count + received since − outgoing since. Never stored, always computed.
-function curStock(p){return Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));}
-function isWashed(name){return (name||'').toLowerCase().indexOf('washed')>-1;}
-// Business rule: Washed Frosted cups are produced in-house — NEVER in low-stock / reorder alerts.
-function normStatus(s){return (s||'').toLowerCase().trim();}
-function daysSince(iso){
-  if(!iso)return null;
-  var d=new Date(iso+'T00:00:00');if(isNaN(d))return null;
-  return Math.floor((Date.now()-d.getTime())/86400000);
-}
-var RECOUNT_DAYS=45; // physical count older than this → suggest recount
-var PO_OVERDUE_DAYS=21; // pending PO older than this → overdue alert
-
-// ── AUDIT LOG — traceability of manual stock changes (silent no-op if table missing) ──
-async function logAudit(action,product,qtyBefore,qtyAfter,note){
-  try{
-    await DB().from('stock_audit_log').insert([{actor:role||'unknown',action:action,product:product||null,qty_before:qtyBefore==null?null:qtyBefore,qty_after:qtyAfter==null?null:qtyAfter,note:note||null}]);
-  }catch(e){console.warn('audit log skipped:',e&&e.message);}
-}
-// ═══════════════════════════════════════════════════════════════════════════════
-
 var USERS={'swig2026':'owner','fred2026':'fred','warda2026':'warda'};
 
 // ── ARTWORK UPLOAD ──
@@ -1014,16 +892,16 @@ function initRole(r){
   if(r==='owner'){document.getElementById('badd').style.display='flex';}
   if(r==='owner'||r==='fred'){document.getElementById('bajob').style.display='flex';}
   var _wpd=document.getElementById('warda-print-date');if(_wpd){var _t=new Date();_wpd.value=_t.getFullYear()+'-'+String(_t.getMonth()+1).padStart(2,'0')+'-'+String(_t.getDate()).padStart(2,'0');}
-  // Parallel load — the cache layer dedupes these into a single network request per table
-  fetchArtworkIds().catch(function(){}); // ids only, a few bytes — enables artwork hints without blobs
+  // Load data in parallel — owner loads everything, Fred/Warda load lighter set
   if(r==='owner'){
     Promise.all([loadStock(), loadPOs(), loadCalData(), loadJobs(), loadPrint()]);
   } else if(r==='warda'){
     Promise.all([loadStock(), loadCalData(), loadMyJobs()]);
   } else {
+    // Fred: load essentials first, defer POs
     Promise.all([loadStock(), loadCalData(), loadJobs(), loadPrint()]);
   }
-  setTimeout(checkUnreadMessages, 2500);
+  setTimeout(checkUnreadMessages, 2000);
 }
 
 function showTab(n,b){
@@ -1059,34 +937,12 @@ function sc2(sz, col) {
 }
 
 // ── STOCK ──
-var stockFilterSize='',stockFilterColour='';
-function applyStockFilter(){
-  stockFilterSize=document.getElementById('stk-f-size')?document.getElementById('stk-f-size').value:'';
-  stockFilterColour=document.getElementById('stk-f-colour')?document.getElementById('stk-f-colour').value:'';
-  renderStockRows();
-}
-// Weekly consumption velocity per size+colour, from Done jobs of the last 8 weeks (uses cached schedule — zero extra query)
-function stockVelocity(schedule){
-  var cut=new Date();cut.setDate(cut.getDate()-56);
-  var cutISO=cut.getFullYear()+'-'+String(cut.getMonth()+1).padStart(2,'0')+'-'+String(cut.getDate()).padStart(2,'0');
-  var v={};
-  (schedule||[]).forEach(function(j){
-    if(j.status!=='Done'||!j.print_date||j.print_date<cutISO)return;
-    var k=(j.cup_size||'').toLowerCase()+'||'+(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
-    v[k]=(v[k]||0)+Math.round((j.qty_printed||0)*1.05);
-  });
-  Object.keys(v).forEach(function(k){v[k]=v[k]/8;}); // per week
-  return v;
-}
-async function loadStock(force){
-  var results = await Promise.all([
-    fetchStock(force),
-    fetchPOs(force),
-    fetchMovements(force),
-    fetchSchedule(force)
+async function loadStock(){
+  var [r, rpo, rmov] = await Promise.all([
+    DB().from('stock').select('*'),
+    DB().from('purchase_orders').select('product,qty_ordered,status,po_number'),
+    DB().from('movements').select('product,qty_in,reference,notes').eq('type','Delivery')
   ]);
-  var r={data:results[0]},rpo={data:results[1]},rmov={data:results[2]};
-  window._velocity=stockVelocity(results[3]);
   if(!r.data)return;
   pendByProduct={};
   if(rpo.data){
@@ -1097,8 +953,11 @@ async function loadStock(force){
         var combined=(m.reference||'')+' '+(m.notes||'');
         var rx=/p\.?\s*o\.?\s*[-#]?\s*(\d{3,})/gi;
         var match;
+        var seenPOs={};
         while((match=rx.exec(combined))!==null){
           var poKey='PO-'+match[1];
+          if(seenPOs[poKey])continue; // deduplicate same PO in ref+notes
+          seenPOs[poKey]=true;
           if(!receivedByPO[poKey])receivedByPO[poKey]={};
           var prod=m.product||'';
           receivedByPO[poKey][prod]=(receivedByPO[poKey][prod]||0)+(m.qty_in||0);
@@ -1141,17 +1000,13 @@ async function loadStock(force){
     if(!consolidated[key]){
       consolidated[key]={
         product:prodName,size:p.size,colour:colourName,
-        physical_stock:0,total_received:0,total_outgoing:0,id:p.id,ids:[],split:[],
-        physical_date:null,hasWashed:false,newQty:0
+        physical_stock:0,total_received:0,total_outgoing:0,id:p.id,ids:[],split:[]
       };
       order.push(key);
     }
     consolidated[key].physical_stock+=(p.physical_stock||0);
     consolidated[key].total_received+=(p.total_received||0);
     consolidated[key].total_outgoing+=(p.total_outgoing||0);
-    if(p.physical_date&&(!consolidated[key].physical_date||p.physical_date>consolidated[key].physical_date))consolidated[key].physical_date=p.physical_date;
-    if(isWashed(p.product))consolidated[key].hasWashed=true;
-    else consolidated[key].newQty+=curStock(p); // reorderable portion only (excludes in-house Washed)
     consolidated[key].ids.push(p.id);
     // Track split source for display, normalized: "Washed Frosted"->"Washed", "Frosted"->"New", colour aliases unified
     var origQty=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
@@ -1182,69 +1037,41 @@ async function loadStock(force){
     return (a.colour||'').localeCompare(b.colour||'');
   });
   stock=merged;
-  renderStockRows();
-}
-
-function renderStockRows(){
-  var merged=stock||[];
-  var LOW=5000,tot=0,lowc=0,pendc=0,recount=0;
+  var LOW=5000,tot=0,lowc=0,pendc=0;
   merged.forEach(function(p){
-    var cur=curStock(p);
+    var cur=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
     var pending=pendByProduct[p.product]||0;
     tot+=cur;
-    // Low-stock alert = reorderable (non-Washed) portion only. Washed Frosted are produced in-house.
-    var reorderable=p.hasWashed?p.newQty:cur;
-    if(reorderable>0&&reorderable<LOW&&(p.colour||'').toLowerCase()==='frosted'&&!isWashed(p.product))lowc++;
+    if(cur>0&&cur<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1)lowc++;
     if(pending>0)pendc++;
-    var ds=daysSince(p.physical_date);
-    if(ds!==null&&ds>RECOUNT_DAYS&&cur>0)recount++;
   });
   document.getElementById('smets').innerHTML=
     '<div class="mt gn"><div class="lb">Total stock</div><div class="vl">'+tot.toLocaleString()+'</div><div class="sb2">units</div></div>'+
-    '<div class="mt '+(lowc>0?'rd':'gn')+'"><div class="lb">Low stock (Frosted)</div><div class="vl">'+lowc+'</div><div class="sb2">below 5,000 · excl. Washed</div></div>'+
-    '<div class="mt or"><div class="lb">Pending POs</div><div class="vl">'+pendc+'</div><div class="sb2">products incoming</div></div>'+
-    '<div class="mt '+(recount>0?'or':'gn')+'"><div class="lb">Counts &gt; '+RECOUNT_DAYS+'d old</div><div class="vl">'+recount+'</div><div class="sb2">recount advised</div></div>';
+    '<div class="mt '+(lowc>0?'rd':'gn')+'"><div class="lb">Low stock (Frosted)</div><div class="vl">'+lowc+'</div><div class="sb2">below 5,000</div></div>'+
+    '<div class="mt or"><div class="lb">Products with pending POs</div><div class="vl">'+pendc+'</div></div>'+
+    '<div class="mt"><div class="lb">Live data</div><div class="vl" style="font-size:14px;padding-top:4px">✅</div></div>';
+  document.getElementById('abn').textContent=lowc+pendc;
 
   var cupColours={
     'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63',
     'blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE',
     'green':'#43A047','orange':'#FF9800'
   };
-  var vel=window._velocity||{};
-
-  // Filter bar (built once)
-  var fbar=document.getElementById('stk-filters');
-  if(fbar&&!fbar.dataset.built){
-    var sizes=[],colours=[];
-    merged.forEach(function(p){
-      if(p.size&&sizes.indexOf(p.size)===-1)sizes.push(p.size);
-      if(p.colour&&colours.indexOf(p.colour)===-1)colours.push(p.colour);
-    });
-    fbar.innerHTML='<select id="stk-f-size" onchange="applyStockFilter()" style="width:auto;font-size:12px;padding:6px 9px"><option value="">All sizes</option>'
-      +sizes.map(function(s){return '<option>'+s+'</option>';}).join('')+'</select>'
-      +'<select id="stk-f-colour" onchange="applyStockFilter()" style="width:auto;font-size:12px;padding:6px 9px"><option value="">All colours</option>'
-      +colours.sort().map(function(c){return '<option>'+c+'</option>';}).join('')+'</select>';
-    fbar.dataset.built='1';
-  }
 
   var rows='';
   var lastSize='';
-  var NCOLS=(role==='owner')?9:8;
   merged.forEach(function(p){
-    if(stockFilterSize&&p.size!==stockFilterSize)return;
-    if(stockFilterColour&&p.colour!==stockFilterColour)return;
     if(p.size!==lastSize){
-      rows+='<tr style="background:#e6f2ef"><td colspan="'+NCOLS+'" style="padding:6px 10px;font-size:11px;font-weight:700;color:#0a4033;text-transform:uppercase;letter-spacing:0.06em">'+p.size+'</td></tr>';
+      rows+='<tr style="background:#e6f2ef"><td colspan="6" style="padding:6px 10px;font-size:11px;font-weight:700;color:#0a4033;text-transform:uppercase;letter-spacing:0.06em">'+p.size+'</td></tr>';
       lastSize=p.size;
     }
-    var cur=curStock(p);
+    var cur=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
     var pending=pendByProduct[p.product]||0;
     var after=cur+pending;
     var max=Math.max(after,cur,1);
     var pct=Math.min(100,Math.round(cur/max*100));
     var isFr=(p.colour||'').toLowerCase()==='frosted';
-    var reorderable=p.hasWashed?p.newQty:cur;
-    var st=cur<=0?'pend':(isFr&&reorderable<LOW)?'low':(isFr&&reorderable<LOW*2)?'warn':'ok';
+    var st=cur<=0?'pend':(isFr&&cur<LOW)?'low':cur<LOW*2&&isFr?'warn':'ok';
     var cupCol = (p.colour||'').toLowerCase();
     var bc = cupColours[cupCol] || '#0E6655';
     var alertBc = st==='low'?'#E24B4A':st==='warn'?'#D35400':bc;
@@ -1252,39 +1079,19 @@ function renderStockRows(){
     var afterCell = pending>0
       ? '<span style="font-weight:700;color:#0E6655">'+after.toLocaleString()+'</span><div style="font-size:10px;color:#D35400">+'+pending.toLocaleString()+' incoming</div>'
       : '<span style="color:#999">'+after.toLocaleString()+'</span>';
-
-    // Stockout forecast: weeks of cover at recent consumption pace
-    var vkey=(p.size||'').toLowerCase()+'||'+(p.colour||'').toLowerCase();
-    var wv=vel[vkey]||0;
-    var coverCell;
-    if(!wv){coverCell='<span style="color:#ccc;font-size:11px">—</span>';}
-    else{
-      var wks=cur/wv;
-      var cc=wks<2?'#C0392B':wks<4?'#D35400':'#1E8449';
-      coverCell='<span style="font-weight:700;color:'+cc+';font-size:12px">'+(wks>26?'26+':wks.toFixed(1))+' wk</span><div style="font-size:9px;color:#aaa">~'+Math.round(wv).toLocaleString()+'/wk</div>';
-    }
-
-    // Physical count freshness — big gap between count date and today = trust decays, recount
-    var ds=daysSince(p.physical_date);
-    var countCell;
-    if(ds===null)countCell='<span style="color:#ccc;font-size:11px">never</span>';
-    else if(ds>RECOUNT_DAYS)countCell='<span style="font-size:11px;font-weight:700;color:#D35400" title="Last count '+p.physical_date+' — theoretical stock, recount advised">⚠️ '+ds+'d</span>';
-    else countCell='<span style="font-size:11px;color:#1E8449" title="Last count '+p.physical_date+'">✓ '+ds+'d</span>';
-
-    var washedBadge=p.hasWashed?'<span style="font-size:9px;background:#EAF2F8;color:#1F4E79;padding:1px 5px;border-radius:6px;margin-left:5px;font-weight:700" title="Includes in-house Washed cups — excluded from reorder alerts">incl. washed</span>':'';
+    // No split display
+    var splitHtml='';
     window['stk_'+p.id]=p;
     var editBtn=(role==='owner')
       ?'<td><button class="btn bs bsm" onclick="openStockEdit(window[\'stk_'+p.id+'\'])">✏️</button></td>'
-      :'';
-    rows+='<tr><td><strong>'+dot+p.product+'</strong>'+washedBadge+'</td><td style="color:#666">'+p.size+'</td>'+
+      :'<td></td>';
+    rows+='<tr><td><strong>'+dot+p.product+'</strong>'+splitHtml+'</td><td style="color:#666">'+p.size+'</td>'+
       '<td class="nr">'+cur.toLocaleString()+'</td>'+
       '<td class="nr">'+afterCell+'</td>'+
-      '<td class="nr">'+coverCell+'</td>'+
-      '<td style="text-align:center">'+countCell+'</td>'+
       '<td><div class="bar"><div class="barf" style="width:'+pct+'%;background:'+alertBc+'"></div></div></td>'+
       '<td>'+pill(st==='ok'?'ok':st==='low'?'low':st==='warn'?'warn':'pend')+'</td>'+editBtn+'</tr>';
   });
-  document.getElementById('stbl').innerHTML='<table><thead><tr><th>Product</th><th>Size</th><th class="nr">Current</th><th class="nr">After delivery</th><th class="nr">Cover</th><th style="text-align:center">Count</th><th>Level</th><th>Status</th>'+(role==='owner'?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>';
+  document.getElementById('stbl').innerHTML='<table><thead><tr><th>Product</th><th>Size</th><th class="nr">Physical</th><th class="nr">After delivery</th><th>Level</th><th>Status</th>'+(role==='owner'?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>';
 }
 
 // ── STOCK EDIT ──
@@ -1313,72 +1120,28 @@ function openStockEdit(p){
 
 async function saveStockEdit(){
   var p=JSON.parse(document.getElementById('stk-data').value||'{}');
-  var split=p.split&&p.split.length>1?p.split:[{name:'Stock',ids:p.ids||[p.id],qty:curStock(p)}];
+  var split=p.split&&p.split.length>1?p.split:[{name:'Stock',ids:p.ids||[p.id]}];
   var anyFail=false;
-  var d=new Date();
-  var todayISO=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  console.log('saveStockEdit split:', JSON.stringify(split));
   for(var i=0;i<split.length;i++){
     var newQty=parseInt(document.getElementById('stk-val-'+i).value)||0;
     var idsToUpdate=split[i].ids||[];
+    console.log('Source:', split[i].name, 'qty:', newQty, 'ids:', idsToUpdate);
     if(!idsToUpdate.length){console.warn('No IDs for split',split[i].name);continue;}
     for(var j=0;j<idsToUpdate.length;j++){
       var rowId=idsToUpdate[j];
-      // Physical count: reset movement counters AND stamp physical_date — the anchor of all stock math
-      var upd={physical_stock:(j===0?newQty:0),total_received:0,total_outgoing:0,physical_date:todayISO};
+      var upd={physical_stock:(j===0?newQty:0),total_received:0,total_outgoing:0};
+      console.log('Updating id:', rowId, 'with:', upd);
       var res=await DB().from('stock').update(upd).eq('id',rowId);
+      console.log('Result for id', rowId, ':', res.error||'OK', 'count:', res.count);
       if(res.error){console.error('Stock update error id',rowId,res.error);anyFail=true;}
     }
-    logAudit('physical_count',p.product+' ('+split[i].name+')',split[i].qty!=null?split[i].qty:null,newQty,'Manual count via app');
   }
   if(anyFail){toast('⚠️ Some rows may not have saved — check console','err');}
-  else{toast('✅ Stock counted & dated '+todayISO,'ok');}
+  else{toast('✅ Stock updated','ok');}
   closeOv('stkov');
-  bustStock();
-  loadStock(true);
+  loadStock();
   loadAlerts();
-}
-
-// ── HISTORY & AUDIT — traceability of every stock change ──
-async function loadHistory(){
-  var el=document.getElementById('hist-body');
-  el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
-  var res=await Promise.all([
-    DB().from('stock_audit_log').select('id,created_at,actor,action,product,qty_before,qty_after,note').order('id',{ascending:false}).limit(100),
-    fetchMovements()
-  ]);
-  var audit=(res[0]&&res[0].data)||[];
-  var auditErr=res[0]&&res[0].error;
-  var movs=(res[1]||[]).slice(0,50);
-  var ACTL={physical_count:'🔢 Physical count',delivery_received:'📦 Delivery received',print_done:'🖨️ Print done (stock out)',print_undone:'↩️ Print undone (stock back)'};
-  var ACTORL={owner:'Sébastien',fred:'Fred',warda:'Warda'};
-  var html='';
-  if(auditErr){
-    html+='<div class="ai warn" style="margin-bottom:10px"><h4>⚠️ Audit table missing</h4><p>Run the provided SQL (stock_audit_log) in Supabase to activate full traceability. Showing movements only.</p></div>';
-  } else if(audit.length){
-    html+='<div style="font-size:11px;font-weight:700;color:#0E6655;margin-bottom:6px;text-transform:uppercase">Audit log — manual changes</div><table style="margin-bottom:16px"><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Product</th><th class="nr">Before → After</th><th>Note</th></tr></thead><tbody>';
-    audit.forEach(function(a){
-      var when=a.created_at?new Date(a.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
-      html+='<tr><td style="font-size:11px;color:#666;white-space:nowrap">'+when+'</td>'
-        +'<td style="font-weight:600">'+(ACTORL[a.actor]||a.actor||'—')+'</td>'
-        +'<td style="font-size:11px">'+(ACTL[a.action]||a.action)+'</td>'
-        +'<td style="font-size:11px">'+(a.product||'—')+'</td>'
-        +'<td class="nr" style="font-size:11px">'+(a.qty_before!=null?a.qty_before.toLocaleString():'—')+' → <strong>'+(a.qty_after!=null?a.qty_after.toLocaleString():'—')+'</strong></td>'
-        +'<td style="font-size:11px;color:#888">'+(a.note||'')+'</td></tr>';
-    });
-    html+='</tbody></table>';
-  } else {
-    html+='<div style="color:#aaa;font-size:12px;margin-bottom:12px">No audit entries yet — they appear as counts and deliveries are recorded.</div>';
-  }
-  html+='<div style="font-size:11px;font-weight:700;color:#0E6655;margin-bottom:6px;text-transform:uppercase">Deliveries received (12 months)</div>';
-  if(!movs.length){html+='<div style="color:#aaa;font-size:12px">No movements recorded.</div>';}
-  else{
-    html+='<table><thead><tr><th>Date</th><th>Reference</th><th>Product</th><th class="nr">Qty in</th><th>Notes</th></tr></thead><tbody>';
-    movs.forEach(function(m){
-      html+='<tr><td style="font-size:11px;white-space:nowrap">'+(m.date||'—')+'</td><td style="font-size:11px">'+(m.reference||'—')+'</td><td style="font-size:11px">'+(m.product||'—')+'</td><td class="nr" style="color:#1E8449;font-weight:700">+'+(m.qty_in||0).toLocaleString()+'</td><td style="font-size:11px;color:#888">'+(m.notes||'')+'</td></tr>';
-    });
-    html+='</tbody></table>';
-  }
-  el.innerHTML='<div style="overflow-x:auto">'+html+'</div>';
 }
 
 function calcDel(){
@@ -1435,14 +1198,12 @@ async function saveDel(){
     }
   }
 
-  logAudit('delivery_received',prod,null,tot,(ref||'')+(notes?' — '+notes:''));
   toast('✓ '+tot.toLocaleString()+' units recorded','ok');
   togglePnl('pdel');
   document.getElementById('dbx').value='';
   document.getElementById('dcalc').textContent='Total: — units';
-  bustStock();bustPOs();
-  loadStock(true);
-  loadPOs(true);
+  loadStock();
+  loadPOs();
 }
 
 // ── PURCHASE ORDERS SUB-TABS ──
@@ -1459,16 +1220,20 @@ function posSubTab(tab){
   if(!isOrders)loadAPDeliveries();
 }
 
-async function loadAPDeliveries(force){
+async function loadAPDeliveries(){
   var el=document.getElementById('ap-del-list');
   var mets=document.getElementById('ap-del-mets');
   el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
 
-  // Fetch POs and movements in parallel — cached, explicit columns
-  var res=await Promise.all([fetchPOs(force),fetchMovements(force)]);
-  var pos=(res[0]||[]).slice().sort(function(a,b){return (b.po_date||'').localeCompare(a.po_date||'');});
-  var movs=res[1]||[];
-  if(!pos){el.innerHTML='<div class="ld">Error</div>';return;}
+  // Fetch POs and movements in parallel
+  var [rpo, rmov] = await Promise.all([
+    DB().from('purchase_orders').select('*').order('po_date',{ascending:false}),
+    DB().from('movements').select('*').eq('type','Delivery').order('date',{ascending:false})
+  ]);
+  if(!rpo.data){el.innerHTML='<div class="ld">Error</div>';return;}
+
+  var pos=rpo.data||[];
+  var movs=rmov.data||[];
 
   // Build delivery map: po_number -> [{date, qty_in, reference}]
   // Match movements to POs via notes or reference field containing PO number
@@ -1666,43 +1431,23 @@ async function loadAPDeliveries(force){
   el.innerHTML=html;
 }
 // ── PURCHASE ORDERS ──
-var poSupplierFilter='';
-function applyPOFilter(){
-  poSupplierFilter=document.getElementById('po-f-supplier')?document.getElementById('po-f-supplier').value:'';
-  loadPOs();
-}
-function poIsOverdue(p){
-  return (p.status==='Pending'||p.status==='Partial')&&daysSince(p.po_date)!==null&&daysSince(p.po_date)>PO_OVERDUE_DAYS;
-}
-async function loadPOs(force){
-  var all=await fetchPOs(force);
-  if(!all)return;
-
-  // Supplier filter bar (multi-supplier consolidated view)
-  var suppliers=[];
-  all.forEach(function(p){var s=p.supplier||'Africa Plastics';if(suppliers.indexOf(s)===-1)suppliers.push(s);});
-  var pfbar=document.getElementById('po-filters');
-  if(pfbar&&suppliers.length>1){
-    pfbar.innerHTML='<select id="po-f-supplier" onchange="applyPOFilter()" style="width:auto;font-size:12px;padding:6px 9px"><option value="">All suppliers</option>'
-      +suppliers.sort().map(function(s){return '<option'+(s===poSupplierFilter?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
-  }
-  var data=poSupplierFilter?all.filter(function(p){return (p.supplier||'Africa Plastics')===poSupplierFilter;}):all;
-  var r={data:data};
-
+async function loadPOs(){
+  // Sort DESC: most recent first
+  var r=await DB().from('purchase_orders').select('*').order('po_number',{ascending:false});
+  if(!r.data)return;
   var tot=r.data.reduce(function(s,p){return s+(p.qty_ordered||0);},0);
   var val=r.data.reduce(function(s,p){return s+(p.qty_ordered||0)*(p.unit_price||0)*1.15;},0);
   var pend=r.data.filter(function(p){return p.status==='Pending'||p.status==='Partial';}).length;
-  var overdueCount=r.data.filter(poIsOverdue).length;
   var nd=r.data.filter(function(p){return p.status==='Not delivered';}).length;
   // Amount outstanding = ALL unpaid POs regardless of delivery status
   var owed=r.data.filter(function(p){return !p.paid;});
   var owedTotal=owed.reduce(function(s,p){return s+(p.qty_ordered||0)*(p.unit_price||0)*1.15;},0);
   document.getElementById('pmets').innerHTML=
     '<div class="mt"><div class="lb">Total ordered</div><div class="vl">'+tot.toLocaleString()+'</div></div>'+
+    '<div class="mt"><div class="lb">Total value</div><div class="vl" style="font-size:14px;padding-top:4px">ZAR '+Math.round(val).toLocaleString()+'</div></div>'+
     '<div class="mt or"><div class="lb">Pending/Partial</div><div class="vl">'+pend+'</div></div>'+
-    '<div class="mt '+(overdueCount>0?'rd':'gn')+'"><div class="lb">⏰ Overdue &gt; '+PO_OVERDUE_DAYS+'d</div><div class="vl">'+overdueCount+'</div><div class="sb2">chase supplier</div></div>'+
     '<div class="mt '+(nd>0?'rd':'gn')+'"><div class="lb">Not delivered</div><div class="vl">'+nd+'</div></div>'+
-    '<div class="mt '+(owedTotal>0?'rd':'gn')+'"><div class="lb">💳 I owe</div><div class="vl" style="font-size:14px;padding-top:4px">ZAR '+Math.round(owedTotal).toLocaleString()+'</div><div class="sb2">unpaid</div></div>';
+    '<div class="mt '+(owedTotal>0?'rd':'gn')+'"><div class="lb">💳 I owe</div><div class="vl" style="font-size:14px;padding-top:4px">ZAR '+Math.round(owedTotal).toLocaleString()+'</div><div class="sb2">unpaid delivered</div></div>';
 
   var SBG={'Delivered':'#D5F5E3','Over-delivered':'#D5F5E3','Partial':'#FDEBD0','Not delivered':'#FADBD8','To verify':'#FEF9E7','Pending':'#D6EAF8'};
   var SICO={'Delivered':'✅','Over-delivered':'✅','Partial':'⚠️','Not delivered':'❌','To verify':'❓','Pending':'🔜'};
@@ -1764,9 +1509,8 @@ async function loadPOs(force){
             :'<td><button class="btn bs bsm btn-inv" style="font-size:10px;padding:2px 6px" onclick="editInvoice('+p.id+')">+</button></td>')
           :'<td style="font-size:11px;color:#666">'+(p.invoice_number||'—')+'</td>')
         :'<td></td>';
-      var odBadge=poIsOverdue(p)?'<span style="display:block;font-size:8px;font-weight:700;color:#C0392B" title="Ordered '+(p.po_date||'?')+' — still not delivered">⏰ '+daysSince(p.po_date)+'d</span>':'';
       rows+='<tr class="'+doneClass+'" style="background:'+bg+'">'
-        +'<td style="font-weight:700;color:#1F4E79">'+(isN?p.po_number:'↳')+odBadge+'</td>'
+        +'<td style="font-weight:700;color:#1F4E79">'+(isN?p.po_number:'↳')+'</td>'
         +invCell
         +'<td style="font-size:12px;color:#666;white-space:nowrap">'+(p.po_date||'—')+'</td>'
         +'<td style="font-weight:500">'+(p.product||'—')+'</td>'
@@ -1830,13 +1574,12 @@ async function editInvoice(id){
   if(val===null)return;
   await DB().from('purchase_orders').update({invoice_number:val||null}).eq('id',id);
   toast('✅ Invoice number saved','ok');
-  bustPOs();loadPOs(true);
+  loadPOs();
 }
 
 async function receiveDelivery(id, totalOrdered){
   // Get current PO
-  var r=await DB().from('purchase_orders').select(PO_COLS).eq('id',id).single();
-  if(r.error)r=await DB().from('purchase_orders').select('*').eq('id',id).single();
+  var r=await DB().from('purchase_orders').select('*').eq('id',id).single();
   if(!r.data){toast('Error loading PO','err');return;}
   var p=r.data;
   var alreadyReceived=p.qty_received||0;
@@ -1880,18 +1623,16 @@ async function receiveDelivery(id, totalOrdered){
     await DB().from('stock').update({total_received:(srow.total_received||0)+qty}).eq('id',srow.id);
   }
 
-  logAudit('delivery_received',p.product,alreadyReceived,newReceived,p.po_number+(ref?' — '+ref:''));
   toast(isComplete?'✅ PO fully delivered!':'📦 Partial delivery recorded — '+qty.toLocaleString()+' units','ok');
-  bustPOs();bustStock();
   loadAPDeliveries();
-  loadStock(true);
+  loadStock();
 }
 
 async function markPaid(id,alreadyPaid){
   if(alreadyPaid){
     if(!confirm('Undo payment for this PO?'))return;
     await DB().from('purchase_orders').update({paid:false,paid_date:null}).eq('id',id);
-    toast('↩️ Payment cancelled','ok');bustPOs();loadPOs(true);
+    toast('↩️ Payment cancelled','ok');loadPOs();
     return;
   }
   var d=new Date();
@@ -1899,14 +1640,14 @@ async function markPaid(id,alreadyPaid){
   var cd=prompt('Payment date:',ds);
   if(cd===null)return;
   await DB().from('purchase_orders').update({paid:true,paid_date:cd||ds}).eq('id',id);
-  toast('✅ PO marked as paid','ok');bustPOs();loadPOs(true);
+  toast('✅ PO marked as paid','ok');loadPOs();
 }
 
 async function markDelivered(id, alreadyDelivered){
   if(alreadyDelivered){
     if(!confirm('Undo delivery status for this PO?'))return;
     await DB().from('purchase_orders').update({status:'Pending',delivery_date:null}).eq('id',id);
-    toast('↩️ Status reset to Pending','ok');bustPOs();loadPOs(true);
+    toast('↩️ Status reset to Pending','ok');loadPOs();
     return;
   }
   var d=new Date();
@@ -1914,25 +1655,23 @@ async function markDelivered(id, alreadyDelivered){
   var cd=prompt('Delivery date:',ds);
   if(cd===null)return;
   await DB().from('purchase_orders').update({status:'Delivered',delivery_date:cd||ds}).eq('id',id);
-  toast('🚚 PO marked as delivered','ok');bustPOs();loadPOs(true);
+  toast('🚚 PO marked as delivered','ok');loadPOs();
 }
 
 async function editPO(id){
-  var r=await DB().from('purchase_orders').select(PO_COLS).eq('id',id).single();
-  if(r.error)r=await DB().from('purchase_orders').select('*').eq('id',id).single();
+  var r=await DB().from('purchase_orders').select('*').eq('id',id).single();
   if(!r.data)return;
   var ns=prompt('Status ('+r.data.po_number+'): Pending/Partial/Delivered/Not delivered/To verify/Over-delivered',r.data.status);
   if(!ns)return;
   var nd=prompt('Delivery date:',r.data.delivery_date||'');
   var up={status:ns};if(nd!==null)up.delivery_date=nd||null;
   await DB().from('purchase_orders').update(up).eq('id',id);
-  toast('✅ PO updated','ok');bustPOs();loadPOs(true);
+  toast('✅ PO updated','ok');loadPOs();
 }
 
 // ── JOBS ──
-async function loadJobs(force){
-  var d=await fetchSchedule(force);
-  var r={data:(d||[]).slice().sort(function(a,b){return (b.id||0)-(a.id||0);})};
+async function loadJobs(){
+  var r=await DB().from('print_schedule').select('*').order('id',{ascending:false});
   if(!r.data)return;
   document.getElementById('jt').textContent=r.data.length;
   document.getElementById('js').textContent=r.data.filter(function(o){return o.status==='Scheduled';}).length;
@@ -2010,12 +1749,12 @@ async function saveJob(){
   toast('✓ '+client+' added','ok');
   togglePnl('pjob');document.getElementById('bajob').style.display='flex';
   ['jc2','jq','jpc','jno','jdl'].forEach(function(id){document.getElementById(id).value='';});
-  bustSchedule();loadJobs(true);loadCalData();
+  loadJobs();prints=[];loadCalData();
 }
 
 // ── PRINT ──
-async function loadPrint(force){
-  var r={data:await fetchSchedule(force)};
+async function loadPrint(){
+  var r=await DB().from('print_schedule').select('*').order('id');
   if(!r.data)return;
 
   // Compute current week monday ISO
@@ -2042,8 +1781,7 @@ async function loadPrint(force){
       .update({print_date:thisMonISO,week_label:newWL,date_period:newPeriod})
       .in('id',reschedIds);
     // Reload after rescheduling
-    bustSchedule();
-    r={data:await fetchSchedule(true)};
+    r=await DB().from('print_schedule').select('*').order('id');
     if(!r.data)return;
     if(toReschedule.length===1){
       toast('↗️ '+toReschedule[0].client+' moved to '+newWL,'ok');
@@ -2135,9 +1873,10 @@ function makeAlert(cls,html,key){
   }
   return w;
 }
-async function loadAlerts(force){
-  var res=await Promise.all([fetchStock(force),fetchPOs(force),fetchSchedule(force)]);
-  var rs={data:res[0]},rp={data:res[1]},rj={data:res[2]};
+async function loadAlerts(){
+  var rs=await DB().from('stock').select('*');
+  var rp=await DB().from('purchase_orders').select('*');
+  var rj=await DB().from('print_schedule').select('*');
   if(!rs.data||!rp.data||!rj.data)return;
   var el=document.getElementById('alist');el.innerHTML='';
 
@@ -2208,58 +1947,6 @@ async function loadAlerts(force){
     });
   }
 
-  // ── Low stock / reorder (Frosted only, Washed EXCLUDED — produced in-house, never reordered) ──
-  var LOW2=5000;
-  var reorderByKey={};
-  rs.data.forEach(function(s){
-    if(isWashed(s.product))return; // hard exclusion, applies to every alert path
-    if((s.colour||'').toLowerCase().replace('new frosted','frosted')!=='frosted')return;
-    var k=(s.size||'')+' Frosted';
-    if(!reorderByKey[k])reorderByKey[k]={qty:0,incoming:0};
-    reorderByKey[k].qty+=curStock(s);
-  });
-  rp.data.forEach(function(p){
-    var st=normStatus(p.status);
-    if(st!=='pending'&&st!=='partial')return;
-    if(isWashed(p.product))return;
-    if((p.product||'').toLowerCase().indexOf('frosted')===-1)return;
-    var k=((p.size||p.product||'').match(/\d{3}ml/)||[''])[0]+' Frosted';
-    if(reorderByKey[k])reorderByKey[k].incoming+=(p.qty_ordered||0);
-  });
-  Object.keys(reorderByKey).forEach(function(k){
-    var v=reorderByKey[k];
-    if(v.qty>0&&v.qty<LOW2){
-      var key='reorder_'+k;
-      if(_dismissedAlerts.indexOf(key)>-1)return;
-      el.appendChild(makeAlert(v.incoming>0?'warn':'',
-        '<h4>📦 Reorder — '+k+'</h4><p>Only <strong>'+v.qty.toLocaleString()+'</strong> new units left (threshold 5,000)'
-        +(v.incoming>0?' · <strong>'+v.incoming.toLocaleString()+'</strong> already on order':' · <strong>no PO in progress</strong> — order from Africa Plastics')
-        +'<br><span style="font-size:11px;color:#888">Washed Frosted (in-house) not counted</span></p>',key));
-    }
-  });
-
-  // ── Overdue POs (ordered > '+PO_OVERDUE_DAYS+' days ago, still not delivered) ──
-  rp.data.filter(poIsOverdue).forEach(function(p){
-    var key='po_overdue_'+p.id;
-    if(_dismissedAlerts.indexOf(key)>-1)return;
-    el.appendChild(makeAlert('warn',
-      '<h4>⏰ PO overdue — '+p.po_number+'</h4><p>'+(p.product||'')+' — '+(p.qty_ordered||0).toLocaleString()+' units · ordered '+(p.po_date||'?')+' ('+daysSince(p.po_date)+' days ago) · still '+p.status.toLowerCase()+'<br>Chase '+(p.supplier||'Africa Plastics')+'</p>',key));
-  });
-
-  // ── Stale physical counts — theoretical stock drifts from reality over time ──
-  var stale=rs.data.filter(function(s){
-    var ds=daysSince(s.physical_date);
-    return ds!==null&&ds>RECOUNT_DAYS&&curStock(s)>0;
-  });
-  if(stale.length){
-    var key3='stale_counts';
-    if(_dismissedAlerts.indexOf(key3)===-1){
-      var names=stale.slice(0,6).map(function(s){return s.product+' ('+daysSince(s.physical_date)+'d)';}).join(', ')+(stale.length>6?' +'+(stale.length-6)+' more':'');
-      el.appendChild(makeAlert('info',
-        '<h4>🔢 Recount advised — '+stale.length+' product'+(stale.length>1?'s':'')+'</h4><p>Last physical count older than '+RECOUNT_DAYS+' days. Displayed stock is theoretical (count + received − outgoing) — ask Fred for a recount.<br>'+names+'</p>',key3));
-    }
-  }
-
   // ── POs not delivered ──
   var nd=rp.data.filter(function(p){return p.status==='Not delivered';});
   nd.forEach(function(p){
@@ -2323,8 +2010,8 @@ function weekJobs(mon){
   });
 }
 
-async function loadCalData(force){
-  var r={data:await fetchSchedule(force)};
+async function loadCalData(){
+  var r=await DB().from('print_schedule').select('*').order('id');
   if(r&&r.data){
     prints=r.data;
     // Rebuild window cache from fresh data
@@ -2414,7 +2101,7 @@ function renderCal(){
         ev.artwork?'📋 '+ev.artwork+' artwork':'',
         ev.notes?'📝 '+ev.notes:'',
         ev.posis_received?'✅ POSIS received':'❌ POSIS not received',
-        (_artIds&&_artIds.has(String(ev.id)))?'📎 Artwork uploaded':''
+        ev.artwork_url?'📎 Artwork uploaded':''
       ].filter(Boolean).join('\n');
       // ✓ check button (top-right)
       var checkBtn = document.createElement('div');
@@ -2728,7 +2415,7 @@ async function onDrop(dateISO){
   await DB().from('print_schedule').update({week_label:'W'+wn,date_period:np,print_date:dateISO}).eq('id',dragId);
   var ev=(prints||[]).find(function(e){return e.id===dragId;});
   toast('✓ '+(ev?ev.client:'Job')+' moved to W'+wn,'ok');
-  dragId=null;bustSchedule();loadCalData(true);
+  dragId=null;loadCalData();
 }
 
 // ── QUICK ADD ──
@@ -2769,35 +2456,7 @@ async function saveQA(){
   toast('✓ '+c+' added','ok');
   closeOv('qaov');
   document.getElementById('qac').value='';document.getElementById('qaq').value='';
-  bustSchedule();loadCalData(true);loadJobs();loadMyJobs();
-}
-
-// ── DELIVERY PIPELINE — "Done" means printed at Warda, NOT delivered to client ──
-// The real lifecycle is: Printed (Warda) → Collected → Delivered. delivery_status tracks the last two.
-function setDeliveryStatus(id,newDs){
-  return DB().from('print_schedule').update({delivery_status:newDs}).eq('id',id).then(function(r){
-    if(r.error){toast('❌ '+r.error.message,'err');return;}
-    toast(newDs==='Delivered'?'✅ Delivered to client':newDs==='Collected'?'📦 Marked collected':'↩️ Back to pending','ok');
-    bustSchedule();
-    loadDeliveries(true);loadCalData();loadToday&&document.getElementById('tab-today').classList.contains('act')&&loadToday();
-  });
-}
-function timelineHtml(ev){
-  var printed=ev.status==='Done';
-  var ds=ev.delivery_status||'Pending';
-  var collected=ds==='Collected'||ds==='Delivered';
-  var delivered=ds==='Delivered';
-  function step(on,icon,label){
-    return '<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0">'
-      +'<div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;'
-      +(on?'background:#0E6655;color:#fff':'background:#f0f0f0;color:#bbb;border:1.5px dashed #ccc')+'">'+icon+'</div>'
-      +'<div style="font-size:9px;font-weight:700;margin-top:4px;text-transform:uppercase;letter-spacing:0.03em;color:'+(on?'#0E6655':'#bbb')+'">'+label+'</div>'
-      +'</div>';
-  }
-  function link(on){return '<div style="flex:1;height:2px;margin-top:14px;background:'+(on?'#0E6655':'#e0e0e0')+'"></div>';}
-  return '<div style="display:flex;align-items:flex-start;gap:0;margin:4px 0 14px;padding:12px 8px;background:#f7f8fa;border-radius:10px">'
-    +step(printed,'🖨️','Printed<br>(Warda)')+link(collected)+step(collected,'📦','Collected')+link(delivered)+step(delivered,'🚚','Delivered<br>to client')
-    +'</div>';
+  prints=[];loadCalData();loadJobs();loadMyJobs();
 }
 
 // ── EVENT DETAIL ──
@@ -2806,7 +2465,6 @@ function openEvDetail(ev){
   curEv=ev;
   document.getElementById('evtitle').textContent=ev.client;
   document.getElementById('evbody').innerHTML=
-    timelineHtml(ev)+
     '<div class="mr"><span class="ml">Week</span><span>'+(ev.week_label||'—')+' · '+(ev.date_period||'—')+'</span></div>'+
     (ev.print_date?'<div class="mr"><span class="ml">Print date</span><span><strong>'+ev.print_date+'</strong></span></div>':'')+
     (ev.delivery_date?'<div class="mr"><span class="ml">Delivery</span><span>'+ev.delivery_date+'</span></div>':'')+
@@ -2865,20 +2523,17 @@ function openEdit(ev){
   document.getElementById('artwork-file').value = '';
   document.getElementById('artwork-preview').style.display = 'none';
   var ac = document.getElementById('artwork-current');
-  ac.textContent='Checking artwork…';
-  withArtwork(ev).then(function(){
-    if(ev.artwork_url) {
-      if(ev.artwork_url.startsWith('data:image')){
-        ac.innerHTML = '<img src="'+ev.artwork_url+'" style="max-width:100%;max-height:120px;border-radius:6px;margin-top:4px">';
-      } else if(ev.artwork_url.startsWith('data:application/pdf')){
-        ac.innerHTML = '📄 <span style="color:#0E6655;font-weight:500">PDF artwork on file</span>';
-      } else {
-        ac.innerHTML = '📎 Current: <a href="'+ev.artwork_url+'" target="_blank" style="color:#0E6655">View artwork</a>';
-      }
+  if(ev.artwork_url) {
+    if(ev.artwork_url.startsWith('data:image')){
+      ac.innerHTML = '<img src="'+ev.artwork_url+'" style="max-width:100%;max-height:120px;border-radius:6px;margin-top:4px">';
+    } else if(ev.artwork_url.startsWith('data:application/pdf')){
+      ac.innerHTML = '📄 <span style="color:#0E6655;font-weight:500">PDF artwork on file</span>';
     } else {
-      ac.textContent = 'No artwork uploaded yet';
+      ac.innerHTML = '📎 Current: <a href="'+ev.artwork_url+'" target="_blank" style="color:#0E6655">View artwork</a>';
     }
-  });
+  } else {
+    ac.textContent = 'No artwork uploaded yet';
+  }
   document.getElementById('edt').value  = ev.delivery_type||'';
   document.getElementById('eda').value  = ev.delivery_address||'';
   document.getElementById('ecn').value  = ev.contact_name||'';
@@ -2954,8 +2609,6 @@ async function saveEdit(){
       var artworkUrl = await uploadArtwork(id, pendingArtworkFile);
       if(artworkUrl){
         await DB().from('print_schedule').update({artwork_url:artworkUrl}).eq('id',id);
-        _artCache[String(id)]=artworkUrl;
-        if(_artIds)_artIds.add(String(id));
         toast('✓ '+client+' saved + artwork uploaded','ok');
       } else {
         toast('✓ '+client+' saved (artwork upload failed)','ok');
@@ -2969,7 +2622,7 @@ async function saveEdit(){
 
   closeOv('edov');
   pendingArtworkFile=null;
-  bustSchedule();loadCalData(true);loadJobs();loadPrintNoReschedule();loadMyJobs();
+  prints=[];loadCalData();loadJobs();loadPrintNoReschedule();loadMyJobs();
 }
 
 async function delJob(){
@@ -3012,11 +2665,8 @@ async function delJob(){
   closeOv('edov');
 
   // Purge from ALL memory caches
-  bustSchedule();
   var sid=String(id);
-  prints = (prints||[]).filter(function(p){ return String(p.id) !== sid; });
-  delete _artCache[sid];
-  if(_artIds)_artIds.delete(sid);
+  prints = prints.filter(function(p){ return String(p.id) !== sid; });
   [id, numId].forEach(function(k){
     delete window['ev_'+k];
     delete window['p_'+k];
@@ -3028,7 +2678,7 @@ async function delJob(){
 
   // Full fresh reload from DB
   setTimeout(async function(){
-    await loadCalData(true);
+    await loadCalData();
     loadJobs();
     loadPrintNoReschedule();
     loadMyJobs();
@@ -3038,7 +2688,7 @@ async function delJob(){
 
 // Load print tab WITHOUT triggering auto-reschedule (used after delete/save)
 async function loadPrintNoReschedule(){
-  var r={data:await fetchSchedule()};
+  var r=await DB().from('print_schedule').select('*').order('id');
   if(!r.data)return;
   var now=new Date();now.setHours(0,0,0,0);
   var dow=now.getDay();
@@ -3071,8 +2721,8 @@ async function loadPrintNoReschedule(){
 }
 
 // ── WARDA ──
-async function loadMyJobs(force){
-  var r={data:await fetchSchedule(force)};
+async function loadMyJobs(){
+  var r=await DB().from('print_schedule').select('*').order('id');
   if(!r.data)return;
   var tot=r.data.length,done=r.data.filter(function(j){return j.status==='Done';}).length;
   var units=r.data.filter(function(j){return j.status==='Done';}).reduce(function(s,j){return s+(j.qty_printed||0);},0);
@@ -3126,8 +2776,7 @@ async function loadMyJobs(force){
 async function toggleDone(id,st){
   var ns=st==='Done'?'In progress':'Done';
   // Always fetch job fresh from DB to ensure accurate qty
-  var jobR=await DB().from('print_schedule').select(PS_COLS).eq('id',id).single();
-  if(jobR.error)jobR=await DB().from('print_schedule').select('*').eq('id',id).single();
+  var jobR=await DB().from('print_schedule').select('*').eq('id',id).single();
   var job=jobR.data||((prints||[]).find(function(p){return String(p.id)===String(id);})||window['ev_'+id]||window['p_'+id]||window['j_'+id]);
   await DB().from('print_schedule').update({status:ns}).eq('id',id);
 
@@ -3167,16 +2816,13 @@ async function toggleDone(id,st){
     }
   }
 
-  if(job)logAudit(ns==='Done'?'print_done':'print_undone',job.cup_size+' '+job.cup_colour,null,Math.round((job.qty_printed||0)*1.05),job.client);
-  toast(ns==='Done'?'🖨️ Printed at Warda — stock deducted':'↩️ Back in progress','ok');
-  bustSchedule();bustStock();
-  loadMyJobs(true);loadCalData();loadPrintNoReschedule();loadStock(true);
+  toast(ns==='Done'?'✅ Done!':'↩️ In progress','ok');
+  prints=[];loadMyJobs();loadCalData();loadPrintNoReschedule();loadStock();
 }
 
 // ── JOB CARD ──
-async function downloadJobCard(ev) {
+function downloadJobCard(ev) {
   if(!ev) return;
-  await withArtwork(ev); // artwork blob fetched only now, only for this job
 
   // Cup colour dot
   var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
@@ -3467,8 +3113,9 @@ async function loadToday(){
     phEl.textContent='ZA Public Holiday: '+SA_HOLIDAYS[iso];
   } else { phEl.style.display='none'; }
 
-  var all = await fetchSchedule();
-  if(!all) return;
+  var r = await DB().from('print_schedule').select('*').order('id');
+  if(!r.data) return;
+  var all = r.data;
 
   var prints_today = all.filter(function(j){ return j.print_date===iso; });
   var deliveries   = all.filter(function(j){ return j.delivery_date===iso; });
@@ -3510,16 +3157,9 @@ async function loadToday(){
     qty.className='tc-qty';
     qty.textContent=(j.qty_printed||0).toLocaleString();
     right.appendChild(qty);
+    var stClass=j.status==='Done'?'done':j.status==='In progress'?'prog':'sch';
     var stEl=document.createElement('span');
-    if(type==='delivery'||type==='upcoming'){
-      var ds2=j.delivery_status||'Pending';
-      var dsClass=ds2==='Delivered'?'done':ds2==='Collected'?'prog':'sch';
-      stEl.innerHTML='<span class="pl '+dsClass+'">'+ds2+'</span>'
-        +(j.status==='Done'?' <span class="pl done" style="margin-left:3px">🖨️</span>':'');
-    } else {
-      var stClass=j.status==='Done'?'done':j.status==='In progress'?'prog':'sch';
-      stEl.innerHTML='<span class="pl '+stClass+'">'+(j.status==='Done'?'🖨️ Printed':j.status)+'</span>';
-    }
+    stEl.innerHTML='<span class="pl '+stClass+'">'+j.status+'</span>';
     right.appendChild(stEl);
     if(type!=='upcoming'&&role!=='warda'){
       var ck=document.createElement('div');
@@ -3640,7 +3280,7 @@ function renderDelMiniCal(){
     var cls='dmcal-cell'+(isToday?' today':'')+(isSelected?' selected':'');
     var dots='';
     dayJobs.slice(0,4).forEach(function(j){
-      var isDone=(j.delivery_status||'')==='Delivered';
+      var isDone=j.status==='Done';
       var col=isDone?'#ccc':(j.delivery_type==='Collection'?'#1E8449':j.delivery_type==='Delivery'?'#1E88E5':'#999');
       dots+='<span class="dmcal-dot" style="background:'+col+'"></span>';
     });
@@ -3705,7 +3345,7 @@ function renderDelWeekCal(){
     } else {
       dayJobs.forEach(function(j){
         window['ev_'+j.id]=j;
-        var isDone=(j.delivery_status||'')==='Delivered';
+        var isDone=j.status==='Done';
         var typeCls=isDone?'done':(j.delivery_type==='Collection'?'collection':j.delivery_type==='Delivery'?'delivery':'');
         var icon=j.delivery_type==='Collection'?'📦':j.delivery_type==='Delivery'?'🚚':'•';
         html+='<div class="dwcal-job '+typeCls+'" onclick="event.stopPropagation();downloadDeliveryCard(window[\'ev_'+j.id+'\'])" title="'+j.client+'">'
@@ -3733,10 +3373,9 @@ function renderDelWeekCal(){
 }
 
 // ── DELIVERIES & COLLECTIONS TAB ──
-async function loadDeliveries(force){
-  var d=await fetchSchedule(force);
-  if(!d)return;
-  var r={data:d.slice().sort(function(a,b){return (a.delivery_date||'9999').localeCompare(b.delivery_date||'9999');})};
+async function loadDeliveries(){
+  var r=await DB().from('print_schedule').select('*').order('delivery_date',{ascending:true});
+  if(!r.data)return;
   prints=r.data;
   renderDelCal();
 
@@ -3750,15 +3389,13 @@ async function loadDeliveries(force){
   var today=new Date();today.setHours(0,0,0,0);
   var todayISO=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
 
-  // Grouping is by DELIVERY status: a job printed at Warda (status Done) is NOT delivered yet.
-  function isDelivered(j){return (j.delivery_status||'')==='Delivered';}
-  var overdue=all.filter(function(j){return j.delivery_date<todayISO&&!isDelivered(j);});
-  var upcoming=all.filter(function(j){return j.delivery_date>=todayISO&&!isDelivered(j);});
-  var done=all.filter(isDelivered);
+  var overdue=all.filter(function(j){return j.delivery_date<todayISO&&j.status!=='Done';});
+  var upcoming=all.filter(function(j){return j.delivery_date>=todayISO&&j.status!=='Done';});
+  var done=all.filter(function(j){return j.status==='Done';});
 
   var colCount=all.filter(function(j){return j.delivery_type==='Collection';}).length;
   var delCount=all.filter(function(j){return j.delivery_type==='Delivery';}).length;
-  var urgCount=all.filter(function(j){return j.is_urgent&&!isDelivered(j);}).length;
+  var urgCount=all.filter(function(j){return j.is_urgent&&j.status!=='Done';}).length;
 
   document.getElementById('del-mets').innerHTML=
     '<div class="mt"><div class="lb">Upcoming</div><div class="vl">'+upcoming.length+'</div><div class="sb2">pending</div></div>'+
@@ -3771,10 +3408,7 @@ async function loadDeliveries(force){
   function barCol(j){return j.is_urgent?'#C0392B':(j.cup_size||'').indexOf('500')>-1?'#43A047':(j.cup_size||'').indexOf('330')>-1?'#FDD835':'#1E88E5';}
 
   function makeDelCard(j){
-    var ds=j.delivery_status||'Pending';
-    var isDone=ds==='Delivered';
-    var isPrinted=j.status==='Done';
-    var isCollected=ds==='Collected'||ds==='Delivered';
+    var isDone=j.status==='Done';
     var isUrg=j.is_urgent||false;
     var isDelivery=j.delivery_type==='Delivery';
     var isCollection=j.delivery_type==='Collection';
@@ -3804,28 +3438,23 @@ async function loadDeliveries(force){
 
     var right=document.createElement('div');
     right.className='dc-right';
-    // Mini pipeline: printed → collected → delivered
-    var chip=function(on,txt){return '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;'+(on?'background:#D5F5E3;color:#0B5E2F':'background:#f2f3f4;color:#bbb')+'">'+txt+'</span>';};
     right.innerHTML='<div class="dc-qty">'+(j.qty_printed||0).toLocaleString()+'</div>'+
-      '<div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end">'
-      +chip(isPrinted,'🖨️ Printed')+chip(isCollected,'📦 Collected')+chip(isDone,'🚚 Delivered')+'</div>';
+      '<span class="pl '+(isDone?'done':j.status==='In progress'?'prog':'sch')+'">'+j.status+'</span>';
 
     var btnRow=document.createElement('div');
     btnRow.style.cssText='display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end';
 
-    // Pipeline advance button — one clear next step per state
-    var stepBtn=document.createElement('button');
-    stepBtn.style.fontSize='11px';
-    var nextDs,btnLabel;
-    if(ds==='Delivered'){stepBtn.className='btn bs bsm';btnLabel='↩️ Undo delivery';nextDs='Collected';}
-    else if(ds==='Collected'){stepBtn.className='btn bp bsm';btnLabel='🚚 Mark delivered';nextDs='Delivered';}
-    else{stepBtn.className='btn bp bsm';btnLabel='📦 Mark collected';nextDs='Collected';}
-    stepBtn.textContent=btnLabel;
-    (function(jid,nds){stepBtn.addEventListener('click',function(e){
+    // Done/Undo button — all roles
+    var doneBtn=document.createElement('button');
+    doneBtn.className=isDone?'btn bs bsm':'btn bp bsm';
+    doneBtn.style.fontSize='11px';
+    doneBtn.textContent=isDone?'↩️ Undo':'✅ Done';
+    (function(jid,jst){doneBtn.addEventListener('click',function(e){
       e.stopPropagation();
-      setDeliveryStatus(jid,nds);
-    });})(j.id,nextDs);
-    btnRow.appendChild(stepBtn);
+      toggleDone(jid,jst);
+      setTimeout(loadDeliveries,400);
+    });})(j.id,j.status);
+    btnRow.appendChild(doneBtn);
 
     var cardBtn=document.createElement('button');
     cardBtn.className='btn bs bsm';cardBtn.textContent='🃏 Card';
@@ -3891,9 +3520,8 @@ function openDeliveryEdit(ev){
 }
 
 // ── DELIVERY JOB CARD (printable, for Ronald) ──
-async function downloadDeliveryCard(ev){
+function downloadDeliveryCard(ev){
   if(!ev)return;
-  await withArtwork(ev);
   var isDelivery=ev.delivery_type==='Delivery';
   var isCollection=ev.delivery_type==='Collection';
   var typeLabel=isDelivery?'🚚 DELIVERY':isCollection?'📦 COLLECTION':'DELIVERY / COLLECTION';
@@ -4117,15 +3745,11 @@ async function downloadWardaDayList(){
   var dateVal=document.getElementById('warda-print-date').value;
   if(!dateVal){toast('Please select a date first','err');return;}
 
-  var d0=await fetchSchedule();
-  if(!d0){toast('Could not load jobs','err');return;}
+  var r=await DB().from('print_schedule').select('*').order('id');
+  if(!r.data){toast('Could not load jobs','err');return;}
 
-  // Jobs for that print date — artwork blobs fetched only for these few jobs
-  var jobs=d0.filter(function(j){return j.print_date===dateVal;});
-  var artIds=await fetchArtworkIds();
-  await Promise.all(jobs.map(async function(j){
-    if(artIds.has(String(j.id))&&j.artwork_url===undefined)j.artwork_url=await fetchArtwork(j.id);
-  }));
+  // Jobs for that print date
+  var jobs=r.data.filter(function(j){return j.print_date===dateVal;});
 
   // Format date nicely
   var dp=new Date(dateVal+'T00:00:00');
@@ -4265,7 +3889,7 @@ async function loadMessages(){
   el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
 
   // Fetch all messages where current role is sender or recipient
-  var r=await DB().from('messages').select('id,from_role,to_roles,message,ref_type,ref_id,ref_label,is_urgent,read_by,archived_by,created_at').order('id',{ascending:false}).limit(300);
+  var r=await DB().from('messages').select('*').order('id',{ascending:false});
   if(!r.data){el.innerHTML='<div class="ld">Error loading messages</div>';return;}
 
   // Filter: owner sees all; others see messages they sent or received
@@ -4501,9 +4125,8 @@ async function loadStats(){
   var weeksEl=document.getElementById('stats-weeks');
   var nWeeks=weeksEl?parseInt(weeksEl.value)||8:8;
 
-  // Done jobs from cached schedule — no extra network round-trip
-  var dAll=await fetchSchedule();
-  var r={data:(dAll||[]).filter(function(j){return j.status==='Done';})};
+  // Fetch all Done jobs
+  var r=await DB().from('print_schedule').select('*').eq('status','Done');
   if(!r.data){el.innerHTML='<div class="ld">Error</div>';return;}
 
   var jobs=r.data.filter(function(j){return j.print_date;});
