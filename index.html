@@ -210,6 +210,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 .po-done td:not(:nth-child(2)) { opacity:0.6 }
 .po-done .btn { display: none !important; }
 .po-done .btn-inv { display: inline-flex !important; opacity:1 !important; }
+.po-done .btn-proof { display: inline-flex !important; opacity:1 !important; }
 .po-month-sep td {
   background: #1a4a3a !important;
   color: #fff !important;
@@ -1227,7 +1228,7 @@ async function loadAPDeliveries(){
 
   // Fetch POs and movements in parallel
   var [rpo, rmov] = await Promise.all([
-    DB().from('purchase_orders').select('*').order('po_date',{ascending:false}),
+    DB().from('purchase_orders').select(PO_COLS).order('po_date',{ascending:false}),
     DB().from('movements').select('*').eq('type','Delivery').order('date',{ascending:false})
   ]);
   if(!rpo.data){el.innerHTML='<div class="ld">Error</div>';return;}
@@ -1431,9 +1432,11 @@ async function loadAPDeliveries(){
   el.innerHTML=html;
 }
 // ── PURCHASE ORDERS ──
+// Columns WITHOUT payment_proof (base64 blob) — fetched on demand only, keeps lists fast
+var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name';
 async function loadPOs(){
   // Sort DESC: most recent first
-  var r=await DB().from('purchase_orders').select('*').order('po_number',{ascending:false});
+  var r=await DB().from('purchase_orders').select(PO_COLS).order('po_number',{ascending:false});
   if(!r.data)return;
   var tot=r.data.reduce(function(s,p){return s+(p.qty_ordered||0);},0);
   var val=r.data.reduce(function(s,p){return s+(p.qty_ordered||0)*(p.unit_price||0)*1.15;},0);
@@ -1509,6 +1512,14 @@ async function loadPOs(){
             :'<td><button class="btn bs bsm btn-inv" style="font-size:10px;padding:2px 6px" onclick="editInvoice('+p.id+')">+</button></td>')
           :'<td style="font-size:11px;color:#666">'+(p.invoice_number||'—')+'</td>')
         :'<td></td>';
+      var proofCell;
+      if(p.payment_proof_name){
+        proofCell='<td style="white-space:nowrap"><button class="btn bs bsm btn-proof" style="font-size:12px;padding:2px 6px;color:#fff;background:#1E8449;border-color:#1E8449" onclick="viewProof('+p.id+')" title="'+p.payment_proof_name.replace(/"/g,'&quot;')+'">👍</button></td>';
+      } else {
+        proofCell=role==='owner'
+          ?'<td><button class="btn bs bsm btn-proof" style="font-size:10px;padding:2px 6px;color:#888" onclick="uploadProof('+p.id+')" title="Upload proof of payment">📎</button></td>'
+          :'<td style="color:#ccc;font-size:11px">—</td>';
+      }
       rows+='<tr class="'+doneClass+'" style="background:'+bg+'">'
         +'<td style="font-weight:700;color:#1F4E79">'+(isN?p.po_number:'↳')+'</td>'
         +invCell
@@ -1521,7 +1532,7 @@ async function loadPOs(){
         +'<td class="nr" style="color:#666">'+(vat?vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'
         +'<td class="nr" style="font-weight:700">'+(tot2?tot2.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):'—')+'</td>'
         +paidCellHtml
-        +(role==='owner'?'<td><button class="btn bs bsm" style="font-size:10px;padding:2px 6px" onclick="editPO('+p.id+')">✏️</button></td>':'<td></td>')
+        +proofCell
         +'</tr>';
     });
     // Month summary row
@@ -1557,7 +1568,7 @@ async function loadPOs(){
     return;
   }
   document.getElementById('pol').innerHTML='<div class="pol-wrap" style="overflow-x:auto"><table>'+
-    '<thead><tr><th>PO#</th><th>Invoice #</th><th>Date</th><th>Product</th><th class="nr">Qty</th><th class="nr">Unit</th><th class="nr">ex VAT</th><th class="nr">VAT</th><th class="nr">TOTAL ZAR</th><th>💳 Payment</th><th></th></tr></thead>'+
+    '<thead><tr><th>PO#</th><th>Invoice #</th><th>Date</th><th>Product</th><th class="nr">Qty</th><th class="nr">Unit</th><th class="nr">ex VAT</th><th class="nr">VAT</th><th class="nr">TOTAL ZAR</th><th>💳 Payment</th><th>📎</th></tr></thead>'+
     '<tbody>'+rows+'</tbody>'+
     '<tfoot><tr style="background:#0E6655;color:#fff;font-weight:700">'+
     '<td colspan="6" style="text-align:right;padding:10px">TOTAL</td>'+
@@ -1579,7 +1590,7 @@ async function editInvoice(id){
 
 async function receiveDelivery(id, totalOrdered){
   // Get current PO
-  var r=await DB().from('purchase_orders').select('*').eq('id',id).single();
+  var r=await DB().from('purchase_orders').select(PO_COLS).eq('id',id).single();
   if(!r.data){toast('Error loading PO','err');return;}
   var p=r.data;
   var alreadyReceived=p.qty_received||0;
@@ -1628,6 +1639,70 @@ async function receiveDelivery(id, totalOrdered){
   loadStock();
 }
 
+// ── PROOF OF PAYMENT ──
+function uploadProof(id){
+  var inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='application/pdf,image/*';
+  inp.onchange=function(){
+    var file=inp.files[0];
+    if(!file)return;
+    if(file.size>4*1024*1024){toast('File too big (max 4 MB) — compress it first','err');return;}
+    var reader=new FileReader();
+    reader.onload=async function(e){
+      var b64=e.target.result;
+      var r=await DB().from('purchase_orders').update({payment_proof:b64,payment_proof_name:file.name}).eq('id',id);
+      if(r.error){toast('Upload failed: '+r.error.message,'err');return;}
+      toast('📎 Proof of payment saved','ok');
+      loadPOs();
+    };
+    reader.readAsDataURL(file);
+  };
+  inp.click();
+}
+async function viewProof(id){
+  var r=await DB().from('purchase_orders').select('po_number,payment_proof,payment_proof_name').eq('id',id).single();
+  if(!r.data||!r.data.payment_proof){toast('No proof found','err');return;}
+  var p=r.data;
+  var old=document.getElementById('proof-modal');if(old)old.remove();
+  var ov=document.createElement('div');
+  ov.id='proof-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var body;
+  if(p.payment_proof.indexOf('data:image')===0){
+    body='<img src="'+p.payment_proof+'" style="max-width:100%;max-height:60vh;border-radius:8px;display:block;margin:0 auto">';
+  } else {
+    body='<iframe src="'+p.payment_proof+'" style="width:100%;height:60vh;border:none;border-radius:8px"></iframe>';
+  }
+  var name=(p.payment_proof_name||'proof').replace(/</g,'&lt;');
+  ov.innerHTML='<div style="background:#fff;border-radius:12px;padding:20px;max-width:720px;width:100%;max-height:90vh;overflow:auto" onclick="event.stopPropagation()">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">'
+    +'<strong style="color:#0E6655">📎 '+p.po_number+' — '+name+'</strong>'
+    +'<span style="white-space:nowrap">'
+    +'<button class="btn bs bsm" style="margin-right:6px" onclick="downloadProof('+id+')">⬇️ Download</button>'
+    +(role==='owner'?'<button class="btn bs bsm" style="margin-right:6px;color:#D35400" onclick="uploadProof('+id+');document.getElementById(\'proof-modal\').remove()">🔄 Replace</button>':'')
+    +(role==='owner'?'<button class="btn bs bsm" style="margin-right:6px;color:#C0392B" onclick="deleteProof('+id+')">🗑️</button>':'')
+    +'<button class="btn bs bsm" onclick="document.getElementById(\'proof-modal\').remove()">✖</button>'
+    +'</span></div>'+body+'</div>';
+  document.body.appendChild(ov);
+}
+async function downloadProof(id){
+  var r=await DB().from('purchase_orders').select('po_number,payment_proof,payment_proof_name').eq('id',id).single();
+  if(!r.data||!r.data.payment_proof){toast('No proof found','err');return;}
+  var a=document.createElement('a');
+  a.href=r.data.payment_proof;
+  a.download=r.data.payment_proof_name||(r.data.po_number+'-proof');
+  document.body.appendChild(a);a.click();a.remove();
+}
+async function deleteProof(id){
+  if(!confirm('Delete this proof of payment?'))return;
+  await DB().from('purchase_orders').update({payment_proof:null,payment_proof_name:null}).eq('id',id);
+  var m=document.getElementById('proof-modal');if(m)m.remove();
+  toast('🗑️ Proof deleted','ok');
+  loadPOs();
+}
+
 async function markPaid(id,alreadyPaid){
   if(alreadyPaid){
     if(!confirm('Undo payment for this PO?'))return;
@@ -1659,7 +1734,7 @@ async function markDelivered(id, alreadyDelivered){
 }
 
 async function editPO(id){
-  var r=await DB().from('purchase_orders').select('*').eq('id',id).single();
+  var r=await DB().from('purchase_orders').select(PO_COLS).eq('id',id).single();
   if(!r.data)return;
   var ns=prompt('Status ('+r.data.po_number+'): Pending/Partial/Delivered/Not delivered/To verify/Over-delivered',r.data.status);
   if(!ns)return;
@@ -1875,7 +1950,7 @@ function makeAlert(cls,html,key){
 }
 async function loadAlerts(){
   var rs=await DB().from('stock').select('*');
-  var rp=await DB().from('purchase_orders').select('*');
+  var rp=await DB().from('purchase_orders').select(PO_COLS);
   var rj=await DB().from('print_schedule').select('*');
   if(!rs.data||!rp.data||!rj.data)return;
   var el=document.getElementById('alist');el.innerHTML='';
