@@ -1483,6 +1483,13 @@ async function loadAPDeliveries(){
 // ── PURCHASE ORDERS ──
 // Columns WITHOUT payment_proof (base64 blob) — fetched on demand only, keeps lists fast
 var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name';
+// Slim columns for print_schedule lists/calendars — EXCLUDES heavy base64 blobs (artwork_url, items, product_photo)
+var PS_COLS='id,week_label,date_period,client,cup_size,cup_colour,qty_printed,print_colour,num_colours,artwork,status,notes,created_at,print_date,delivery_date,print_type,delivery_type,delivery_address,client_email,is_urgent,posis_received,contact_name,contact_phone,created_by,last_edited_by,delivery_done,delivery_status,job_type,n_items';
+// Fetch the FULL row (with blobs) on demand, only when a card/detail/edit is opened
+async function loadFullJob(ev){
+  if(!ev||!ev.id)return ev;
+  try{var r=await DB().from('print_schedule').select('*').eq('id',ev.id).single();return r.data||ev;}catch(e){return ev;}
+}
 async function loadPOs(){
   // Sort DESC: most recent first
   var r=await DB().from('purchase_orders').select(PO_COLS).order('po_number',{ascending:false});
@@ -1791,7 +1798,7 @@ async function editPO(id){
 
 // ── JOBS ──
 async function loadJobs(){
-  var r=await DB().from('print_schedule').select('*').order('id',{ascending:false});
+  var r=await DB().from('print_schedule').select(PS_COLS).order('id',{ascending:false});
   if(!r.data)return;
   document.getElementById('jt').textContent=r.data.length;
   document.getElementById('js').textContent=r.data.filter(function(o){return o.status==='Scheduled';}).length;
@@ -1810,8 +1817,8 @@ async function loadJobs(){
     var d=document.createElement('div');
     d.style.cssText='background:'+(isDimmed?'#f9f9f9':'#fff')+';border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start'+(isDimmed?';opacity:0.5':'');
     var _isComplex=o.job_type==='complex';
-    var _nLines=0; if(_isComplex&&o.items){try{_nLines=JSON.parse(o.items).length;}catch(e){}}
-    var _badge=_isComplex?' <span style="font-size:10px;background:#E8DAEF;color:#6C3483;padding:1px 7px;border-radius:9px;font-weight:700">🧩 '+_nLines+' lines</span>':'';
+    var _nLines=o.n_items||0;
+    var _badge=_isComplex?' <span style="font-size:10px;background:#E8DAEF;color:#6C3483;padding:1px 7px;border-radius:9px;font-weight:700">🧩 '+(_nLines?_nLines+' lines':'multi')+'</span>':'';
     d.innerHTML='<div style="flex:1">'+
       '<div style="font-weight:600;font-size:14px">'+o.client+_badge+'</div>'+
       '<div style="font-size:12px;color:#666;margin-top:3px;line-height:1.6">'+
@@ -2037,7 +2044,8 @@ async function saveJob(){
       delivery_date:deliv||null,
       notes:document.getElementById('jno').value,
       job_type:'complex',
-      items:JSON.stringify(items)
+      items:JSON.stringify(items),
+      n_items:items.length
     };
   } else {
     var qty=parseInt(document.getElementById('jq').value)||0;
@@ -2052,7 +2060,8 @@ async function saveJob(){
       delivery_date:deliv||null,
       notes:document.getElementById('jno').value,
       job_type:'simple',
-      items:null
+      items:null,
+      n_items:null
     };
   }
   var res;
@@ -2099,7 +2108,7 @@ function openJobEdit(ev){
 
 // ── PRINT ──
 async function loadPrint(){
-  var r=await DB().from('print_schedule').select('*').order('id');
+  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
   if(!r.data)return;
 
   // Compute current week monday ISO
@@ -2126,7 +2135,7 @@ async function loadPrint(){
       .update({print_date:thisMonISO,week_label:newWL,date_period:newPeriod})
       .in('id',reschedIds);
     // Reload after rescheduling
-    r=await DB().from('print_schedule').select('*').order('id');
+    r=await DB().from('print_schedule').select(PS_COLS).order('id');
     if(!r.data)return;
     if(toReschedule.length===1){
       toast('↗️ '+toReschedule[0].client+' moved to '+newWL,'ok');
@@ -2221,7 +2230,7 @@ function makeAlert(cls,html,key){
 async function loadAlerts(){
   var rs=await DB().from('stock').select('*');
   var rp=await DB().from('purchase_orders').select(PO_COLS);
-  var rj=await DB().from('print_schedule').select('*');
+  var rj=await DB().from('print_schedule').select(PS_COLS);
   if(!rs.data||!rp.data||!rj.data)return;
   var el=document.getElementById('alist');el.innerHTML='';
 
@@ -2356,7 +2365,7 @@ function weekJobs(mon){
 }
 
 async function loadCalData(){
-  var r=await DB().from('print_schedule').select('*').order('id');
+  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
   if(r&&r.data){
     prints=r.data;
     // Rebuild window cache from fresh data
@@ -2857,8 +2866,9 @@ function renderJobItems(ev,forPrint){
 }
 
 // ── EVENT DETAIL ──
-function openEvDetail(ev){
+async function openEvDetail(ev){
   if(!ev)return;
+  ev=await loadFullJob(ev);
   curEv=ev;
   document.getElementById('evtitle').textContent=ev.client;
   var _items=parseItems(ev);
@@ -2902,8 +2912,9 @@ function setSel(id,v){
   }
 }
 
-function openEdit(ev){
+async function openEdit(ev){
   if(!ev)return;
+  ev=await loadFullJob(ev);
   document.getElementById('eid').value=ev.id||'';
   document.getElementById('ecl').value=ev.client||'';
   document.getElementById('ewl').value=ev.week_label||'';
@@ -3004,7 +3015,7 @@ async function saveEdit(){
     var sum=jobSummaryFromItems(cItems);
     updateData.cup_size=sum.cup_size;updateData.cup_colour=sum.cup_colour;updateData.qty_printed=sum.qty_printed;
     updateData.num_colours=sum.num_colours;updateData.print_colour=sum.print_colour;updateData.artwork=sum.artwork;
-    updateData.job_type='complex';updateData.items=JSON.stringify(cItems);
+    updateData.job_type='complex';updateData.items=JSON.stringify(cItems);updateData.n_items=cItems.length;
   } else {
     updateData.cup_size=document.getElementById('esz').value;
     updateData.cup_colour=document.getElementById('ecol').value;
@@ -3012,7 +3023,7 @@ async function saveEdit(){
     updateData.num_colours=parseInt(document.getElementById('enc').value)||1;
     updateData.print_colour=document.getElementById('epc').value;
     updateData.artwork=document.getElementById('ear').value;
-    updateData.job_type='simple';updateData.items=null;
+    updateData.job_type='simple';updateData.items=null;updateData.n_items=null;
   }
   try { updateData.posis_received = document.getElementById('eposis').checked; } catch(e){}
 
@@ -3120,7 +3131,7 @@ async function delJob(){
 
 // Load print tab WITHOUT triggering auto-reschedule (used after delete/save)
 async function loadPrintNoReschedule(){
-  var r=await DB().from('print_schedule').select('*').order('id');
+  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
   if(!r.data)return;
   var now=new Date();now.setHours(0,0,0,0);
   var dow=now.getDay();
@@ -3154,7 +3165,7 @@ async function loadPrintNoReschedule(){
 
 // ── WARDA ──
 async function loadMyJobs(){
-  var r=await DB().from('print_schedule').select('*').order('id');
+  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
   if(!r.data)return;
   var tot=r.data.length,done=r.data.filter(function(j){return j.status==='Done';}).length;
   var units=r.data.filter(function(j){return j.status==='Done';}).reduce(function(s,j){return s+(j.qty_printed||0);},0);
@@ -3253,9 +3264,9 @@ async function toggleDone(id,st){
 }
 
 // ── JOB CARD ──
-function downloadJobCard(ev) {
+async function downloadJobCard(ev) {
   if(!ev) return;
-
+  ev=await loadFullJob(ev);
   var complexItems=parseItems(ev);
 
   // Cup colour dot
@@ -3552,7 +3563,7 @@ async function loadToday(){
     phEl.textContent='ZA Public Holiday: '+SA_HOLIDAYS[iso];
   } else { phEl.style.display='none'; }
 
-  var r = await DB().from('print_schedule').select('*').order('id');
+  var r = await DB().from('print_schedule').select(PS_COLS).order('id');
   if(!r.data) return;
   var all = r.data;
 
@@ -3813,7 +3824,7 @@ function renderDelWeekCal(){
 
 // ── DELIVERIES & COLLECTIONS TAB ──
 async function loadDeliveries(){
-  var r=await DB().from('print_schedule').select('*').order('delivery_date',{ascending:true});
+  var r=await DB().from('print_schedule').select(PS_COLS).order('delivery_date',{ascending:true});
   if(!r.data)return;
   prints=r.data;
   renderDelCal();
@@ -3959,8 +3970,9 @@ function openDeliveryEdit(ev){
 }
 
 // ── DELIVERY JOB CARD (printable, for Ronald) ──
-function downloadDeliveryCard(ev){
+async function downloadDeliveryCard(ev){
   if(!ev)return;
+  ev=await loadFullJob(ev);
   var isDelivery=ev.delivery_type==='Delivery';
   var isCollection=ev.delivery_type==='Collection';
   var typeLabel=isDelivery?'🚚 DELIVERY':isCollection?'📦 COLLECTION':'DELIVERY / COLLECTION';
@@ -4232,7 +4244,7 @@ async function downloadWardaDayList(){
   var dateVal=document.getElementById('warda-print-date').value;
   if(!dateVal){toast('Please select a date first','err');return;}
 
-  var r=await DB().from('print_schedule').select('*').order('id');
+  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
   if(!r.data){toast('Could not load jobs','err');return;}
 
   // Jobs for that print date
@@ -4793,7 +4805,7 @@ async function loadStats(){
   var nWeeks=weeksEl?parseInt(weeksEl.value)||8:8;
 
   // Fetch all Done jobs
-  var r=await DB().from('print_schedule').select('*').eq('status','Done');
+  var r=await DB().from('print_schedule').select(PS_COLS).eq('status','Done');
   if(!r.data){el.innerHTML='<div class="ld">Error</div>';return;}
 
   var jobs=r.data.filter(function(j){return j.print_date;});
