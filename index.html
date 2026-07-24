@@ -481,28 +481,43 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div class="mt or"><div class="lb">In progress</div><div class="vl" id="jp">—</div></div>
       <div class="mt"><div class="lb">Done</div><div class="vl" id="jd">—</div></div>
     </div>
-    <button class="badd" id="bajob" style="display:none" onclick="togglePnl('pjob');this.style.display='none'">+ Add client order</button>
+    <button class="badd" id="bajob" style="display:none" onclick="openNewJob()">+ Add client order</button>
     <div class="pnl" id="pjob">
-      <h3>New client order</h3>
+      <h3 id="pjob-title">New client order</h3>
+      <!-- Mode selector -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button type="button" id="mode-simple" class="jmode-btn" onclick="setJobMode('simple')" style="flex:1;padding:10px;border-radius:8px;border:2px solid #0E6655;background:#0E6655;color:#fff;font-weight:700;font-size:13px;cursor:pointer">📄 Simple job</button>
+        <button type="button" id="mode-complex" class="jmode-btn" onclick="setJobMode('complex')" style="flex:1;padding:10px;border-radius:8px;border:2px solid #ddd;background:#fff;color:#666;font-weight:700;font-size:13px;cursor:pointer">🧩 Complex job (multi-line)</button>
+      </div>
       <div class="g3">
         <div class="fg"><label>Client ★</label><input type="text" id="jc2" placeholder="e.g. Heineken"></div>
         <div class="fg"><label>Date received</label><input type="date" id="jdr" value="2026-06-08"></div>
         <div class="fg"><label>Delivery date</label><input type="date" id="jdl"></div>
       </div>
-      <div class="g3">
-        <div class="fg"><label>Cup size ★</label><select id="jsz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-        <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option></select></div>
-        <div class="fg"><label>Qty ★</label><input type="number" id="jq" placeholder="e.g. 2000" oninput="this.nextElementSibling.textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"><span class="hint"></span></div>
+      <!-- SIMPLE fields -->
+      <div id="job-simple-fields">
+        <div class="g3">
+          <div class="fg"><label>Cup size ★</label><select id="jsz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
+          <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option><option>Orange</option><option>Dark Blue</option></select></div>
+          <div class="fg"><label>Qty ★</label><input type="number" id="jq" placeholder="e.g. 2000" oninput="this.nextElementSibling.textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"><span class="hint"></span></div>
+        </div>
+        <div class="g3">
+          <div class="fg"><label># Colours</label><select id="jnc"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+          <div class="fg"><label>Print colour</label><input type="text" id="jpc" placeholder="e.g. White"></div>
+          <div class="fg"><label>Artwork</label><select id="jar"><option>New</option><option>Existing</option><option>Client to send</option><option>TBC</option></select></div>
+        </div>
       </div>
-      <div class="g3">
-        <div class="fg"><label># Colours</label><select id="jnc"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-        <div class="fg"><label>Print colour</label><input type="text" id="jpc" placeholder="e.g. White"></div>
-        <div class="fg"><label>Artwork</label><select id="jar"><option>New</option><option>Existing</option><option>Client to send</option><option>TBC</option></select></div>
+      <!-- COMPLEX fields -->
+      <div id="job-complex-fields" style="display:none">
+        <div style="font-size:12px;color:#666;margin-bottom:8px">Add one line per design / size / colour. Each line can have its own artwork.</div>
+        <div id="jitems"></div>
+        <button type="button" class="btn bs" onclick="addJobLine()" style="margin-top:4px">+ Add a line</button>
+        <div id="jitems-summary" style="margin-top:10px;padding:10px 12px;background:#f4f8f7;border-radius:8px;font-size:13px;font-weight:700;color:#0E6655">Total: 0 cups · 0 line(s)</div>
       </div>
-      <div class="fg"><label>Notes</label><input type="text" id="jno" placeholder="Special instructions..."></div>
+      <div class="fg" style="margin-top:10px"><label>Notes</label><input type="text" id="jno" placeholder="Special instructions..."></div>
       <div class="fa">
-        <button class="btn bp bfl" onclick="saveJob()">Save order</button>
-        <button class="btn bs" onclick="togglePnl('pjob');document.getElementById('bajob').style.display='flex'">Cancel</button>
+        <button class="btn bp bfl" id="jsave-btn" onclick="saveJob()">Save order</button>
+        <button class="btn bs" onclick="cancelJobPanel()">Cancel</button>
       </div>
     </div>
     <div class="card" style="margin-top:14px">
@@ -674,15 +689,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 
   <div id="tab-analytics" class="sec">
     <div class="ch" style="margin-bottom:14px">
-      <h2 style="font-size:16px;font-weight:700">📈 Analytics commandes</h2>
+      <h2 style="font-size:16px;font-weight:700">📈 Order Analytics</h2>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <select id="an-period" onchange="loadAnalytics()" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px">
-          <option value="month" selected>Par mois</option>
-          <option value="quarter">Par trimestre</option>
-          <option value="year">Par an</option>
+          <option value="month" selected>By month</option>
+          <option value="quarter">By quarter</option>
+          <option value="year">By year</option>
         </select>
         <select id="an-size" onchange="loadAnalytics()" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px">
-          <option value="all" selected>Toutes tailles</option>
+          <option value="all" selected>All sizes</option>
           <option value="500ml">500ml</option>
           <option value="330ml">330ml</option>
           <option value="250ml">250ml</option>
@@ -745,6 +760,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   <div class="modal">
     <div class="mh"><h3>✏️ Edit job</h3><button class="mc" onclick="closeOv('edov')">×</button></div>
     <input type="hidden" id="eid">
+    <div style="display:flex;gap:8px;margin:4px 0 14px">
+      <button type="button" id="emode-simple" onclick="setEditMode('simple')" style="flex:1;padding:9px;border-radius:8px;border:2px solid #0E6655;background:#0E6655;color:#fff;font-weight:700;font-size:12px;cursor:pointer">📄 Simple job</button>
+      <button type="button" id="emode-complex" onclick="setEditMode('complex')" style="flex:1;padding:9px;border-radius:8px;border:2px solid #ddd;background:#fff;color:#666;font-weight:700;font-size:12px;cursor:pointer">🧩 Complex job (multi-line)</button>
+    </div>
     <div class="es">Client & Schedule</div>
     <div class="g2">
       <div class="fg"><label>Client ★</label><input type="text" id="ecl"></div>
@@ -763,10 +782,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div class="fg"><label>Contact name</label><input type="text" id="ecn" placeholder="e.g. John Smith"></div>
       <div class="fg"><label>Contact phone</label><input type="text" id="ecp" placeholder="e.g. 083 456 7890"></div>
     </div>
+    <div id="e-simple-fields">
     <div class="es">Cup details</div>
     <div class="g3">
       <div class="fg"><label>Size ★</label><select id="esz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-      <div class="fg"><label>Colour ★</label><select id="ecol"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option></select></div>
+      <div class="fg"><label>Colour ★</label><select id="ecol"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option><option>Orange</option><option>Dark Blue</option></select></div>
       <div class="fg"><label>Qty ★</label><input type="number" id="eq" oninput="document.getElementById('ecalc').textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"></div>
     </div>
     <div class="hint" id="ecalc">Stock: —</div>
@@ -775,6 +795,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div class="fg"><label># Colours</label><select id="enc"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
       <div class="fg"><label>Print colour</label><input type="text" id="epc"></div>
       <div class="fg"><label>Artwork</label><select id="ear"><option>New</option><option>Existing</option><option>Client to send</option><option>TBC</option></select></div>
+    </div>
+    </div>
+    <div id="e-complex-fields" style="display:none">
+      <div class="es">Lines (design · size · colour · qty)</div>
+      <div style="font-size:12px;color:#666;margin-bottom:8px">One line per design / size / colour. Each line can have its own artwork.</div>
+      <div id="e-jitems"></div>
+      <button type="button" class="btn bs" onclick="addJobLine({},'e-jitems')" style="margin-top:4px">+ Add a line</button>
+      <div id="e-jitems-summary" style="margin-top:10px;padding:10px 12px;background:#f4f8f7;border-radius:8px;font-size:13px;font-weight:700;color:#0E6655">Total: 0 cups · 0 line(s)</div>
     </div>
     <div class="g2">
       <div class="fg"><label>Status</label><select id="est"><option>Scheduled</option><option>In progress</option><option>Done</option><option>On hold</option><option>Cancelled</option></select></div>
@@ -1559,7 +1587,7 @@ async function loadPOs(){
         +'</tr>';
     });
     // Month summary row
-    var cupSummary='<span style="font-size:13px;font-weight:800;color:#0E6655">📦 '+mQty.toLocaleString()+' gobelets</span>';
+    var cupSummary='<span style="font-size:13px;font-weight:800;color:#0E6655">📦 '+mQty.toLocaleString()+' cups</span>';
     rows+='<tr style="background:#e8f5ef;border-top:2px solid #0E6655">'+
       '<td colspan="6" style="padding:7px 8px;font-size:10px;font-weight:700;color:#0a4033;text-transform:uppercase;letter-spacing:0.05em;white-space:normal">'+cupSummary+'</td>'+
       '<td style="text-align:right;padding:7px 8px;font-size:11px;font-weight:700;color:#0a4033;white-space:nowrap">'+mHT.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>'+
@@ -1783,8 +1811,11 @@ async function loadJobs(){
     window['j_'+o.id]=o;
     var d=document.createElement('div');
     d.style.cssText='background:'+(isDimmed?'#f9f9f9':'#fff')+';border:1px solid #e0e0e0;border-radius:6px;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start'+(isDimmed?';opacity:0.5':'');
+    var _isComplex=o.job_type==='complex';
+    var _nLines=0; if(_isComplex&&o.items){try{_nLines=JSON.parse(o.items).length;}catch(e){}}
+    var _badge=_isComplex?' <span style="font-size:10px;background:#E8DAEF;color:#6C3483;padding:1px 7px;border-radius:9px;font-weight:700">🧩 '+_nLines+' lines</span>':'';
     d.innerHTML='<div style="flex:1">'+
-      '<div style="font-weight:600;font-size:14px">'+o.client+'</div>'+
+      '<div style="font-weight:600;font-size:14px">'+o.client+_badge+'</div>'+
       '<div style="font-size:12px;color:#666;margin-top:3px;line-height:1.6">'+
       (o.cup_size||'—')+' · '+(o.cup_colour||'—')+' · <strong>'+(o.qty_printed||0).toLocaleString()+' cups</strong><br>'+
       (o.print_colour||'—')+' · '+(o.num_colours||1)+' col. · '+(o.date_period||'—')+'<br>'+
@@ -1798,6 +1829,11 @@ async function loadJobs(){
       eb.style.marginTop='6px';
       (function(jid){eb.addEventListener('click',function(){openEdit(window['j_'+jid]);});})(o.id);
       d.querySelector('div:last-child').appendChild(eb);
+      var cb=document.createElement('button');
+      cb.className='btn bs bsm';cb.textContent='🖨️ Card';
+      cb.style.marginTop='4px';
+      (function(jid){cb.addEventListener('click',function(){downloadJobCard(window['j_'+jid]);});})(o.id);
+      d.querySelector('div:last-child').appendChild(cb);
     }
     el.appendChild(d);
   }
@@ -1813,11 +1849,146 @@ async function loadJobs(){
   }
 }
 
-async function saveJob(){
-  var client=document.getElementById('jc2').value.trim();
-  var qty=parseInt(document.getElementById('jq').value)||0;
-  if(!client||!qty){toast('Client and quantity required','err');return;}
-  var deliv=document.getElementById('jdl').value;
+// ── MULTI-LINE JOB SUPPORT ──
+var jobMode='simple';
+var jobEditId=null;
+var JLINE_SIZES=['500ml','330ml','250ml'];
+var JLINE_COLOURS=['Frosted','Black','Red','Pink','White','Purple','Blue','Dark Blue','Yellow','Green','Orange'];
+
+function setJobMode(m){
+  jobMode=m;
+  var sB=document.getElementById('mode-simple'), cB=document.getElementById('mode-complex');
+  var on='flex:1;padding:10px;border-radius:8px;border:2px solid #0E6655;background:#0E6655;color:#fff;font-weight:700;font-size:13px;cursor:pointer';
+  var off='flex:1;padding:10px;border-radius:8px;border:2px solid #ddd;background:#fff;color:#666;font-weight:700;font-size:13px;cursor:pointer';
+  sB.style.cssText=m==='simple'?on:off;
+  cB.style.cssText=m==='complex'?on:off;
+  document.getElementById('job-simple-fields').style.display=m==='simple'?'':'none';
+  document.getElementById('job-complex-fields').style.display=m==='complex'?'':'none';
+  if(m==='complex'&&document.querySelectorAll('#jitems .jline').length===0)addJobLine();
+}
+
+function addJobLine(prefill,cid){
+  prefill=prefill||{};cid=cid||'jitems';
+  var wrap=document.getElementById(cid);
+  var row=document.createElement('div');
+  row.className='jline';
+  row.style.cssText='border:1px solid #e0e0e0;border-radius:10px;padding:10px 12px;margin-bottom:10px;background:#fafbfc';
+  var sizeOpts=JLINE_SIZES.map(function(x){return '<option'+(prefill.size===x?' selected':'')+'>'+x+'</option>';}).join('');
+  var colOpts=JLINE_COLOURS.map(function(x){return '<option'+(prefill.colour===x?' selected':'')+'>'+x+'</option>';}).join('');
+  var ncOpts=[1,2,3,4].map(function(x){return '<option'+(prefill.num_colours===x?' selected':'')+'>'+x+'</option>';}).join('');
+  row.innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<span class="jline-title" style="font-size:12px;font-weight:700;color:#0E6655">Line</span>'
+    +'<button type="button" class="btn bs bsm jl-remove" style="color:#C0392B;font-size:11px;padding:2px 8px">✖ Remove</button></div>'
+    +'<div class="g3">'
+    +'<div class="fg"><label>Design / name</label><input type="text" class="jl-design" placeholder="e.g. Logo Heineken" value="'+(prefill.design||'').replace(/"/g,'&quot;')+'"></div>'
+    +'<div class="fg"><label>Size</label><select class="jl-size">'+sizeOpts+'</select></div>'
+    +'<div class="fg"><label>Cup colour</label><select class="jl-colour">'+colOpts+'</select></div>'
+    +'</div>'
+    +'<div class="g3">'
+    +'<div class="fg"><label>Qty</label><input type="number" class="jl-qty" placeholder="e.g. 2000" value="'+(prefill.qty||'')+'"></div>'
+    +'<div class="fg"><label># Print colours</label><select class="jl-nc">'+ncOpts+'</select></div>'
+    +'<div class="fg"><label>Print colour</label><input type="text" class="jl-print" placeholder="e.g. White" value="'+(prefill.print_colour||'').replace(/"/g,'&quot;')+'"></div>'
+    +'</div>'
+    +'<div class="fg"><label>Artwork (image or PDF)</label><input type="file" class="jl-art" accept="application/pdf,image/*"><span class="jl-artstatus" style="font-size:11px;color:#888;margin-left:6px"></span></div>';
+  wrap.appendChild(row);
+  var fileInp=row.querySelector('.jl-art'), statusEl=row.querySelector('.jl-artstatus');
+  if(prefill.artwork_url){row._art=prefill.artwork_url;statusEl.textContent='📎 existing artwork';}
+  fileInp.addEventListener('change',function(){
+    var f=fileInp.files[0];if(!f)return;
+    if(f.size>4*1024*1024){toast('File too large (max 4 MB)','err');fileInp.value='';return;}
+    var rd=new FileReader();
+    rd.onload=function(e){row._art=e.target.result;statusEl.textContent='📎 '+f.name;};
+    rd.readAsDataURL(f);
+  });
+  row.querySelector('.jl-qty').addEventListener('input',function(){updateJobSummary(cid);});
+  row.querySelector('.jl-remove').addEventListener('click',function(){row.remove();renumberLines(cid);updateJobSummary(cid);});
+  renumberLines(cid);
+  updateJobSummary(cid);
+}
+
+function renumberLines(cid){
+  cid=cid||'jitems';
+  Array.prototype.forEach.call(document.querySelectorAll('#'+cid+' .jline .jline-title'),function(t,i){t.textContent='Line '+(i+1);});
+}
+
+function collectJobItems(cid){
+  cid=cid||'jitems';
+  var items=[];
+  Array.prototype.forEach.call(document.querySelectorAll('#'+cid+' .jline'),function(row){
+    var qty=parseInt(row.querySelector('.jl-qty').value)||0;
+    if(qty<=0)return;
+    items.push({
+      design:row.querySelector('.jl-design').value.trim(),
+      size:row.querySelector('.jl-size').value,
+      colour:row.querySelector('.jl-colour').value,
+      qty:qty,
+      num_colours:parseInt(row.querySelector('.jl-nc').value)||1,
+      print_colour:row.querySelector('.jl-print').value.trim(),
+      artwork_url:row._art||null
+    });
+  });
+  return items;
+}
+
+function updateJobSummary(cid){
+  cid=cid||'jitems';
+  var items=collectJobItems(cid);
+  var tot=items.reduce(function(s,i){return s+i.qty;},0);
+  var el=document.getElementById(cid+'-summary');
+  if(el)el.textContent='Total: '+tot.toLocaleString()+' cups · '+items.length+' line(s)';
+}
+
+// summary columns from an items array (shared by create + edit)
+function jobSummaryFromItems(items){
+  var totQty=items.reduce(function(s,i){return s+i.qty;},0);
+  var sizes={},colours={},prints={},maxNc=1;
+  items.forEach(function(i){sizes[i.size]=1;colours[i.colour]=1;if(i.print_colour)prints[i.print_colour]=1;if(i.num_colours>maxNc)maxNc=i.num_colours;});
+  var szKeys=Object.keys(sizes),colKeys=Object.keys(colours),prKeys=Object.keys(prints);
+  return {
+    qty_printed:totQty,
+    cup_size:szKeys.length===1?szKeys[0]:'Multi',
+    cup_colour:colKeys.length===1?colKeys[0]:('Multi ('+colKeys.length+')'),
+    num_colours:maxNc,
+    print_colour:prKeys.length===1?prKeys[0]:(prKeys.length>1?'Multi':''),
+    artwork:'Multi',
+    artwork_url:items[0].artwork_url||null
+  };
+}
+
+function setEditMode(m){
+  window._editMode=m;
+  var sB=document.getElementById('emode-simple'), cB=document.getElementById('emode-complex');
+  var on='flex:1;padding:9px;border-radius:8px;border:2px solid #0E6655;background:#0E6655;color:#fff;font-weight:700;font-size:12px;cursor:pointer';
+  var off='flex:1;padding:9px;border-radius:8px;border:2px solid #ddd;background:#fff;color:#666;font-weight:700;font-size:12px;cursor:pointer';
+  if(sB)sB.style.cssText=m==='simple'?on:off;
+  if(cB)cB.style.cssText=m==='complex'?on:off;
+  document.getElementById('e-simple-fields').style.display=m==='simple'?'':'none';
+  document.getElementById('e-complex-fields').style.display=m==='complex'?'':'none';
+  if(m==='complex'&&document.querySelectorAll('#e-jitems .jline').length===0)addJobLine({},'e-jitems');
+}
+
+function openNewJob(){
+  resetJobPanel();
+  document.getElementById('pjob').classList.add('op');
+  document.getElementById('bajob').style.display='none';
+}
+function cancelJobPanel(){
+  togglePnl('pjob');
+  document.getElementById('bajob').style.display='flex';
+  resetJobPanel();
+}
+function resetJobPanel(){
+  jobEditId=null;
+  document.getElementById('pjob-title').textContent='New client order';
+  document.getElementById('jsave-btn').textContent='Save order';
+  ['jc2','jq','jpc','jno','jdl'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('jitems').innerHTML='';
+  setJobMode('simple');
+  updateJobSummary();
+}
+
+function jobPeriod(deliv){
   var period='—',wl='Upcoming';
   if(deliv){
     var d=new Date(deliv.split('-')[0],parseInt(deliv.split('-')[1])-1,parseInt(deliv.split('-')[2]));
@@ -1830,20 +2001,84 @@ async function saveJob(){
     var wn=Math.ceil((mon-new Date(mon.getFullYear(),0,1))/(7*86400000));
     wl='W'+wn;
   }
-  await DB().from('print_schedule').insert([{
-    week_label:wl,date_period:period,client:client,
-    cup_size:document.getElementById('jsz').value,
-    cup_colour:document.getElementById('jcl').value,
-    qty_printed:qty,num_colours:parseInt(document.getElementById('jnc').value)||1,
-    print_colour:document.getElementById('jpc').value,
-    artwork:document.getElementById('jar').value,
-    delivery_date:deliv||null,
-    notes:document.getElementById('jno').value,status:'Scheduled',created_by:role
-  }]);
-  toast('✓ '+client+' added','ok');
+  return {wl:wl,period:period};
+}
+
+async function saveJob(){
+  var client=document.getElementById('jc2').value.trim();
+  if(!client){toast('Client required','err');return;}
+  var deliv=document.getElementById('jdl').value;
+  var pr=jobPeriod(deliv);
+  var rec;
+  if(jobMode==='complex'){
+    var items=collectJobItems();
+    if(items.length===0){toast('Add at least one line with a quantity','err');return;}
+    var sum=jobSummaryFromItems(items);
+    rec={
+      week_label:pr.wl,date_period:pr.period,client:client,
+      cup_size:sum.cup_size,cup_colour:sum.cup_colour,qty_printed:sum.qty_printed,
+      num_colours:sum.num_colours,print_colour:sum.print_colour,artwork:sum.artwork,artwork_url:sum.artwork_url,
+      delivery_date:deliv||null,
+      notes:document.getElementById('jno').value,
+      job_type:'complex',
+      items:JSON.stringify(items)
+    };
+  } else {
+    var qty=parseInt(document.getElementById('jq').value)||0;
+    if(!qty){toast('Quantity required','err');return;}
+    rec={
+      week_label:pr.wl,date_period:pr.period,client:client,
+      cup_size:document.getElementById('jsz').value,
+      cup_colour:document.getElementById('jcl').value,
+      qty_printed:qty,num_colours:parseInt(document.getElementById('jnc').value)||1,
+      print_colour:document.getElementById('jpc').value,
+      artwork:document.getElementById('jar').value,
+      delivery_date:deliv||null,
+      notes:document.getElementById('jno').value,
+      job_type:'simple',
+      items:null
+    };
+  }
+  var res;
+  if(jobEditId){
+    rec.last_edited_by=role;
+    res=await DB().from('print_schedule').update(rec).eq('id',jobEditId);
+  } else {
+    rec.status='Scheduled';rec.created_by=role;
+    res=await DB().from('print_schedule').insert([rec]);
+  }
+  if(res.error){toast('Error: '+res.error.message,'err');return;}
+  toast('✓ '+client+(jobEditId?' updated':' added'),'ok');
   togglePnl('pjob');document.getElementById('bajob').style.display='flex';
-  ['jc2','jq','jpc','jno','jdl'].forEach(function(id){document.getElementById(id).value='';});
-  loadJobs();prints=[];loadCalData();
+  resetJobPanel();
+  loadJobs();prints=[];loadCalData();loadMyJobs&&loadMyJobs();
+}
+
+function openJobEdit(ev){
+  resetJobPanel();
+  jobEditId=ev.id;
+  document.getElementById('pjob-title').textContent='Modifier — '+ev.client;
+  document.getElementById('jsave-btn').textContent='Enregistrer';
+  document.getElementById('jc2').value=ev.client||'';
+  document.getElementById('jdl').value=ev.delivery_date||'';
+  document.getElementById('jno').value=ev.notes||'';
+  var parsedItems=null;
+  if(ev.items){try{parsedItems=JSON.parse(ev.items);}catch(e){}}
+  if((ev.job_type==='complex')&&parsedItems&&parsedItems.length){
+    setJobMode('complex');
+    document.getElementById('jitems').innerHTML='';
+    parsedItems.forEach(function(it){addJobLine(it);});
+    updateJobSummary();
+  } else {
+    setJobMode('simple');
+    setSel('jsz',ev.cup_size||'500ml');setSel('jcl',ev.cup_colour||'Frosted');
+    document.getElementById('jq').value=ev.qty_printed||'';
+    setSel('jnc',String(ev.num_colours||1));
+    document.getElementById('jpc').value=ev.print_colour||'';
+    setSel('jar',ev.artwork||'New');
+  }
+  document.getElementById('pjob').classList.add('op');
+  document.getElementById('bajob').style.display='none';
 }
 
 // ── PRINT ──
@@ -2553,19 +2788,48 @@ async function saveQA(){
   prints=[];loadCalData();loadJobs();loadMyJobs();
 }
 
+// ── JOB ITEMS RENDER (shared) ──
+var JOB_CUP_DOT={'frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00'};
+function jobCupDot(c){return JOB_CUP_DOT[(c||'').toLowerCase().trim()]||'#95a5a6';}
+function parseItems(ev){if(!ev||!ev.items)return null;try{var a=JSON.parse(ev.items);return (a&&a.length)?a:null;}catch(e){return null;}}
+function renderJobItems(ev,forPrint){
+  var items=parseItems(ev);
+  if(!items)return '';
+  var h='<div style="margin:6px 0 4px"><div style="font-size:11px;font-weight:700;color:#0E6655;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">🧩 '+items.length+' lines — '+(ev.qty_printed||0).toLocaleString()+' cups</div>';
+  items.forEach(function(it,idx){
+    h+='<div style="border:1px solid #e0e0e0;border-radius:8px;padding:9px 11px;margin-bottom:8px;background:#fafbfc">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+      +'<span style="font-weight:700;font-size:13px">'+(it.design?it.design:'Line '+(idx+1))+'</span>'
+      +'<span style="font-weight:700;color:#0E6655">'+(it.qty||0).toLocaleString()+'</span></div>'
+      +'<div style="font-size:12px;color:#555;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+      +'<span style="width:11px;height:11px;border-radius:50%;background:'+jobCupDot(it.colour)+';border:1px solid rgba(0,0,0,.15);display:inline-block"></span>'
+      +'<strong>'+(it.size||'—')+' '+(it.colour||'—')+'</strong>'
+      +'<span style="color:#888">· 🎨 '+(it.print_colour||'—')+' · '+(it.num_colours||1)+' col.</span></div>';
+    if(it.artwork_url){
+      if(it.artwork_url.indexOf('data:image')===0)h+='<img src="'+it.artwork_url+'" style="max-width:100%;max-height:'+(forPrint?'160':'120')+'px;border-radius:6px;margin-top:7px;display:block">';
+      else h+='<div style="margin-top:6px;font-size:12px;color:#1F4E79;font-weight:600">📄 PDF artwork attached</div>';
+    }
+    h+='</div>';
+  });
+  h+='</div>';
+  return h;
+}
+
 // ── EVENT DETAIL ──
 function openEvDetail(ev){
   if(!ev)return;
   curEv=ev;
   document.getElementById('evtitle').textContent=ev.client;
+  var _items=parseItems(ev);
   document.getElementById('evbody').innerHTML=
     '<div class="mr"><span class="ml">Week</span><span>'+(ev.week_label||'—')+' · '+(ev.date_period||'—')+'</span></div>'+
     (ev.print_date?'<div class="mr"><span class="ml">Print date</span><span><strong>'+ev.print_date+'</strong></span></div>':'')+
     (ev.delivery_date?'<div class="mr"><span class="ml">Delivery</span><span>'+ev.delivery_date+'</span></div>':'')+
-    '<div class="mr"><span class="ml">Cup</span><span>'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</span></div>'+
-    '<div class="mr"><span class="ml">Qty</span><span><strong>'+(ev.qty_printed||0).toLocaleString()+'</strong> units</span></div>'+
+    (_items?renderJobItems(ev,false):
+      ('<div class="mr"><span class="ml">Cup</span><span>'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</span></div>'+
+       '<div class="mr"><span class="ml">Qty</span><span><strong>'+(ev.qty_printed||0).toLocaleString()+'</strong> units</span></div>'+
+       '<div class="mr"><span class="ml">Print</span><span>'+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.</span></div>'))+
     '<div class="mr"><span class="ml">Stock used</span><span><strong>'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+'</strong> units</span></div>'+
-    '<div class="mr"><span class="ml">Print</span><span>'+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.</span></div>'+
     '<div class="mr"><span class="ml">Status</span><span>'+pill(ev.status||'Scheduled')+'</span></div>'+
     (ev.posis_received?'<div class="mr"><span class="ml">POSIS</span><span style="color:#1F4E79;font-weight:700">✅ Received</span></div>':
     '<div class="mr"><span class="ml">POSIS</span><span style="color:#aaa">Not received yet</span></div>')+
@@ -2634,6 +2898,16 @@ function openEdit(ev){
   document.getElementById('ecp').value  = ev.contact_phone||'';
   document.getElementById('eurg').checked = ev.is_urgent||false;
   document.getElementById('eposis').checked = ev.posis_received||false;
+  // multi-line mode
+  var _pit=parseItems(ev);
+  document.getElementById('e-jitems').innerHTML='';
+  if(ev.job_type==='complex'&&_pit){
+    setEditMode('complex');
+    _pit.forEach(function(it){addJobLine(it,'e-jitems');});
+    updateJobSummary('e-jitems');
+  } else {
+    setEditMode('simple');
+  }
   document.getElementById('edov').classList.add('op');
   setTimeout(function(){document.getElementById('ecl').focus();},100);
 }
@@ -2658,8 +2932,12 @@ async function saveEdit(){
   var id=document.getElementById('eid').value;
   if(!id){toast('No job ID — please close and reopen','err');return;}
   var client=document.getElementById('ecl').value.trim();
-  var qty=parseInt(document.getElementById('eq').value)||0;
-  if(!client||!qty){toast('Client and quantity required','err');return;}
+  if(!client){toast('Client required','err');return;}
+  var isComplex=window._editMode==='complex';
+  var cItems=isComplex?collectJobItems('e-jitems'):null;
+  if(isComplex&&(!cItems||cItems.length===0)){toast('Add at least one line with a quantity','err');return;}
+  var qty=isComplex?cItems.reduce(function(s,i){return s+i.qty;},0):(parseInt(document.getElementById('eq').value)||0);
+  if(!isComplex&&!qty){toast('Quantity required','err');return;}
 
   // Auto-compute week_label + date_period from print_date before save
   var _pd=document.getElementById('epd').value;
@@ -2671,12 +2949,6 @@ async function saveEdit(){
     date_period:document.getElementById('ewp').value,
     print_date:_pd||null,
     delivery_date:document.getElementById('edd').value||null,
-    cup_size:document.getElementById('esz').value,
-    cup_colour:document.getElementById('ecol').value,
-    qty_printed:qty,
-    num_colours:parseInt(document.getElementById('enc').value)||1,
-    print_colour:document.getElementById('epc').value,
-    artwork:document.getElementById('ear').value,
     status:document.getElementById('est').value,
     notes:document.getElementById('eno').value,
     delivery_type:document.getElementById('edt').value||null,
@@ -2685,6 +2957,20 @@ async function saveEdit(){
     contact_phone:document.getElementById('ecp').value||null,
     last_edited_by:role
   };
+  if(isComplex){
+    var sum=jobSummaryFromItems(cItems);
+    updateData.cup_size=sum.cup_size;updateData.cup_colour=sum.cup_colour;updateData.qty_printed=sum.qty_printed;
+    updateData.num_colours=sum.num_colours;updateData.print_colour=sum.print_colour;updateData.artwork=sum.artwork;
+    updateData.job_type='complex';updateData.items=JSON.stringify(cItems);
+  } else {
+    updateData.cup_size=document.getElementById('esz').value;
+    updateData.cup_colour=document.getElementById('ecol').value;
+    updateData.qty_printed=qty;
+    updateData.num_colours=parseInt(document.getElementById('enc').value)||1;
+    updateData.print_colour=document.getElementById('epc').value;
+    updateData.artwork=document.getElementById('ear').value;
+    updateData.job_type='simple';updateData.items=null;
+  }
   try { updateData.posis_received = document.getElementById('eposis').checked; } catch(e){}
 
   // Add is_urgent only if column exists (won't break if missing)
@@ -2918,6 +3204,8 @@ async function toggleDone(id,st){
 function downloadJobCard(ev) {
   if(!ev) return;
 
+  var complexItems=parseItems(ev);
+
   // Cup colour dot
   var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
   var cupDotColor=cupColours[(ev.cup_colour||'').toLowerCase()]||'#0E6655';
@@ -2940,6 +3228,8 @@ function downloadJobCard(ev) {
   } else {
     artSection='<div style="margin:0 0 16px;padding:12px;background:#f2f3f4;border-radius:8px;border:1.5px dashed #ccc;text-align:center;color:#999;font-size:12px">No artwork uploaded</div>';
   }
+  var linesSection='';
+  if(complexItems){ artSection=''; linesSection='<div style="margin:0 0 16px;padding:14px;background:#f7f8fa;border-radius:10px;border:1.5px solid #0E6655">'+renderJobItems(ev,true)+'</div>'; }
 
   // Delivery/collection block — only if info present
   var isDelivery=ev.delivery_type==='Delivery';
@@ -3013,6 +3303,9 @@ function downloadJobCard(ev) {
     + '<div class="field"><div class="lb">Delivery date</div><div class="vl">'+(ev.delivery_date||'—')+'</div></div>'
     + (ev.notes?'<div class="field" style="grid-column:1/-1"><div class="lb">Notes</div><div class="vl" style="font-size:13px;font-weight:500">'+ev.notes+'</div></div>':'')
     + '</div>'
+
+    // Multi-line job breakdown (if complex)
+    + linesSection
 
     // Delivery/collection block (only if data)
     + delivSection
@@ -4225,7 +4518,7 @@ async function loadAnalytics(){
   var period=document.getElementById('an-period').value;
   var sizeF=document.getElementById('an-size').value;
   var r=await DB().from('purchase_orders').select('po_number,po_date,delivery_date,product,size,colour,qty_ordered,unit_price,status').order('po_date',{ascending:true});
-  if(!r.data){el.innerHTML='<div class="ld">Erreur de chargement</div>';return;}
+  if(!r.data){el.innerHTML='<div class="ld">Loading error</div>';return;}
   var rows=r.data.filter(function(p){return p.status!=='Cancelled';});
   if(sizeF!=='all')rows=rows.filter(function(p){return p.size===sizeF;});
 
@@ -4274,19 +4567,19 @@ async function loadAnalytics(){
 
   // ── KPI cards ──
   var html='<div class="mts">'+
-    '<div class="mt"><div class="lb">Total commandé</div><div class="vl">'+anNum(totalCups)+'</div><div class="sb2">gobelets</div></div>'+
-    '<div class="mt"><div class="lb">Bons de commande</div><div class="vl">'+Object.keys(totalPOs).length+'</div><div class="sb2">PO distincts</div></div>'+
-    '<div class="mt gn"><div class="lb">Délai moyen</div><div class="vl">'+avgLead+' j</div><div class="sb2">PO → réception</div></div>'+
-    '<div class="mt or"><div class="lb">Délai min / max</div><div class="vl" style="font-size:18px;padding-top:5px">'+minLead+' / '+maxLead+' j</div><div class="sb2">'+leads.length+' livraisons</div></div>'+
-    '<div class="mt"><div class="lb">💰 Dépense totale</div><div class="vl" style="font-size:16px;padding-top:5px">R '+anNum(Math.round(totalSpend))+'</div><div class="sb2">TTC</div></div>'+
-    '<div class="mt gn"><div class="lb">Coût moyen / gobelet</div><div class="vl" style="font-size:18px;padding-top:5px">R '+(totalCups?(totalSpend/totalCups).toFixed(2):'0')+'</div><div class="sb2">TTC</div></div>'+
+    '<div class="mt"><div class="lb">Total ordered</div><div class="vl">'+anNum(totalCups)+'</div><div class="sb2">cups</div></div>'+
+    '<div class="mt"><div class="lb">Purchase orders</div><div class="vl">'+Object.keys(totalPOs).length+'</div><div class="sb2">distinct POs</div></div>'+
+    '<div class="mt gn"><div class="lb">Avg lead time</div><div class="vl">'+avgLead+' d</div><div class="sb2">PO → received</div></div>'+
+    '<div class="mt or"><div class="lb">Lead min / max</div><div class="vl" style="font-size:18px;padding-top:5px">'+minLead+' / '+maxLead+' d</div><div class="sb2">'+leads.length+' deliveries</div></div>'+
+    '<div class="mt"><div class="lb">💰 Total spend</div><div class="vl" style="font-size:16px;padding-top:5px">R '+anNum(Math.round(totalSpend))+'</div><div class="sb2">incl. VAT</div></div>'+
+    '<div class="mt gn"><div class="lb">Avg cost / cup</div><div class="vl" style="font-size:18px;padding-top:5px">R '+(totalCups?(totalSpend/totalCups).toFixed(2):'0')+'</div><div class="sb2">incl. VAT</div></div>'+
     '</div>';
 
   // ── Vertical GROUPED bar chart per period (one bar per size, side by side) ──
   var sizesForStack=sizeF==='all'?['500ml','330ml','250ml']:[sizeF];
   var maxBar=1;
   order.forEach(function(k){sizesForStack.forEach(function(sz){if(byPeriod[k][sz]>maxBar)maxBar=byPeriod[k][sz];});});
-  html+='<div class="card"><div class="ch"><span class="ct">Gobelets commandés '+({month:'par mois',quarter:'par trimestre',year:'par an'}[period])+'</span></div>';
+  html+='<div class="card"><div class="ch"><span class="ct">Cups ordered '+({month:'by month',quarter:'by quarter',year:'by year'}[period])+'</span></div>';
   html+='<div style="display:flex;align-items:flex-end;gap:16px;height:230px;padding:10px 4px 0;overflow-x:auto">';
   order.forEach(function(k){
     var pd=byPeriod[k];
@@ -4313,7 +4606,7 @@ async function loadAnalytics(){
 
   // ── Spend per period (horizontal bars) ──
   var maxSp=Math.max.apply(null,order.map(function(k){return byPeriod[k].spend;}).concat([1]));
-  html+='<div class="card"><div class="ch"><span class="ct">💰 Dépenses '+({month:'par mois',quarter:'par trimestre',year:'par an'}[period])+'</span><span style="font-size:11px;color:#888">ZAR TTC</span></div>';
+  html+='<div class="card"><div class="ch"><span class="ct">💰 Spend '+({month:'by month',quarter:'by quarter',year:'by year'}[period])+'</span><span style="font-size:11px;color:#888">ZAR TTC</span></div>';
   order.slice().reverse().forEach(function(k){
     var sp=byPeriod[k].spend, q=byPeriod[k].total, pct=Math.round((sp/maxSp)*100);
     var cpc=q?(sp/q).toFixed(2):'0';
@@ -4325,7 +4618,7 @@ async function loadAnalytics(){
   // ── Size breakdown (only when all) ──
   if(sizeF==='all'){
     var szTot=bySize['500ml']+bySize['330ml']+bySize['250ml']||1;
-    html+='<div class="card"><div class="ch"><span class="ct">% par taille de gobelet</span></div>';
+    html+='<div class="card"><div class="ch"><span class="ct">% by cup size</span></div>';
     ['500ml','330ml','250ml'].forEach(function(sz){
       var pct=Math.round((bySize[sz]/szTot)*100);
       html+='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><strong>'+sz+'</strong><span>'+anNum(bySize[sz])+' · '+pct+'%</span></div>'+
@@ -4337,7 +4630,7 @@ async function loadAnalytics(){
   // ── Colours most demanded ──
   var colArr=Object.values(byColour).sort(function(a,b){return b.qty-a.qty;});
   var maxC=colArr.length?colArr[0].qty:1;
-  html+='<div class="card"><div class="ch"><span class="ct">Couleurs les plus demandées</span><span style="font-size:11px;color:#888">qté · récurrence</span></div>';
+  html+='<div class="card"><div class="ch"><span class="ct">Most requested colours</span><span style="font-size:11px;color:#888">qty · recurrence</span></div>';
   colArr.forEach(function(c){
     var pct=Math.round((c.qty/maxC)*100), rec=Object.keys(c.pos).length;
     html+='<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">'+
@@ -4347,15 +4640,15 @@ async function loadAnalytics(){
   });
   html+='</div>';
 
-  // ── Detail per period: nb commandes, total, split taille, split taille+couleur ──
-  html+='<div class="card"><div class="ch"><span class="ct">Détail '+({month:'par mois',quarter:'par trimestre',year:'par an'}[period])+'</span></div>';
+  // ── Detail per period: order count, total, size split, size+colour split ──
+  html+='<div class="card"><div class="ch"><span class="ct">Breakdown '+({month:'by month',quarter:'by quarter',year:'by year'}[period])+'</span></div>';
   order.slice().reverse().forEach(function(k){
     var pd=byPeriod[k], nPO=Object.keys(pd.pos).length;
     html+='<div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px 14px;margin-bottom:12px">';
     // header line
     html+='<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
       '<strong style="font-size:14px;color:#0E6655;text-transform:uppercase">'+plabel(k)+'</strong>'+
-      '<span style="font-size:12px;color:#444"><strong>'+nPO+'</strong> commande'+(nPO>1?'s':'')+' · <strong>'+anNum(pd.total)+'</strong> gobelets</span></div>';
+      '<span style="font-size:12px;color:#444"><strong>'+nPO+'</strong> order'+(nPO>1?'s':'')+' · <strong>'+anNum(pd.total)+'</strong> cups</span></div>';
     // size split chips
     html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
     ['500ml','330ml','250ml'].forEach(function(sz){
@@ -4379,14 +4672,14 @@ async function loadAnalytics(){
   html+='</div>';
 
   // ── Lead time recent list ──
-  html+='<div class="card"><div class="ch"><span class="ct">Délais de livraison récents</span></div>';
-  html+='<div style="overflow-x:auto"><table><thead><tr><th>PO#</th><th>Produit</th><th>Commandé</th><th class="nr">Délai</th></tr></thead><tbody>';
+  html+='<div class="card"><div class="ch"><span class="ct">Recent lead times</span></div>';
+  html+='<div style="overflow-x:auto"><table><thead><tr><th>PO#</th><th>Product</th><th>Ordered</th><th class="nr">Lead</th></tr></thead><tbody>';
   leads.sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,14).forEach(function(l){
     var c=l.days<=7?'#1E8449':(l.days<=14?'#E67E22':'#C0392B');
     html+='<tr><td style="font-weight:700;color:#1F4E79">'+l.po+'</td>'+
       '<td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+anColour(l.colour)+';margin-right:5px"></span>'+(l.size||'')+' '+(l.colour||'')+'</td>'+
       '<td style="font-size:11px;color:#666">'+l.date+'</td>'+
-      '<td class="nr" style="font-weight:700;color:'+c+'">'+l.days+' j</td></tr>';
+      '<td class="nr" style="font-weight:700;color:'+c+'">'+l.days+' d</td></tr>';
   });
   html+='</tbody></table></div></div>';
 
