@@ -607,8 +607,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div class="ch" style="margin-bottom:10px">
         <span class="ct" id="del-cal-title">Loading...</span>
         <div style="display:flex;gap:6px">
-          <button class="btn bp bsm" id="del-view-month" onclick="delCalSetView('month')">Month</button>
-          <button class="btn bs bsm" id="del-view-week" onclick="delCalSetView('week')">Week</button>
           <button class="btn bs bsm" onclick="delCalNav(-1)">‹</button>
           <button class="btn bs bsm" onclick="delCalNav(0)">Today</button>
           <button class="btn bs bsm" onclick="delCalNav(1)">›</button>
@@ -817,7 +815,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <input type="checkbox" id="eposis" style="width:18px;height:18px;cursor:pointer;accent-color:#1F4E79">
       <label style="font-size:13px;font-weight:600;color:#1F4E79;cursor:pointer;text-transform:none;letter-spacing:0" for="eposis">✅ POSIS received</label>
     </div>
-    <div class="fg">
+    <div class="fg" id="e-artwork-section">
       <label>Artwork file</label>
       <div id="artwork-preview" style="margin-bottom:6px;display:none">
         <span id="artwork-name" style="font-size:12px;color:#0E6655;font-weight:500"></span>
@@ -918,7 +916,7 @@ async function uploadArtwork(jobId, file) {
 }
 var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages'],warda:['stock','myjobs','cal','deliveries','messages']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
-var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},delCalOff=0,delCalSelectedDate=null,delCalView='month';
+var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},delCalOff=0,delCalSelectedDate=null,delCalView='week';
 
 // South Africa public holidays
 var SA_HOLIDAYS={"2026-01-01":"New Years Day","2026-03-21":"Human Rights Day","2026-04-03":"Good Friday","2026-04-06":"Family Day","2026-04-27":"Freedom Day","2026-05-01":"Workers Day","2026-06-16":"Youth Day","2026-08-09":"Womens Day","2026-08-10":"Womens Day (obs.)","2026-09-24":"Heritage Day","2026-12-16":"Day of Reconciliation","2026-12-25":"Christmas Day","2026-12-26":"Day of Goodwill"};
@@ -1867,6 +1865,24 @@ function setJobMode(m){
   if(m==='complex'&&document.querySelectorAll('#jitems .jline').length===0)addJobLine();
 }
 
+function compressImage(file,cb){
+  if(!file){cb(null);return;}
+  if((file.type||'').indexOf('image')!==0){var r0=new FileReader();r0.onload=function(e){cb(e.target.result);};r0.readAsDataURL(file);return;}
+  var r=new FileReader();
+  r.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var max=1400,w=img.width,h=img.height;
+      if(w>max||h>max){var sc=Math.min(max/w,max/h);w=Math.round(w*sc);h=Math.round(h*sc);}
+      try{var cv=document.createElement('canvas');cv.width=w;cv.height=h;var ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);cb(cv.toDataURL('image/jpeg',0.82));}
+      catch(err){cb(e.target.result);}
+    };
+    img.onerror=function(){cb(e.target.result);};
+    img.src=e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+
 function addJobLine(prefill,cid){
   prefill=prefill||{};cid=cid||'jitems';
   var wrap=document.getElementById(cid);
@@ -1896,10 +1912,9 @@ function addJobLine(prefill,cid){
   if(prefill.artwork_url){row._art=prefill.artwork_url;statusEl.textContent='📎 existing artwork';}
   fileInp.addEventListener('change',function(){
     var f=fileInp.files[0];if(!f)return;
-    if(f.size>4*1024*1024){toast('File too large (max 4 MB)','err');fileInp.value='';return;}
-    var rd=new FileReader();
-    rd.onload=function(e){row._art=e.target.result;statusEl.textContent='📎 '+f.name;};
-    rd.readAsDataURL(f);
+    if(f.size>12*1024*1024){toast('File too large (max 12 MB)','err');fileInp.value='';return;}
+    statusEl.textContent='⏳ processing...';
+    compressImage(f,function(dataUrl){if(!dataUrl){statusEl.textContent='';return;}row._art=dataUrl;statusEl.textContent='📎 '+f.name;});
   });
   row.querySelector('.jl-qty').addEventListener('input',function(){updateJobSummary(cid);});
   row.querySelector('.jl-remove').addEventListener('click',function(){row.remove();renumberLines(cid);updateJobSummary(cid);});
@@ -1952,7 +1967,7 @@ function jobSummaryFromItems(items){
     num_colours:maxNc,
     print_colour:prKeys.length===1?prKeys[0]:(prKeys.length>1?'Multi':''),
     artwork:'Multi',
-    artwork_url:items[0].artwork_url||null
+    artwork_url:null
   };
 }
 
@@ -1965,6 +1980,7 @@ function setEditMode(m){
   if(cB)cB.style.cssText=m==='complex'?on:off;
   document.getElementById('e-simple-fields').style.display=m==='simple'?'':'none';
   document.getElementById('e-complex-fields').style.display=m==='complex'?'':'none';
+  var _eas=document.getElementById('e-artwork-section');if(_eas)_eas.style.display=m==='complex'?'none':'';
   if(m==='complex'&&document.querySelectorAll('#e-jitems .jline').length===0)addJobLine({},'e-jitems');
 }
 
@@ -2456,7 +2472,7 @@ function renderCal(){
             e.stopPropagation();
             downloadJobCard(window['ev_'+eid]);
           } else {
-            openEvDetail(window['ev_'+eid]);
+            if(role!=='warda')openEdit(window['ev_'+eid]);else openEvDetail(window['ev_'+eid]);
           }
         });
       })(ev.id, ev.status);
@@ -2747,21 +2763,37 @@ async function onDrop(dateISO){
   dragId=null;loadCalData();
 }
 
-// ── QUICK ADD ──
+// ── QUICK ADD → now opens the FULL job form ──
 function openQA(dateISO){
-  var parts=dateISO.split('-');
-  var d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
-  d.setHours(0,0,0,0);
-  var dow=d.getDay();var mon=new Date(d);mon.setDate(d.getDate()-(dow===0?6:dow-1));
-  var sun=new Date(mon);sun.setDate(mon.getDate()+6);
-  var fmt=function(dt){return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0');};
-  qaP=fmt(mon)+'-'+fmt(sun);
-  var wn=Math.ceil((mon-new Date(mon.getFullYear(),0,1))/(7*86400000));
-  qaWL='W'+wn;
-  document.getElementById('qainfo').textContent=qaWL+' · '+qaP;
-  document.getElementById('qapd').value=dateISO;
-  document.getElementById('qaov').classList.add('op');
-  setTimeout(function(){document.getElementById('qac').focus();},100);
+  openEditNew({print_date:dateISO});
+}
+
+// Open the full edit modal as a NEW blank job (all options: simple/complex, all colours, all fields)
+function openEditNew(prefill){
+  prefill=prefill||{};
+  document.getElementById('eid').value='';
+  document.getElementById('ecl').value='';
+  document.getElementById('epd').value=prefill.print_date||'';
+  if(prefill.print_date)autoWeek('epd','ewl','ewp');else{document.getElementById('ewl').value='';document.getElementById('ewp').value='';}
+  document.getElementById('edd').value='';
+  document.getElementById('eq').value='';
+  document.getElementById('epc').value='';
+  document.getElementById('eno').value='';
+  document.getElementById('ecalc').textContent='Stock: —';
+  setSel('esz','500ml');setSel('ecol','Frosted');setSel('enc','1');setSel('est','Scheduled');setSel('ept','Screen print');setSel('ear','New');
+  document.getElementById('edt').value='';document.getElementById('eda').value='';
+  document.getElementById('ecn').value='';document.getElementById('ecp').value='';
+  document.getElementById('eurg').checked=false;document.getElementById('eposis').checked=false;
+  pendingArtworkFile=null;
+  document.getElementById('artwork-file').value='';
+  document.getElementById('artwork-preview').style.display='none';
+  document.getElementById('artwork-current').textContent='No artwork uploaded yet';
+  document.getElementById('e-jitems').innerHTML='';
+  setEditMode('simple');
+  var t=document.querySelector('#edov .mh h3');if(t)t.textContent='➕ Add job';
+  var db=document.querySelector('#edov .bd');if(db)db.style.display='none';
+  document.getElementById('edov').classList.add('op');
+  setTimeout(function(){document.getElementById('ecl').focus();},100);
 }
 
 async function saveQA(){
@@ -2791,6 +2823,15 @@ async function saveQA(){
 // ── JOB ITEMS RENDER (shared) ──
 var JOB_CUP_DOT={'frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00'};
 function jobCupDot(c){return JOB_CUP_DOT[(c||'').toLowerCase().trim()]||'#95a5a6';}
+var CLIENT_BOX={'500ml':200,'330ml':270,'250ml':240};
+function cardBoxes(ev){
+  var items=parseItems(ev), qtyBySize={};
+  if(items){items.forEach(function(i){qtyBySize[i.size]=(qtyBySize[i.size]||0)+i.qty;});}
+  else if(ev.cup_size){qtyBySize[ev.cup_size]=(ev.qty_printed||0);}
+  var out=[];
+  Object.keys(qtyBySize).forEach(function(sz){var per=CLIENT_BOX[sz]||0;if(per&&qtyBySize[sz]>0)out.push({size:sz,boxes:Math.ceil(qtyBySize[sz]/per),qty:qtyBySize[sz]});});
+  return out;
+}
 function parseItems(ev){if(!ev||!ev.items)return null;try{var a=JSON.parse(ev.items);return (a&&a.length)?a:null;}catch(e){return null;}}
 function renderJobItems(ev,forPrint){
   var items=parseItems(ev);
@@ -2908,6 +2949,8 @@ function openEdit(ev){
   } else {
     setEditMode('simple');
   }
+  var _t=document.querySelector('#edov .mh h3');if(_t)_t.textContent='✏️ Edit job';
+  var _db=document.querySelector('#edov .bd');if(_db)_db.style.display='';
   document.getElementById('edov').classList.add('op');
   setTimeout(function(){document.getElementById('ecl').focus();},100);
 }
@@ -2930,7 +2973,7 @@ function autoWeek(dateId, wlId, wpId){
 
 async function saveEdit(){
   var id=document.getElementById('eid').value;
-  if(!id){toast('No job ID — please close and reopen','err');return;}
+  var isNew=!id;
   var client=document.getElementById('ecl').value.trim();
   if(!client){toast('Client required','err');return;}
   var isComplex=window._editMode==='complex';
@@ -2976,7 +3019,16 @@ async function saveEdit(){
   // Add is_urgent only if column exists (won't break if missing)
   try { updateData.is_urgent = document.getElementById('eurg').checked; } catch(e){}
 
-  var r = await DB().from('print_schedule').update(updateData).eq('id',id);
+  var r;
+  if(isNew){
+    updateData.status=updateData.status||'Scheduled';
+    updateData.created_by=role;
+    var ins=await DB().from('print_schedule').insert([updateData]).select();
+    r=ins;
+    if(!ins.error && ins.data && ins.data[0]) id=ins.data[0].id;
+  } else {
+    r = await DB().from('print_schedule').update(updateData).eq('id',id);
+  }
   if(r.error){
     toast('❌ Save error: '+r.error.message,'err');
     console.error('saveEdit error:', r.error);
@@ -3915,6 +3967,22 @@ function downloadDeliveryCard(ev){
   var typeColor=isDelivery?'#1F4E79':isCollection?'#0B5E2F':'#444';
   var typeBg=isDelivery?'#D6EAF8':isCollection?'#D5F5E3':'#f2f3f4';
 
+  // Client packing boxes
+  var boxRows=cardBoxes(ev);
+  var totalBoxes=boxRows.reduce(function(a,b){return a+b.boxes;},0);
+  var boxDetail=boxRows.map(function(b){return b.size+': '+b.boxes;}).join(' · ');
+  var boxField=totalBoxes?('<div class="field" style="margin-bottom:16px"><div class="lb">Boxes (client packing)</div><div class="vl">📦 '+totalBoxes+' box'+(totalBoxes>1?'es':'')+(boxRows.length>1?'  ('+boxDetail+')':'')+'</div></div>'):'';
+  // Product photo (only if present — no empty placeholder)
+  var photoBlock=ev.product_photo?('<div style="margin:0 0 16px;padding:14px;background:#f7f8fa;border-radius:10px;border:1.5px solid #e0e0e0"><div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Ready product</div><img src="'+ev.product_photo+'" style="max-width:100%;max-height:280px;border-radius:6px;display:block;margin:0 auto"></div>'):'';
+  // Fixed Blink collection address (client comes to collect)
+  var collAddr='<div class="contact-box">'
+    +'<div class="section-title">Collection address</div>'
+    +'<div class="contact-row"><span style="font-size:18px">🏢</span><span>Blink Printing Solutions</span></div>'
+    +'<div class="contact-row" style="font-size:13px;font-weight:500"><span style="font-size:18px">📍</span><span>Unit 21 Theta Business Park, 4 Amethyst Street, Theta Ext 7, Ormonde 2091, Johannesburg</span></div>'
+    +'<div class="contact-row"><span style="font-size:18px">👤</span><span>Warda</span></div>'
+    +'<div class="contact-row"><span style="font-size:18px">📞</span><span style="font-size:15px;font-weight:600">+27 84 550 1106</span></div>'
+    +'</div>';
+
   // Cup colour dot
   var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
   var cupDotColor=cupColours[(ev.cup_colour||'').toLowerCase()]||'#0E6655';
@@ -3946,14 +4014,15 @@ function downloadDeliveryCard(ev){
     +'<div class="type-banner">'+typeLabel+'</div>'
 
     // Contact & address block
-    +((ev.delivery_address||ev.contact_name||ev.contact_phone)?
+    +(isCollection?collAddr:
+      ((ev.delivery_address||ev.contact_name||ev.contact_phone)?
       '<div class="contact-box">'
-      +'<div class="section-title">'+(isDelivery?'Delivery details':'Collection details')+'</div>'
+      +'<div class="section-title">Delivery details</div>'
       +(ev.delivery_address?'<div class="contact-row"><span style="font-size:18px">📍</span><span>'+ev.delivery_address+'</span></div>':'')
       +(ev.contact_name?'<div class="contact-row"><span style="font-size:18px">👤</span><span>'+ev.contact_name+'</span></div>':'')
       +(ev.contact_phone?'<div class="contact-row"><span style="font-size:18px">📞</span><span style="color:'+typeColor+';font-size:15px;font-weight:600">'+ev.contact_phone+'</span></div>':'')
       +'</div>'
-    :'')
+    :''))
 
     // Cup visual block
     +'<div class="cup-block">'
@@ -3964,6 +4033,12 @@ function downloadDeliveryCard(ev){
     +'<div class="sub2" style="margin-top:2px">🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' colour'+(ev.num_colours>1?'s':'')+'</div>'
     +'</div>'
     +'</div>'
+
+    // Client packing boxes
+    +boxField
+
+    // Ready product photo (omitted if none)
+    +photoBlock
 
     // Notes only
     +(ev.notes?'<div style="background:#f7f8fa;border-radius:8px;padding:11px 14px;margin-bottom:16px"><div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px">Notes</div><div style="font-size:13px;font-weight:500">'+ev.notes+'</div></div>':'')
@@ -4031,6 +4106,31 @@ function downloadDeliveryCard(ev){
 
   // Action buttons
   previewActions.innerHTML='';
+
+  // 📷 Add / change ready-product photo (persists to DB, re-renders card)
+  if(role!=='warda'){
+    var phBtn=document.createElement('button');
+    phBtn.className='btn bs';
+    phBtn.textContent=ev.product_photo?'📷 Change photo':'📷 Add photo';
+    phBtn.addEventListener('click',function(){
+      var inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+      inp.onchange=function(){
+        var f=inp.files[0];if(!f)return;
+        phBtn.textContent='⏳...';phBtn.disabled=true;
+        compressImage(f,function(dataUrl){
+          if(!dataUrl){phBtn.textContent='📷 Add photo';phBtn.disabled=false;return;}
+          DB().from('print_schedule').update({product_photo:dataUrl}).eq('id',ev.id).then(function(r){
+            if(r.error){toast('❌ '+r.error.message,'err');phBtn.disabled=false;phBtn.textContent='📷 Add photo';return;}
+            ev.product_photo=dataUrl;toast('✓ Photo added','ok');
+            closeOv('cardov');downloadDeliveryCard(ev);
+            prints=[];loadDeliveries&&loadDeliveries();
+          });
+        });
+      };
+      inp.click();
+    });
+    previewActions.appendChild(phBtn);
+  }
 
   // ── Helper: generate PNG via lazy-loaded html2canvas ──
   function generateCardPng(cb){
