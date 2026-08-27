@@ -882,7 +882,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="fg">
       <label>Document type</label>
       <select id="send-doctype" onchange="updateSendArtworkStatus()">
-        <option value="bat">Print Approval (BAT) — artwork sign-off</option>
+        <option value="bat">Print proof — artwork sign-off</option>
         <option value="delivery">Delivery note</option>
         <option value="collection">Collection note</option>
       </select>
@@ -1066,8 +1066,10 @@ async function sendApproval(channel){
     var data = await res.json();
     if(!res.ok || !data.url){throw new Error(data.error||'Server error');}
 
-    var docLabel = docType==='bat'?'BAT':docType==='delivery'?'delivery note':'collection note';
-    var text = 'Hello, here is the '+docLabel+' for '+ev.client+' to approve: '+data.url;
+    var docLabel = docType==='bat'?'print proof':docType==='delivery'?'delivery note':'collection note';
+    var text = docType==='bat'
+      ? 'Hello, please review and approve the print proof for '+ev.client+' before we start production. Check the artwork carefully — once approved, any change is re-invoiced.\n\n'+data.url
+      : 'Hello, please review and sign the '+docLabel+' for '+ev.client+':\n\n'+data.url;
 
     if(channel==='whatsapp'){
       window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text), '_blank');
@@ -4803,7 +4805,7 @@ async function checkUnreadMessages(){
 var APPROVAL_LIST_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co/functions/v1/list-approvals';
 var apAll=[], apView='pending';
 
-var AP_DOC={bat:{label:'BAT',icon:'🖨️',col:'#1F4E79',bg:'#D6EAF8'},
+var AP_DOC={bat:{label:'Proof',icon:'🖨️',col:'#1F4E79',bg:'#D6EAF8'},
             delivery:{label:'Delivery',icon:'🚚',col:'#1A3A5C',bg:'#D6EAF8'},
             collection:{label:'Collection',icon:'📦',col:'#0B5E2F',bg:'#D5F5E3'}};
 var AP_ST={sent:{label:'Sent',cls:'pend'},opened:{label:'Opened',cls:'prog'},
