@@ -947,6 +947,15 @@ async function uploadArtwork(jobId, file) {
   });
 }
 
+// Convertit un numéro SA local (083..., 0027..., +27...) au format wa.me : 27XXXXXXXXX
+function normalisePhone(raw){
+  var p = String(raw||'').replace(/[^0-9]/g,'');
+  if(!p) return '';
+  if(p.indexOf('0027')===0) p = '27'+p.substring(4);
+  else if(p.charAt(0)==='0') p = '27'+p.substring(1);
+  return p;
+}
+
 // ── SEND FOR SIGNATURE (BAT / Delivery / Collection) ──
 function updateSendArtworkStatus(){
   var dt = document.getElementById('send-doctype').value;
@@ -960,11 +969,12 @@ function updateSendArtworkStatus(){
   }
 }
 
-function openSendApproval(){
+async function openSendApproval(ev){
+  if(ev){ curEv = await loadFullJob(ev); }
   if(!curEv){toast('No job selected','err');return;}
   document.getElementById('send-client-name').textContent = curEv.client||'';
   document.getElementById('send-name').value = curEv.contact_name||'';
-  document.getElementById('send-phone').value = (curEv.contact_phone||'').replace(/[^0-9]/g,'');
+  document.getElementById('send-phone').value = normalisePhone(curEv.contact_phone||'');
   document.getElementById('send-email').value = curEv.client_email||'';
   setSel('send-doctype', curEv.delivery_type==='Collection'?'collection':curEv.delivery_type==='Delivery'?'delivery':'bat');
   document.getElementById('send-msg').textContent='';
@@ -1003,12 +1013,15 @@ async function sendApproval(channel){
   if(!ev){toast('No job selected','err');return;}
   var docType = document.getElementById('send-doctype').value;
   var name = document.getElementById('send-name').value.trim();
-  var phone = document.getElementById('send-phone').value.replace(/[^0-9]/g,'');
+  var phone = normalisePhone(document.getElementById('send-phone').value);
   var email = document.getElementById('send-email').value.trim();
   var msgEl = document.getElementById('send-msg');
   msgEl.textContent='';
 
-  if(channel==='whatsapp' && !phone){msgEl.textContent='Enter a phone number first';return;}
+  if(channel==='whatsapp'){
+    if(!phone){msgEl.textContent='No phone number — WhatsApp would open with no recipient. Add the number first.';return;}
+    if(phone.length<9){msgEl.textContent='Phone number looks too short: '+phone;return;}
+  }
   if(channel==='email' && !email){msgEl.textContent='Enter an email address first';return;}
 
   var btn = document.getElementById(channel==='whatsapp'?'send-wa-btn':'send-email-btn');
@@ -1024,7 +1037,7 @@ async function sendApproval(channel){
       contact_phone: phone,
       contact_email: email,
       product_snapshot: buildSendSnapshot(ev),
-      cgv_lang: 'fr',
+      cgv_lang: 'en',
       sent_by: role
     };
     var art = getSendArtworkBase64(ev);
@@ -1980,6 +1993,11 @@ async function loadJobs(){
       cb.style.marginTop='4px';
       (function(jid){cb.addEventListener('click',function(){downloadJobCard(window['j_'+jid]);});})(o.id);
       d.querySelector('div:last-child').appendChild(cb);
+      var sndb=document.createElement('button');
+      sndb.className='btn bs bsm';sndb.textContent='📤 Send';
+      sndb.style.marginTop='4px';
+      (function(jid){sndb.addEventListener('click',function(){openSendApproval(window['j_'+jid]);});})(o.id);
+      d.querySelector('div:last-child').appendChild(sndb);
     }
     el.appendChild(d);
   }
