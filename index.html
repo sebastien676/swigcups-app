@@ -400,6 +400,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <button onclick="showTab('myjobs',this)" id="wmj" style="display:none">✅ My Jobs</button>
     <button onclick="showTab('deliveries',this)">🚚 Deliveries</button>
     <button onclick="showTab('messages',this)">💬 Messages <span class="ab" id="msgbn" style="display:none">!</span></button>
+    <button onclick="showTab('approvals',this)">✍️ Approvals <span class="ab" id="apbn" style="display:none">!</span></button>
     <button onclick="showTab('stats',this)">📊 Stats</button>
     <button onclick="showTab('analytics',this)">📈 Analytics</button>
     <button onclick="showTab('alerts',this)">🚨 Alerts <span class="ab" id="abn">!</span></button>
@@ -667,6 +668,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     </div>
     <!-- Threads -->
     <div id="msg-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
+  </div>
+
+  <div id="tab-approvals" class="sec">
+    <div class="ch" style="margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:700">✍️ Approvals & signatures</h2>
+      <button class="btn bs bsm" onclick="loadApprovals()">↻ Refresh</button>
+    </div>
+    <div class="mts" id="ap-mets"></div>
+    <div style="display:flex;gap:0;margin-bottom:14px;background:#fff;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+      <button id="ap-f-pending" onclick="apFilter('pending')" style="flex:1;padding:11px 8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#0E6655;color:#fff">⏳ Waiting</button>
+      <button id="ap-f-signed" onclick="apFilter('signed')" style="flex:1;padding:11px 8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#666">✅ Signed</button>
+      <button id="ap-f-all" onclick="apFilter('all')" style="flex:1;padding:11px 8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#666">All</button>
+    </div>
+    <div id="ap-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
   </div>
 
   <div id="tab-stats" class="sec">
@@ -1068,7 +1083,7 @@ async function sendApproval(channel){
     btn.disabled=false; btn.textContent=origText;
   }
 }
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages'],warda:['stock','myjobs','cal','deliveries','messages']};
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','approvals','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages','approvals'],warda:['stock','myjobs','cal','deliveries','messages']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
 var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},delCalOff=0,delCalSelectedDate=null,delCalView='week';
 
@@ -1089,7 +1104,7 @@ function initRole(r){
   document.getElementById('rt').textContent=RLAB[r];
   var allowed=RTABS[r];
   var btns=document.querySelectorAll('nav button');
-  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','stats','analytics','alerts'];
+  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','approvals','stats','analytics','alerts'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
   if(r==='owner'){document.getElementById('badd').style.display='flex';}
@@ -1105,6 +1120,7 @@ function initRole(r){
     Promise.all([loadStock(), loadCalData(), loadJobs(), loadPrint()]);
   }
   setTimeout(checkUnreadMessages, 2000);
+  if(r==='owner'||r==='fred')setTimeout(loadApprovals, 2500);
 }
 
 function showTab(n,b){
@@ -1118,6 +1134,7 @@ function showTab(n,b){
   if(n==='myjobs')loadMyJobs();
   if(n==='deliveries')loadDeliveries();
   if(n==='messages')loadMessages();
+  if(n==='approvals')loadApprovals();
   if(n==='stats')loadStats();
   if(n==='analytics')loadAnalytics();
 }
@@ -4531,7 +4548,7 @@ async function downloadWardaDayList(){
 
 
 // ── MESSAGES ──
-var MSG_NAMES={owner:'Sébastien',fred:'Fred',warda:'Warda'};
+var MSG_NAMES={owner:'Sébastien',fred:'Fred',warda:'Warda',client:'✍️ Signatures'};
 
 function msgToOptions(){
   // Owner can message Fred or Warda (or both)
@@ -4781,6 +4798,217 @@ async function checkUnreadMessages(){
   if(badge){badge.style.display=unread.length?'':'none';badge.textContent=unread.length||'';}
 }
 
+
+// ── APPROVALS TAB ──
+var APPROVAL_LIST_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co/functions/v1/list-approvals';
+var apAll=[], apView='pending';
+
+var AP_DOC={bat:{label:'BAT',icon:'🖨️',col:'#1F4E79',bg:'#D6EAF8'},
+            delivery:{label:'Delivery',icon:'🚚',col:'#1A3A5C',bg:'#D6EAF8'},
+            collection:{label:'Collection',icon:'📦',col:'#0B5E2F',bg:'#D5F5E3'}};
+var AP_ST={sent:{label:'Sent',cls:'pend'},opened:{label:'Opened',cls:'prog'},
+           signed:{label:'Signed',cls:'done'},draft:{label:'Draft',cls:'sch'},
+           cancelled:{label:'Cancelled',cls:'ndel'},expired:{label:'Expired',cls:'low'}};
+
+function apFilter(v){
+  apView=v;
+  ['pending','signed','all'].forEach(function(k){
+    var b=document.getElementById('ap-f-'+k);
+    if(b){b.style.background=(k===v)?'#0E6655':'#fff';b.style.color=(k===v)?'#fff':'#666';}
+  });
+  renderApprovals();
+}
+
+async function apiApprovals(payload){
+  var r=await fetch(APPROVAL_LIST_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-app-secret':APPROVAL_SECRET},
+    body:JSON.stringify(payload||{})
+  });
+  return await r.json();
+}
+
+async function loadApprovals(){
+  var el=document.getElementById('ap-list');
+  if(el)el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
+  try{
+    var d=await apiApprovals({action:'list'});
+    apAll=d.approvals||[];
+    renderApprovals();
+  }catch(e){
+    if(el)el.innerHTML='<div class="ld">Could not load approvals</div>';
+  }
+}
+
+function apDaysAgo(iso){
+  if(!iso)return null;
+  return Math.floor((Date.now()-new Date(iso).getTime())/86400000);
+}
+
+function renderApprovals(){
+  var el=document.getElementById('ap-list');
+  if(!el)return;
+
+  var signed=apAll.filter(function(a){return a.status==='signed';});
+  var pending=apAll.filter(function(a){return a.status==='sent'||a.status==='opened'||a.status==='draft';});
+  var opened=apAll.filter(function(a){return a.status==='opened';});
+  var stale=pending.filter(function(a){var d=apDaysAgo(a.sent_at||a.created_at);return d!==null&&d>=2;});
+
+  var mets=document.getElementById('ap-mets');
+  if(mets){
+    mets.innerHTML=
+      '<div class="mt or"><div class="lb">Waiting</div><div class="vl">'+pending.length+'</div><div class="sb2">not signed</div></div>'+
+      '<div class="mt gn"><div class="lb">Signed</div><div class="vl">'+signed.length+'</div><div class="sb2">approved</div></div>'+
+      '<div class="mt"><div class="lb">Opened, not signed</div><div class="vl">'+opened.length+'</div><div class="sb2">client saw it</div></div>'+
+      '<div class="mt '+(stale.length?'rd':'gn')+'"><div class="lb">Over 48h</div><div class="vl">'+stale.length+'</div><div class="sb2">needs chasing</div></div>';
+  }
+
+  var badge=document.getElementById('apbn');
+  if(badge){badge.style.display=stale.length?'':'none';badge.textContent=stale.length||'';}
+
+  var rows=apView==='signed'?signed:apView==='pending'?pending:apAll;
+  if(!rows.length){
+    el.innerHTML='<div style="text-align:center;padding:32px;color:#aaa;font-size:13px">Nothing here yet</div>';
+    return;
+  }
+
+  el.innerHTML='';
+  rows.forEach(function(a){
+    window['ap_'+a.id]=a;
+    var doc=AP_DOC[a.doc_type]||{label:a.doc_type,icon:'📄',col:'#666',bg:'#f2f3f4'};
+    var st=AP_ST[a.status]||{label:a.status,cls:'pend'};
+    var snap=a.product_snapshot||{};
+    var isSigned=a.status==='signed';
+    var days=apDaysAgo(a.sent_at||a.created_at);
+    var isStale=!isSigned&&a.status!=='cancelled'&&days!==null&&days>=2;
+
+    var card=document.createElement('div');
+    card.style.cssText='background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:13px 15px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,0.06)'+(isStale?';border-left:4px solid #C0392B':'')+(a.status==='cancelled'?';opacity:0.5':'');
+
+    var detail=[];
+    if(snap.size||snap.colour)detail.push((snap.size||'')+' '+(snap.colour||''));
+    if(snap.qty)detail.push('<strong>'+Number(snap.qty).toLocaleString()+' cups</strong>');
+    if(snap.print_colour)detail.push('🎨 '+snap.print_colour);
+
+    card.innerHTML='<div style="flex:1;min-width:0">'
+      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">'
+      +'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:'+doc.bg+';color:'+doc.col+'">'+doc.icon+' '+doc.label+'</span>'
+      +'<span style="font-weight:700;font-size:14px">'+(a.client||'—')+'</span>'
+      +'</div>'
+      +'<div style="font-size:12px;color:#666;line-height:1.7">'
+      +(detail.length?detail.join(' · ')+'<br>':'')
+      +(isSigned
+        ?'✍️ <strong>'+(a.signer_name||'—')+'</strong> · '+(a.signed_at?new Date(a.signed_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')
+        :'📤 Sent '+(days===0?'today':days===1?'yesterday':days+' days ago')+(a.sent_by?' by '+a.sent_by:''))
+      +(a.remarks?'<br>📝 <span style="color:#C0392B">'+a.remarks+'</span>':'')
+      +'</div></div>'
+      +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'
+      +'<span class="pl '+st.cls+'">'+st.label+'</span>'
+      +(isStale?'<span style="font-size:10px;font-weight:700;color:#C0392B">⚠️ chase</span>':'')
+      +'</div>';
+
+    var btnRow=document.createElement('div');
+    btnRow.style.cssText='display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;justify-content:flex-end';
+
+    var viewBtn=document.createElement('button');
+    viewBtn.className='btn bs bsm';viewBtn.style.fontSize='11px';viewBtn.textContent='👁️ Open';
+    (function(id){viewBtn.addEventListener('click',function(e){e.stopPropagation();openApprovalDetail(id);});})(a.id);
+    btnRow.appendChild(viewBtn);
+
+    if(!isSigned&&a.status!=='cancelled'){
+      var linkBtn=document.createElement('button');
+      linkBtn.className='btn bs bsm';linkBtn.style.fontSize='11px';linkBtn.textContent='🔗 Copy link';
+      (function(id){linkBtn.addEventListener('click',function(e){
+        e.stopPropagation();
+        var u='https://sebastien676.github.io/swigcups-app/bat.html?t='+id;
+        if(navigator.clipboard){navigator.clipboard.writeText(u);toast('🔗 Link copied','ok');}
+        else{prompt('Copy this link:',u);}
+      });})(a.id);
+      btnRow.appendChild(linkBtn);
+
+      if(a.contact_phone){
+        var waBtn=document.createElement('button');
+        waBtn.className='btn bsm';waBtn.style.cssText='font-size:11px;background:#25D366;color:#fff;border:none';
+        waBtn.textContent='📱 Chase';
+        (function(ap){waBtn.addEventListener('click',function(e){
+          e.stopPropagation();
+          var u='https://sebastien676.github.io/swigcups-app/bat.html?t='+ap.id;
+          var txt='Hello, a quick reminder to approve this document for '+(ap.client||'')+': '+u;
+          window.open('https://wa.me/'+normalisePhone(ap.contact_phone)+'?text='+encodeURIComponent(txt),'_blank');
+        });})(a);
+        btnRow.appendChild(waBtn);
+      }
+
+      var canBtn=document.createElement('button');
+      canBtn.className='btn bs bsm';canBtn.style.cssText='font-size:11px;color:#C0392B';canBtn.textContent='✖';
+      canBtn.title='Cancel this approval';
+      (function(id,cl){canBtn.addEventListener('click',async function(e){
+        e.stopPropagation();
+        if(!confirm('Cancel the approval request for '+cl+'? The link will stop working.'))return;
+        await apiApprovals({action:'cancel',id:id,actor:role});
+        toast('✖ Approval cancelled','ok');
+        loadApprovals();
+      });})(a.id,a.client||'this client');
+      btnRow.appendChild(canBtn);
+    }
+
+    card.querySelector('div:last-child').appendChild(btnRow);
+    el.appendChild(card);
+  });
+}
+
+async function openApprovalDetail(id){
+  var d=await apiApprovals({action:'detail',id:id});
+  if(!d||!d.approval){toast('Could not load','err');return;}
+  var a=d.approval, ev=d.events||[];
+  var doc=AP_DOC[a.doc_type]||{label:a.doc_type,icon:'📄'};
+  var snap=a.product_snapshot||{};
+
+  var body='<div class="mr"><span class="ml">Document</span><span>'+doc.icon+' '+doc.label+'</span></div>'
+    +'<div class="mr"><span class="ml">Client</span><span><strong>'+(a.client||'—')+'</strong></span></div>'
+    +(a.contact_name?'<div class="mr"><span class="ml">Contact</span><span>'+a.contact_name+'</span></div>':'')
+    +(snap.size?'<div class="mr"><span class="ml">Cup</span><span>'+(snap.size||'')+' · '+(snap.colour||'')+'</span></div>':'')
+    +(snap.qty?'<div class="mr"><span class="ml">Qty</span><span><strong>'+Number(snap.qty).toLocaleString()+'</strong></span></div>':'')
+    +'<div class="mr"><span class="ml">Status</span><span class="pl '+((AP_ST[a.status]||{}).cls||'pend')+'">'+((AP_ST[a.status]||{}).label||a.status)+'</span></div>'
+    +'<div class="mr"><span class="ml">Terms</span><span>v'+(a.cgv_version||'—')+'</span></div>';
+
+  if(a.status==='signed'){
+    body+='<div class="es">Signature — legal record</div>'
+      +'<div class="mr"><span class="ml">Signed by</span><span><strong>'+(a.signer_name||'—')+'</strong></span></div>'
+      +'<div class="mr"><span class="ml">Date</span><span>'+(a.signed_at?new Date(a.signed_at).toLocaleString('en-GB'):'—')+'</span></div>'
+      +'<div class="mr"><span class="ml">IP</span><span style="font-size:11px;color:#666">'+(a.ip_address||'—')+'</span></div>'
+      +(a.remarks?'<div class="mr"><span class="ml">Remarks</span><span style="color:#C0392B">'+a.remarks+'</span></div>':'');
+    if(a.signature_data){
+      body+='<div style="margin-top:10px;padding:10px;background:#f7f8fa;border-radius:8px;text-align:center">'
+        +'<img src="'+a.signature_data+'" style="max-width:100%;max-height:110px;background:#fff;border-radius:6px">'
+        +'</div>';
+    }
+  }
+
+  if(a.artwork_url){
+    body+='<div class="es">Artwork</div>';
+    body+=(a.artwork_url.toLowerCase().indexOf('.pdf')>-1)
+      ?'<a href="'+a.artwork_url+'" target="_blank" style="color:#0E6655;font-weight:600;font-size:13px">📄 Open PDF</a>'
+      :'<img src="'+a.artwork_url+'" style="max-width:100%;border-radius:8px;margin-top:4px">';
+  }
+
+  if(ev.length){
+    body+='<div class="es">History</div><div style="font-size:12px;color:#666;line-height:1.9">';
+    ev.forEach(function(e){
+      body+='• '+e.event_type+(e.actor?' — '+e.actor:'')+' · '+new Date(e.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'<br>';
+    });
+    body+='</div>';
+  }
+
+  document.getElementById('evtitle').textContent=(a.client||'Approval');
+  document.getElementById('evbody').innerHTML=body;
+  var act=document.getElementById('evact');
+  act.innerHTML='';
+  var cb=document.createElement('button');cb.className='btn bs';cb.style.flex='1';cb.textContent='Close';
+  cb.addEventListener('click',function(){closeOv('evov');});
+  act.appendChild(cb);
+  document.getElementById('evov').classList.add('op');
+}
 
 // ── WARDA CAPACITY STATS ──
 // ── ORDER ANALYTICS ──
