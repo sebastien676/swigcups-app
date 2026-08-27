@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -90,7 +90,7 @@
 </head>
 <body>
 <div id="app">
-  <div class="loading">Chargement…</div>
+  <div class="loading">Loading…</div>
 </div>
 
 <script>
@@ -215,7 +215,7 @@
   }
 
   function renderError(titleKey, bodyKey, lang){
-    lang = lang || "fr";
+    lang = lang || "en";
     const t = I18N[lang];
     app.innerHTML =
       '<div class="wrap err-card"><div class="card center">' +
@@ -226,7 +226,7 @@
   }
 
   if(!token){
-    renderError("not_found_title", "not_found_body", "fr");
+    renderError("not_found_title", "not_found_body", "en");
     return;
   }
 
@@ -238,8 +238,8 @@
     })
     .then(function(data){ render(data); })
     .catch(function(e){
-      if(e && e.kind === "not_found"){ renderError("not_found_title","not_found_body","fr"); }
-      else { renderError("error_title","error_body","fr"); }
+      if(e && e.kind === "not_found"){ renderError("not_found_title","not_found_body","en"); }
+      else { renderError("error_title","error_body","en"); }
     });
 
   function render(data){
