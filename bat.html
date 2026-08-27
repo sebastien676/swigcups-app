@@ -7,7 +7,7 @@
 <title>Swig Cups — Validation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#1E140B; --leaf:#C15A34; --amber:#E2962E; --sand:#F6EEDC;
@@ -58,6 +58,34 @@
   .footer-note{text-align:center;font-size:.72rem;color:var(--muted);margin-top:22px;padding:0 20px}
   .loading{padding:60px 20px;text-align:center;color:var(--muted)}
   .err-card{margin-top:60px}
+  .sig-modes{display:flex;gap:8px;margin-bottom:8px}
+  .sig-mode-btn{flex:1;padding:9px;border-radius:8px;border:1.5px solid #DDD0BA;background:var(--white);
+    font-family:'Manrope',sans-serif;font-size:.82rem;font-weight:700;color:var(--muted);cursor:pointer}
+  .sig-mode-btn.on{background:var(--ink);border-color:var(--ink);color:var(--sand)}
+  .typed-preview{height:96px;border:2px dashed #DDD0BA;border-radius:10px;background:#FBF7EF;
+    display:flex;align-items:center;justify-content:center;padding:8px;overflow:hidden}
+  .typed-preview span{font-family:'Caveat',cursive;font-size:2.4rem;color:var(--ink);
+    line-height:1.1;text-align:center;word-break:break-word}
+  .typed-preview .ph{font-family:'Manrope',sans-serif;font-size:.85rem;color:#C4B49B}
+  .notice{margin-top:16px;padding:12px 14px;background:#FBF7EF;border:1px solid #EFE6D6;
+    border-radius:10px;font-size:.82rem;line-height:1.5;color:var(--muted);text-align:left}
+  .notice b{color:var(--leaf)}
+  .artwork img{cursor:zoom-in}
+  .tap-hint{text-align:center;font-size:.75rem;color:var(--muted);margin-top:8px}
+  .lightbox{position:fixed;inset:0;background:rgba(20,13,7,.94);z-index:9999;display:none;
+    flex-direction:column}
+  .lightbox.open{display:flex}
+  .lb-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:12px 14px;flex-shrink:0}
+  .lb-bar button{background:rgba(255,255,255,.12);border:none;color:#fff;
+    font-family:'Manrope',sans-serif;font-size:.85rem;font-weight:700;
+    padding:9px 14px;border-radius:8px;cursor:pointer}
+  .lb-bar button:active{background:rgba(255,255,255,.24)}
+  .lb-stage{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;
+    padding:10px;-webkit-overflow-scrolling:touch}
+  .lb-stage img{max-width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+  .lb-stage.zoomed{align-items:flex-start;justify-content:flex-start}
+  .lb-stage.zoomed img{max-width:none;width:260%;cursor:grab}
 </style>
 </head>
 <body>
@@ -79,6 +107,10 @@
       collection: "Bon d'enlèvement",
       client: "Client", contact: "Contact",
       artwork_title: "Visuel à valider",
+      artwork_tap: "Appuyez sur le visuel pour l'agrandir et vérifier les détails",
+      lb_zoom_in: "🔍 Agrandir",
+      lb_zoom_out: "🔍 Réduire",
+      lb_close: "✕ Fermer",
       details_title: "Détails",
       cgv_title: "Conditions",
       cgv_read: "Faites défiler pour lire l'intégralité, puis cochez la case ci-dessous.",
@@ -90,6 +122,12 @@
       remarks_label_bat: "Remarques (optionnel)",
       sig_label: "Signature",
       sig_clear: "Effacer",
+      sig_draw: "✍️ Dessiner",
+      sig_type: "⌨️ Saisir",
+      sig_type_ph: "Tapez votre nom ci-dessus",
+      not_you_title: "Vous n'avez pas signé ?",
+      not_you_body: "Si vous n'êtes pas à l'origine de cette signature, prévenez-nous immédiatement afin que nous bloquions la production. Ne laissez pas passer : une fois le BAT approuvé, l'impression est lancée et les modifications sont refacturées.",
+      copy_note: "Une copie de cette validation vous est envoyée. Conservez-la : elle fait foi en cas de litige.",
       submit_bat: "Approuver le visuel",
       submit_delivery: "Confirmer la réception",
       submit_collection: "Confirmer l'enlèvement",
@@ -117,6 +155,10 @@
       collection: "Collection Note",
       client: "Client", contact: "Contact",
       artwork_title: "Artwork to approve",
+      artwork_tap: "Tap the artwork to enlarge it and check the details",
+      lb_zoom_in: "🔍 Zoom in",
+      lb_zoom_out: "🔍 Zoom out",
+      lb_close: "✕ Close",
       details_title: "Details",
       cgv_title: "Terms",
       cgv_read: "Scroll to read the full text, then tick the box below.",
@@ -128,6 +170,12 @@
       remarks_label_bat: "Remarks (optional)",
       sig_label: "Signature",
       sig_clear: "Clear",
+      sig_draw: "✍️ Draw",
+      sig_type: "⌨️ Type",
+      sig_type_ph: "Type your name above",
+      not_you_title: "Didn't sign this?",
+      not_you_body: "If this signature was not made by you, tell us immediately so we can hold production. Don't let it pass: once the proof is approved, printing starts and any change is re-invoiced.",
+      copy_note: "A copy of this approval is sent to you. Keep it: it stands as proof in the event of a dispute.",
       submit_bat: "Approve artwork",
       submit_delivery: "Confirm receipt",
       submit_collection: "Confirm collection",
@@ -208,6 +256,7 @@
           '<div class="big-icon">✅</div>' +
           '<h2 style="margin-top:10px">' + esc(t.signed_title) + '</h2>' +
           '<p class="muted" style="margin-top:8px">' + esc(t.signed_by) + ' <b>' + esc(data.signer_name) + '</b> ' + esc(t.signed_on) + ' ' + esc(fmtDate(data.signed_at, lang)) + '</p>' +
+          '<div class="notice"><b>' + esc(t.not_you_title) + '</b><br>' + esc(t.not_you_body) + '</div>' +
         '</div>' +
         '<p class="footer-note">Swig Cups · ' + esc(data.client || "") + '</p>' +
         '</div>';
@@ -227,8 +276,10 @@
       ? '<div class="card"><div class="section-title">' + esc(t.artwork_title) + '</div><div class="artwork">' +
         (isPdfArtwork
           ? '<a href="' + esc(data.artwork_url) + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:16px;background:#FBF7EF;border-radius:10px;border:1px solid #EFE6D6;color:var(--leaf);font-weight:700;text-decoration:none">' + esc(t.artwork_pdf) + '</a>'
-          : '<img src="' + esc(data.artwork_url) + '" alt="artwork">') +
-        '</div></div>'
+          : '<img src="' + esc(data.artwork_url) + '" alt="artwork" id="artworkImg">') +
+        '</div>' +
+        (isPdfArtwork ? '' : '<div class="tap-hint">' + esc(t.artwork_tap) + '</div>') +
+        '</div>'
       : "";
 
     const remarksLabel = data.doc_type === "delivery" ? t.remarks_label_delivery
@@ -268,8 +319,17 @@
           '<textarea id="remarksField"></textarea>' +
 
           '<label class="field-label">' + esc(t.sig_label) + '</label>' +
-          '<canvas id="sigCanvas"></canvas>' +
-          '<div class="sig-actions"><button type="button" class="link-btn" id="clearSig">' + esc(t.sig_clear) + '</button></div>' +
+          '<div class="sig-modes">' +
+            '<button type="button" class="sig-mode-btn on" id="modeDraw">' + esc(t.sig_draw) + '</button>' +
+            '<button type="button" class="sig-mode-btn" id="modeType">' + esc(t.sig_type) + '</button>' +
+          '</div>' +
+          '<div id="drawWrap">' +
+            '<canvas id="sigCanvas"></canvas>' +
+            '<div class="sig-actions"><button type="button" class="link-btn" id="clearSig">' + esc(t.sig_clear) + '</button></div>' +
+          '</div>' +
+          '<div id="typeWrap" style="display:none">' +
+            '<div class="typed-preview" id="typedPreview"><span class="ph">' + esc(t.sig_type_ph) + '</span></div>' +
+          '</div>' +
 
           '<div id="formMsg" class="hint" style="min-height:16px"></div>' +
           '<button class="btn btn-primary" id="submitBtn" disabled>' + esc(submitLabel) + '</button>' +
@@ -279,6 +339,64 @@
       '</div>';
 
     setupForm(data, token, lang, t);
+    setupLightbox(data, t);
+  }
+
+  // Visionneuse plein écran : agrandir le visuel et vérifier les détails
+  function setupLightbox(data, t){
+    const old = document.querySelector(".lightbox");
+    if(old) old.remove();
+    document.body.style.overflow = "";
+
+    const img = document.getElementById("artworkImg");
+    if(!img) return;
+
+    const lb = document.createElement("div");
+    lb.className = "lightbox";
+    lb.innerHTML =
+      '<div class="lb-bar">' +
+        '<button type="button" id="lbZoom">' + esc(t.lb_zoom_in) + '</button>' +
+        '<button type="button" id="lbClose">' + esc(t.lb_close) + '</button>' +
+      '</div>' +
+      '<div class="lb-stage" id="lbStage"><img alt="artwork"></div>';
+    document.body.appendChild(lb);
+
+    const stage = lb.querySelector("#lbStage");
+    const bigImg = stage.querySelector("img");
+    const zoomBtn = lb.querySelector("#lbZoom");
+
+    function setZoom(on){
+      stage.classList.toggle("zoomed", on);
+      zoomBtn.textContent = on ? t.lb_zoom_out : t.lb_zoom_in;
+      if(!on){ stage.scrollTop = 0; stage.scrollLeft = 0; }
+    }
+    function close(){
+      lb.classList.remove("open");
+      setZoom(false);
+      document.body.style.overflow = "";
+    }
+
+    img.addEventListener("click", function(){
+      bigImg.src = data.artwork_url;
+      lb.classList.add("open");
+      setZoom(false);
+      document.body.style.overflow = "hidden";
+    });
+    zoomBtn.addEventListener("click", function(){
+      setZoom(!stage.classList.contains("zoomed"));
+    });
+    lb.querySelector("#lbClose").addEventListener("click", close);
+    // Double-tap sur l'image pour basculer le zoom
+    bigImg.addEventListener("dblclick", function(){
+      setZoom(!stage.classList.contains("zoomed"));
+    });
+    // Clic sur le fond (hors image) pour fermer
+    stage.addEventListener("click", function(e){
+      if(e.target === stage) close();
+    });
+    document.addEventListener("keydown", function(e){
+      if(e.key === "Escape" && lb.classList.contains("open")) close();
+    });
   }
 
   function setupForm(data, token, lang, t){
@@ -310,6 +428,68 @@
 
     let hasSignature = false;
     let drawing = false;
+    let sigMode = "draw";
+
+    const modeDraw = document.getElementById("modeDraw");
+    const modeType = document.getElementById("modeType");
+    const drawWrap = document.getElementById("drawWrap");
+    const typeWrap = document.getElementById("typeWrap");
+    const typedPreview = document.getElementById("typedPreview");
+
+    // Aperçu de la signature saisie, recopié depuis le nom du signataire
+    function refreshTyped(){
+      const v = signerName.value.trim();
+      typedPreview.innerHTML = v
+        ? '<span></span>'
+        : '<span class="ph">' + esc(t.sig_type_ph) + '</span>';
+      if(v) typedPreview.querySelector("span").textContent = v;
+      checkValid();
+    }
+
+    function setMode(m){
+      sigMode = m;
+      modeDraw.classList.toggle("on", m === "draw");
+      modeType.classList.toggle("on", m === "type");
+      drawWrap.style.display = m === "draw" ? "" : "none";
+      typeWrap.style.display = m === "type" ? "" : "none";
+      if(m === "type") refreshTyped();
+      checkValid();
+    }
+    modeDraw.addEventListener("click", function(){ setMode("draw"); });
+    modeType.addEventListener("click", function(){ setMode("type"); });
+
+    // Le bouton ne s'active que si les trois conditions sont réunies
+    function signaturePresent(){
+      return sigMode === "type" ? signerName.value.trim().length > 0 : hasSignature;
+    }
+    function checkValid(){
+      submitBtn.disabled = !(acceptCgv.checked && signerName.value.trim() && signaturePresent());
+    }
+    signerName.addEventListener("input", function(){
+      if(sigMode === "type") refreshTyped(); else checkValid();
+    });
+    acceptCgv.addEventListener("change", checkValid);
+
+    // Rend la signature saisie en image, pour stocker le même format qu'un tracé
+    function typedToDataURL(){
+      const c = document.createElement("canvas");
+      const ratio = 2;
+      c.width = 600 * ratio; c.height = 160 * ratio;
+      const cx = c.getContext("2d");
+      cx.scale(ratio, ratio);
+      cx.fillStyle = "#FFFFFF"; cx.fillRect(0, 0, 600, 160);
+      cx.fillStyle = "#1E140B";
+      cx.textAlign = "center"; cx.textBaseline = "middle";
+      let size = 60;
+      const name = signerName.value.trim();
+      cx.font = "600 " + size + "px Caveat, cursive";
+      while(cx.measureText(name).width > 560 && size > 18){
+        size -= 2;
+        cx.font = "600 " + size + "px Caveat, cursive";
+      }
+      cx.fillText(name, 300, 80);
+      return c.toDataURL("image/png");
+    }
 
     function pos(e){
       const rect = canvas.getBoundingClientRect();
@@ -329,12 +509,13 @@
       ctx.stroke();
     });
     ["pointerup","pointercancel","pointerleave"].forEach(function(ev){
-      canvas.addEventListener(ev, function(){ drawing = false; });
+      canvas.addEventListener(ev, function(){ drawing = false; checkValid(); });
     });
 
     document.getElementById("clearSig").addEventListener("click", function(){
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       hasSignature = false;
+      checkValid();
     });
 
     let scrolledToBottom = false;
@@ -354,19 +535,21 @@
 
     submitBtn.addEventListener("click", function(){
       formMsg.textContent = "";
-      if(!hasSignature){ formMsg.textContent = t.need_sig; return; }
       if(!signerName.value.trim()){ formMsg.textContent = t.need_name; return; }
+      if(!signaturePresent()){ formMsg.textContent = t.need_sig; return; }
       if(!acceptCgv.checked){ formMsg.textContent = t.need_cgv; return; }
 
       submitBtn.disabled = true;
       submitBtn.textContent = t.submitting;
+
+      const sigData = sigMode === "type" ? typedToDataURL() : canvas.toDataURL("image/png");
 
       fetch(FN_URL + "?t=" + encodeURIComponent(token), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           signer_name: signerName.value.trim(),
-          signature_data: canvas.toDataURL("image/png"),
+          signature_data: sigData,
           accepted_cgv: true,
           remarks: remarksField.value.trim() || null
         })
