@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Swig Cups — Validation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1E140B; --leaf:#C15A34; --amber:#E2962E; --sand:#F6EEDC;
+    --text:#2E2117; --muted:#756554; --white:#fff;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--sand);color:var(--text);font-family:'Manrope',sans-serif;
+    -webkit-font-smoothing:antialiased;padding-bottom:40px}
+  h1,h2,h3{font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.01em;color:var(--ink);margin:0}
+  .wrap{max-width:560px;margin:0 auto;padding:0 18px}
+  .top{background:var(--ink);color:var(--sand);padding:22px 18px 20px}
+  .top .brand{font-family:'Anton',sans-serif;font-size:1.5rem;letter-spacing:.04em;color:var(--amber)}
+  .top .doc-title{margin-top:4px;font-size:1.05rem;color:var(--sand);opacity:.92}
+  .card{background:var(--white);border-radius:var(--radius);box-shadow:0 4px 18px rgba(30,20,11,.08);
+    padding:20px;margin-top:18px}
+  .muted{color:var(--muted);font-size:.85rem}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #EFE6D6;font-size:.92rem}
+  .row:last-child{border-bottom:none}
+  .row .lbl{color:var(--muted);font-weight:600}
+  .row .val{color:var(--text);font-weight:700;text-align:right}
+  .artwork{margin-top:18px}
+  .artwork img{width:100%;border-radius:10px;border:1px solid #EFE6D6;display:block}
+  .section-title{font-size:.75rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--leaf);margin-bottom:10px}
+  .cgv-box{max-height:220px;overflow-y:auto;border:1px solid #EFE6D6;border-radius:10px;padding:14px;
+    font-size:.85rem;line-height:1.55;white-space:pre-wrap;background:#FBF7EF}
+  .cgv-version{font-size:.72rem;color:var(--muted);margin-top:6px}
+  .chk-row{display:flex;align-items:flex-start;gap:10px;margin-top:14px}
+  .chk-row input{margin-top:3px;width:18px;height:18px;flex-shrink:0}
+  .chk-row label{font-size:.88rem;line-height:1.4}
+  .hint{font-size:.78rem;color:var(--leaf);margin-top:6px}
+  input[type=text]{width:100%;padding:12px 14px;border:1px solid #DDD0BA;border-radius:10px;
+    font-family:'Manrope',sans-serif;font-size:.95rem;background:var(--white)}
+  textarea{width:100%;padding:12px 14px;border:1px solid #DDD0BA;border-radius:10px;
+    font-family:'Manrope',sans-serif;font-size:.9rem;background:var(--white);resize:vertical;min-height:60px}
+  label.field-label{display:block;font-size:.8rem;font-weight:700;color:var(--text);margin:16px 0 6px}
+  canvas{width:100%;height:160px;border:2px dashed #DDD0BA;border-radius:10px;background:#FBF7EF;touch-action:none;display:block}
+  .sig-actions{display:flex;justify-content:flex-end;margin-top:6px}
+  .link-btn{background:none;border:none;color:var(--leaf);font-size:.8rem;font-weight:700;cursor:pointer;padding:4px}
+  .btn{width:100%;padding:15px;border:none;border-radius:10px;font-family:'Manrope',sans-serif;
+    font-weight:800;font-size:1rem;cursor:pointer;margin-top:20px;transition:opacity .15s}
+  .btn-primary{background:var(--amber);color:var(--ink)}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed}
+  .status-line{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted);margin-top:10px;justify-content:center}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--leaf)}
+  .center{text-align:center}
+  .big-icon{font-size:2.6rem;line-height:1}
+  .footer-note{text-align:center;font-size:.72rem;color:var(--muted);margin-top:22px;padding:0 20px}
+  .loading{padding:60px 20px;text-align:center;color:var(--muted)}
+  .err-card{margin-top:60px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="loading">Chargement…</div>
+</div>
+
+<script>
+(function(){
+  const FN_URL = "https://pxelvqgqmazdsaqlsxyx.supabase.co/functions/v1/sign";
+  const params = new URLSearchParams(location.search);
+  const token = params.get("t");
+  const app = document.getElementById("app");
+
+  const I18N = {
+    fr: {
+      bat: "Bon à tirer — validation du visuel",
+      delivery: "Bon de livraison",
+      collection: "Bon d'enlèvement",
+      client: "Client", contact: "Contact",
+      artwork_title: "Visuel à valider",
+      details_title: "Détails",
+      cgv_title: "Conditions",
+      cgv_read: "Faites défiler pour lire l'intégralité, puis cochez la case ci-dessous.",
+      accept_label: "J'ai lu et j'accepte les conditions ci-dessus pour cette commande.",
+      name_label: "Nom du signataire",
+      name_ph: "Prénom et nom",
+      remarks_label_delivery: "Remarques (optionnel — ex. carton manquant, colis endommagé…)",
+      remarks_label_collection: "Remarques (optionnel)",
+      remarks_label_bat: "Remarques (optionnel)",
+      sig_label: "Signature",
+      sig_clear: "Effacer",
+      submit_bat: "Approuver le visuel",
+      submit_delivery: "Confirmer la réception",
+      submit_collection: "Confirmer l'enlèvement",
+      submitting: "Envoi en cours…",
+      need_sig: "Signature requise",
+      need_name: "Indiquez le nom du signataire",
+      need_cgv: "Merci de lire puis cocher l'acceptation des conditions",
+      signed_title: "Signé, merci !",
+      signed_by: "Signé par",
+      signed_on: "le",
+      already_title: "Déjà signé",
+      already_body: "Ce document a déjà été validé.",
+      not_found_title: "Lien invalide",
+      not_found_body: "Ce lien n'est plus valide ou a expiré. Contactez Swig Cups pour un nouveau lien.",
+      error_title: "Erreur",
+      error_body: "Une erreur est survenue. Réessayez ou contactez Swig Cups.",
+      qty: "Quantité", size: "Format", print_type: "Technique d'impression",
+      num_colours: "Nombre de couleurs", colour: "Couleur du gobelet", print_colour: "Couleur d'impression",
+      delivery_address: "Adresse de livraison", po_number: "N° de commande",
+      artwork_pdf: "📄 Voir le fichier PDF"
+    },
+    en: {
+      bat: "Print Approval (BAT)",
+      delivery: "Delivery Note",
+      collection: "Collection Note",
+      client: "Client", contact: "Contact",
+      artwork_title: "Artwork to approve",
+      details_title: "Details",
+      cgv_title: "Terms",
+      cgv_read: "Scroll to read the full text, then tick the box below.",
+      accept_label: "I have read and accept the terms above for this order.",
+      name_label: "Signer's name",
+      name_ph: "Full name",
+      remarks_label_delivery: "Remarks (optional — e.g. missing carton, damaged package…)",
+      remarks_label_collection: "Remarks (optional)",
+      remarks_label_bat: "Remarks (optional)",
+      sig_label: "Signature",
+      sig_clear: "Clear",
+      submit_bat: "Approve artwork",
+      submit_delivery: "Confirm receipt",
+      submit_collection: "Confirm collection",
+      submitting: "Sending…",
+      need_sig: "Signature required",
+      need_name: "Please enter the signer's name",
+      need_cgv: "Please read and tick acceptance of the terms",
+      signed_title: "Signed, thank you!",
+      signed_by: "Signed by",
+      signed_on: "on",
+      already_title: "Already signed",
+      already_body: "This document has already been approved.",
+      not_found_title: "Invalid link",
+      not_found_body: "This link is no longer valid or has expired. Contact Swig Cups for a new link.",
+      error_title: "Error",
+      error_body: "Something went wrong. Please try again or contact Swig Cups.",
+      qty: "Quantity", size: "Size", print_type: "Print technique",
+      num_colours: "Number of colours", colour: "Cup colour", print_colour: "Print colour",
+      delivery_address: "Delivery address", po_number: "PO number",
+      artwork_pdf: "📄 View PDF file"
+    }
+  };
+
+  function esc(s){
+    const d = document.createElement("div");
+    d.innerText = (s === null || s === undefined) ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  function fmtDate(iso, lang){
+    try{
+      const d = new Date(iso);
+      return d.toLocaleString(lang === "en" ? "en-ZA" : "fr-FR", {
+        day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit"
+      });
+    }catch(e){ return iso; }
+  }
+
+  function renderError(titleKey, bodyKey, lang){
+    lang = lang || "fr";
+    const t = I18N[lang];
+    app.innerHTML =
+      '<div class="wrap err-card"><div class="card center">' +
+        '<div class="big-icon">⚠️</div>' +
+        '<h2 style="margin-top:10px">' + esc(t[titleKey]) + '</h2>' +
+        '<p class="muted" style="margin-top:8px">' + esc(t[bodyKey]) + '</p>' +
+      '</div></div>';
+  }
+
+  if(!token){
+    renderError("not_found_title", "not_found_body", "fr");
+    return;
+  }
+
+  fetch(FN_URL + "?t=" + encodeURIComponent(token))
+    .then(function(r){
+      if(r.status === 404) throw {kind:"not_found"};
+      if(!r.ok) throw {kind:"error"};
+      return r.json();
+    })
+    .then(function(data){ render(data); })
+    .catch(function(e){
+      if(e && e.kind === "not_found"){ renderError("not_found_title","not_found_body","fr"); }
+      else { renderError("error_title","error_body","fr"); }
+    });
+
+  function render(data){
+    const lang = (data.cgv_lang === "en") ? "en" : "fr";
+    const t = I18N[lang];
+    document.documentElement.lang = lang;
+
+    const docTitle = t[data.doc_type] || t.bat;
+
+    if(data.status === "signed"){
+      app.innerHTML =
+        '<div class="top"><div class="brand">SWIG CUPS</div><div class="doc-title">' + esc(docTitle) + '</div></div>' +
+        '<div class="wrap"><div class="card center">' +
+          '<div class="big-icon">✅</div>' +
+          '<h2 style="margin-top:10px">' + esc(t.signed_title) + '</h2>' +
+          '<p class="muted" style="margin-top:8px">' + esc(t.signed_by) + ' <b>' + esc(data.signer_name) + '</b> ' + esc(t.signed_on) + ' ' + esc(fmtDate(data.signed_at, lang)) + '</p>' +
+        '</div>' +
+        '<p class="footer-note">Swig Cups · ' + esc(data.client || "") + '</p>' +
+        '</div>';
+      return;
+    }
+
+    const snap = data.product_snapshot || {};
+    const detailKeys = Object.keys(snap).filter(function(k){ return snap[k] !== null && snap[k] !== "" && snap[k] !== undefined; });
+    let detailsHtml = "";
+    detailKeys.forEach(function(k){
+      const label = t[k] || k;
+      detailsHtml += '<div class="row"><span class="lbl">' + esc(label) + '</span><span class="val">' + esc(snap[k]) + '</span></div>';
+    });
+
+    const isPdfArtwork = data.artwork_url && data.artwork_url.toLowerCase().indexOf(".pdf") > -1;
+    const artworkHtml = data.artwork_url
+      ? '<div class="card"><div class="section-title">' + esc(t.artwork_title) + '</div><div class="artwork">' +
+        (isPdfArtwork
+          ? '<a href="' + esc(data.artwork_url) + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:16px;background:#FBF7EF;border-radius:10px;border:1px solid #EFE6D6;color:var(--leaf);font-weight:700;text-decoration:none">' + esc(t.artwork_pdf) + '</a>'
+          : '<img src="' + esc(data.artwork_url) + '" alt="artwork">') +
+        '</div></div>'
+      : "";
+
+    const remarksLabel = data.doc_type === "delivery" ? t.remarks_label_delivery
+      : data.doc_type === "collection" ? t.remarks_label_collection
+      : t.remarks_label_bat;
+
+    const submitLabel = data.doc_type === "delivery" ? t.submit_delivery
+      : data.doc_type === "collection" ? t.submit_collection
+      : t.submit_bat;
+
+    app.innerHTML =
+      '<div class="top"><div class="brand">SWIG CUPS</div><div class="doc-title">' + esc(docTitle) + '</div></div>' +
+      '<div class="wrap">' +
+
+        '<div class="card">' +
+          (data.client ? '<div class="row"><span class="lbl">' + esc(t.client) + '</span><span class="val">' + esc(data.client) + '</span></div>' : '') +
+          (data.contact_name ? '<div class="row"><span class="lbl">' + esc(t.contact) + '</span><span class="val">' + esc(data.contact_name) + '</span></div>' : '') +
+          detailsHtml +
+        '</div>' +
+
+        artworkHtml +
+
+        '<div class="card">' +
+          '<div class="section-title">' + esc(t.cgv_title) + '</div>' +
+          '<div class="cgv-box" id="cgvBox">' + esc(data.cgv_text || "") + '</div>' +
+          '<div class="cgv-version">v' + esc(data.cgv_version || "") + '</div>' +
+          '<div class="chk-row">' +
+            '<input type="checkbox" id="acceptCgv" disabled>' +
+            '<label for="acceptCgv">' + esc(t.accept_label) + '</label>' +
+          '</div>' +
+          '<div class="hint" id="scrollHint">' + esc(t.cgv_read) + '</div>' +
+
+          '<label class="field-label" for="signerName">' + esc(t.name_label) + '</label>' +
+          '<input type="text" id="signerName" placeholder="' + esc(t.name_ph) + '">' +
+
+          '<label class="field-label" for="remarksField">' + esc(remarksLabel) + '</label>' +
+          '<textarea id="remarksField"></textarea>' +
+
+          '<label class="field-label">' + esc(t.sig_label) + '</label>' +
+          '<canvas id="sigCanvas"></canvas>' +
+          '<div class="sig-actions"><button type="button" class="link-btn" id="clearSig">' + esc(t.sig_clear) + '</button></div>' +
+
+          '<div id="formMsg" class="hint" style="min-height:16px"></div>' +
+          '<button class="btn btn-primary" id="submitBtn" disabled>' + esc(submitLabel) + '</button>' +
+        '</div>' +
+
+        '<p class="footer-note">Swig Cups · greenvolved</p>' +
+      '</div>';
+
+    setupForm(data, token, lang, t);
+  }
+
+  function setupForm(data, token, lang, t){
+    const cgvBox = document.getElementById("cgvBox");
+    const acceptCgv = document.getElementById("acceptCgv");
+    const scrollHint = document.getElementById("scrollHint");
+    const submitBtn = document.getElementById("submitBtn");
+    const formMsg = document.getElementById("formMsg");
+    const signerName = document.getElementById("signerName");
+    const remarksField = document.getElementById("remarksField");
+    const canvas = document.getElementById("sigCanvas");
+    const ctx = canvas.getContext("2d");
+
+    function sizeCanvas(){
+      const rect = canvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+      ctx.scale(ratio, ratio);
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#1E140B";
+    }
+    sizeCanvas();
+    window.addEventListener("resize", function(){
+      sizeCanvas();
+      hasSignature = false;
+    });
+
+    let hasSignature = false;
+    let drawing = false;
+
+    function pos(e){
+      const rect = canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    canvas.addEventListener("pointerdown", function(e){
+      drawing = true; hasSignature = true;
+      const p = pos(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointermove", function(e){
+      if(!drawing) return;
+      const p = pos(e);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    });
+    ["pointerup","pointercancel","pointerleave"].forEach(function(ev){
+      canvas.addEventListener(ev, function(){ drawing = false; });
+    });
+
+    document.getElementById("clearSig").addEventListener("click", function(){
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasSignature = false;
+    });
+
+    let scrolledToBottom = false;
+    cgvBox.addEventListener("scroll", function(){
+      if(cgvBox.scrollTop + cgvBox.clientHeight >= cgvBox.scrollHeight - 8){
+        scrolledToBottom = true;
+        acceptCgv.disabled = false;
+        scrollHint.style.display = "none";
+      }
+    });
+    // Si le texte tient déjà entièrement à l'écran, pas besoin de scroller
+    if(cgvBox.scrollHeight <= cgvBox.clientHeight + 4){
+      scrolledToBottom = true;
+      acceptCgv.disabled = false;
+      scrollHint.style.display = "none";
+    }
+
+    submitBtn.addEventListener("click", function(){
+      formMsg.textContent = "";
+      if(!hasSignature){ formMsg.textContent = t.need_sig; return; }
+      if(!signerName.value.trim()){ formMsg.textContent = t.need_name; return; }
+      if(!acceptCgv.checked){ formMsg.textContent = t.need_cgv; return; }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = t.submitting;
+
+      fetch(FN_URL + "?t=" + encodeURIComponent(token), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signer_name: signerName.value.trim(),
+          signature_data: canvas.toDataURL("image/png"),
+          accepted_cgv: true,
+          remarks: remarksField.value.trim() || null
+        })
+      })
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); })
+      .then(function(res){
+        if(!res.ok){ throw new Error(res.body && res.body.error || "error"); }
+        render(Object.assign({}, data, {
+          status: "signed",
+          signer_name: signerName.value.trim(),
+          signed_at: new Date().toISOString()
+        }));
+      })
+      .catch(function(){
+        formMsg.textContent = t.error_body;
+        submitBtn.disabled = false;
+        submitBtn.textContent = (data.doc_type === "delivery") ? t.submit_delivery : (data.doc_type === "collection") ? t.submit_collection : t.submit_bat;
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
