@@ -882,7 +882,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="fg">
       <label>Document type</label>
       <select id="send-doctype" onchange="updateSendArtworkStatus()">
-        <option value="bat">Bon à tirer (BAT) — visual approval</option>
+        <option value="bat">Print Approval (BAT) — artwork sign-off</option>
         <option value="delivery">Delivery note</option>
         <option value="collection">Collection note</option>
       </select>
@@ -991,7 +991,7 @@ async function openSendApproval(ev){
   document.getElementById('send-name').value = curEv.contact_name||'';
   document.getElementById('send-phone').value = normalisePhone(curEv.contact_phone||'');
   document.getElementById('send-email').value = curEv.client_email||'';
-  setSel('send-doctype', curEv.delivery_type==='Collection'?'collection':curEv.delivery_type==='Delivery'?'delivery':'bat');
+  setSel('send-doctype', 'bat');
   document.getElementById('send-msg').textContent='';
   updateSendArtworkStatus();
   closeOv('evov');
