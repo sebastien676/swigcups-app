@@ -826,6 +826,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     </div>
     <div class="ma">
       <button class="btn bp bfl" onclick="saveEdit()">💾 Save</button>
+      <button class="btn bs" id="edit-send-btn" onclick="openSendApproval()">📤 Send</button>
       <button class="bd btn" onclick="delJob()">🗑️</button>
       <button class="btn bs" onclick="closeOv('edov')">Cancel</button>
     </div>
@@ -858,11 +859,42 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   </div>
 </div>
 
+<!-- SEND FOR SIGNATURE (BAT / Delivery / Collection) -->
+<div class="ov" id="sendov">
+  <div class="modal" style="max-width:440px">
+    <div class="mh"><h3>📤 Send for signature</h3><button class="mc" onclick="closeOv('sendov')">×</button></div>
+    <div id="send-client-name" style="font-size:13px;font-weight:600;color:#0E6655;margin-bottom:14px"></div>
+    <div class="fg">
+      <label>Document type</label>
+      <select id="send-doctype" onchange="updateSendArtworkStatus()">
+        <option value="bat">Bon à tirer (BAT) — visual approval</option>
+        <option value="delivery">Delivery note</option>
+        <option value="collection">Collection note</option>
+      </select>
+    </div>
+    <div id="send-artwork-status" style="font-size:12px;margin:6px 0 4px"></div>
+    <div class="g2">
+      <div class="fg"><label>Contact name</label><input type="text" id="send-name"></div>
+      <div class="fg"><label>Phone (WhatsApp, intl. no +)</label><input type="text" id="send-phone" placeholder="e.g. 27831234567"></div>
+    </div>
+    <div class="fg"><label>Email</label><input type="text" id="send-email" placeholder="client@company.com"></div>
+    <div id="send-msg" class="hint" style="min-height:16px;color:#C0392B"></div>
+    <div class="fa" style="flex-wrap:wrap">
+      <button class="btn bfl" style="background:#25D366;color:#fff" id="send-wa-btn" onclick="sendApproval('whatsapp')">📱 WhatsApp</button>
+      <button class="btn bp bfl" id="send-email-btn" onclick="sendApproval('email')">✉️ Email</button>
+      <button class="btn bs bfl" onclick="closeOv('sendov')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 var SB_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZWx2cWdxbWF6ZHNhcWxzeHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1OTYzOTAsImV4cCI6MjA5NjE3MjM5MH0.xediho7kmpJXmYH5tMO_LyXPjx88229VrQ3M3L1zfqw';
+// Bons à signer (BAT / livraison / enlèvement) — secret dédié, distinct de celui de Xero
+var APPROVAL_FN_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co/functions/v1/create-approval';
+var APPROVAL_SECRET='5f40eae86a87c887a6393b1b567af9a133c4112a4535768a';
 var db=null;
 function DB(){if(!db)db=supabase.createClient(SB_URL,SB_KEY);return db;}
 
@@ -913,6 +945,115 @@ async function uploadArtwork(jobId, file) {
     };
     reader.readAsDataURL(file);
   });
+}
+
+// ── SEND FOR SIGNATURE (BAT / Delivery / Collection) ──
+function updateSendArtworkStatus(){
+  var dt = document.getElementById('send-doctype').value;
+  var el = document.getElementById('send-artwork-status');
+  var ev = curEv;
+  var hasArt = !!(ev && getSendArtworkBase64(ev));
+  if(dt==='bat'){
+    el.innerHTML = hasArt ? '<span style="color:#1E8449">✅ Artwork attached</span>' : '<span style="color:#C0392B">⚠️ No artwork on this job — client will see no visual</span>';
+  } else {
+    el.innerHTML = hasArt ? '<span style="color:#1E8449">📎 Artwork will be attached</span>' : '';
+  }
+}
+
+function openSendApproval(){
+  if(!curEv){toast('No job selected','err');return;}
+  document.getElementById('send-client-name').textContent = curEv.client||'';
+  document.getElementById('send-name').value = curEv.contact_name||'';
+  document.getElementById('send-phone').value = (curEv.contact_phone||'').replace(/[^0-9]/g,'');
+  document.getElementById('send-email').value = curEv.client_email||'';
+  setSel('send-doctype', curEv.delivery_type==='Collection'?'collection':curEv.delivery_type==='Delivery'?'delivery':'bat');
+  document.getElementById('send-msg').textContent='';
+  updateSendArtworkStatus();
+  closeOv('evov');
+  closeOv('edov');
+  document.getElementById('sendov').classList.add('op');
+}
+
+function buildSendSnapshot(ev){
+  var snap = {};
+  if(ev.cup_size) snap.size = ev.cup_size;
+  if(ev.cup_colour) snap.colour = ev.cup_colour;
+  if(ev.qty_printed) snap.qty = ev.qty_printed;
+  if(ev.print_type) snap.print_type = ev.print_type;
+  if(ev.print_colour) snap.print_colour = ev.print_colour;
+  if(ev.num_colours) snap.num_colours = ev.num_colours;
+  if(ev.delivery_address) snap.delivery_address = ev.delivery_address;
+  return snap;
+}
+
+function getSendArtworkBase64(ev){
+  if(!ev)return null;
+  if(ev.artwork_url && ev.artwork_url.indexOf('data:')===0) return ev.artwork_url;
+  var items = parseItems(ev);
+  if(items){
+    for(var i=0;i<items.length;i++){
+      if(items[i].artwork_url && items[i].artwork_url.indexOf('data:')===0) return items[i].artwork_url;
+    }
+  }
+  return null;
+}
+
+async function sendApproval(channel){
+  var ev = curEv;
+  if(!ev){toast('No job selected','err');return;}
+  var docType = document.getElementById('send-doctype').value;
+  var name = document.getElementById('send-name').value.trim();
+  var phone = document.getElementById('send-phone').value.replace(/[^0-9]/g,'');
+  var email = document.getElementById('send-email').value.trim();
+  var msgEl = document.getElementById('send-msg');
+  msgEl.textContent='';
+
+  if(channel==='whatsapp' && !phone){msgEl.textContent='Enter a phone number first';return;}
+  if(channel==='email' && !email){msgEl.textContent='Enter an email address first';return;}
+
+  var btn = document.getElementById(channel==='whatsapp'?'send-wa-btn':'send-email-btn');
+  var origText = btn.textContent;
+  btn.disabled = true; btn.textContent='...';
+
+  try {
+    var payload = {
+      doc_type: docType,
+      job_id: ev.id,
+      client: ev.client,
+      contact_name: name,
+      contact_phone: phone,
+      contact_email: email,
+      product_snapshot: buildSendSnapshot(ev),
+      cgv_lang: 'fr',
+      sent_by: role
+    };
+    var art = getSendArtworkBase64(ev);
+    if(art){ payload.artwork_base64 = art; payload.artwork_filename = 'artwork'; }
+
+    var res = await fetch(APPROVAL_FN_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-app-secret':APPROVAL_SECRET},
+      body: JSON.stringify(payload)
+    });
+    var data = await res.json();
+    if(!res.ok || !data.url){throw new Error(data.error||'Server error');}
+
+    var docLabel = docType==='bat'?'BAT':docType==='delivery'?'delivery note':'collection note';
+    var text = 'Hello, here is the '+docLabel+' for '+ev.client+' to approve: '+data.url;
+
+    if(channel==='whatsapp'){
+      window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text), '_blank');
+    } else {
+      var subject = 'Swig Cups - '+docLabel+' - '+ev.client;
+      window.location.href = 'mailto:'+email+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text);
+    }
+    toast('✓ Link ready — '+channel, 'ok');
+    closeOv('sendov');
+  } catch(e){
+    msgEl.textContent = 'Error: '+e.message;
+  } finally {
+    btn.disabled=false; btn.textContent=origText;
+  }
 }
 var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages'],warda:['stock','myjobs','cal','deliveries','messages']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
@@ -2481,7 +2622,7 @@ function renderCal(){
             e.stopPropagation();
             downloadJobCard(window['ev_'+eid]);
           } else {
-            if(role!=='warda')openEdit(window['ev_'+eid]);else openEvDetail(window['ev_'+eid]);
+            openEvDetail(window['ev_'+eid]);
           }
         });
       })(ev.id, ev.status);
@@ -2780,6 +2921,7 @@ function openQA(dateISO){
 // Open the full edit modal as a NEW blank job (all options: simple/complex, all colours, all fields)
 function openEditNew(prefill){
   prefill=prefill||{};
+  var _esb2=document.getElementById('edit-send-btn');if(_esb2)_esb2.style.display='none';
   document.getElementById('eid').value='';
   document.getElementById('ecl').value='';
   document.getElementById('epd').value=prefill.print_date||'';
@@ -2893,6 +3035,9 @@ async function openEvDetail(ev){
     var eb=document.createElement('button');eb.className='btn bp';eb.style.flex='1';eb.textContent='✏️ Edit';
     eb.addEventListener('click',function(){closeOv('evov');openEdit(curEv);});
     act.appendChild(eb);
+    var sb=document.createElement('button');sb.className='btn bs';sb.style.flex='1';sb.textContent='📤 Send';
+    sb.addEventListener('click',function(){openSendApproval();});
+    act.appendChild(sb);
   }
   var db2=document.createElement('button');db2.className='btn bs';db2.textContent='🖨️ Job card';
   db2.addEventListener('click',function(){downloadJobCard(curEv);});
@@ -2915,6 +3060,8 @@ function setSel(id,v){
 async function openEdit(ev){
   if(!ev)return;
   ev=await loadFullJob(ev);
+  curEv=ev;
+  var _esb=document.getElementById('edit-send-btn');if(_esb)_esb.style.display=(role==='warda')?'none':'';
   document.getElementById('eid').value=ev.id||'';
   document.getElementById('ecl').value=ev.client||'';
   document.getElementById('ewl').value=ev.week_label||'';
@@ -3529,7 +3676,7 @@ document.addEventListener('mouseout', function(e) {
   if(ce) tipEl.classList.remove('show');
 });
 
-['evov','edov','qaov','cardov','stkov'].forEach(function(id){
+['evov','edov','qaov','cardov','stkov','sendov'].forEach(function(id){
   document.getElementById(id).addEventListener('click',function(e){
     if(e.target===this)closeOv(id);
   });
