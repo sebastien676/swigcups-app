@@ -877,15 +877,22 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 <!-- SEND FOR SIGNATURE (BAT / Delivery / Collection) -->
 <div class="ov" id="sendov">
   <div class="modal" style="max-width:440px">
-    <div class="mh"><h3>📤 Send for signature</h3><button class="mc" onclick="closeOv('sendov')">×</button></div>
+    <div class="mh"><h3 id="sendov-title">📤 Send for signature</h3><button class="mc" onclick="closeOv('sendov')">×</button></div>
     <div id="send-client-name" style="font-size:13px;font-weight:600;color:#0E6655;margin-bottom:14px"></div>
-    <div class="fg">
+    <div class="fg" id="send-doctype-wrap">
       <label>Document type</label>
       <select id="send-doctype" onchange="updateSendArtworkStatus()">
         <option value="bat">Print proof — artwork sign-off</option>
         <option value="delivery">Delivery note</option>
         <option value="collection">Collection note</option>
       </select>
+    </div>
+    <div class="fg" id="send-quick-wrap" style="display:none">
+      <label>Document type</label>
+      <div style="display:flex;gap:8px">
+        <button type="button" id="quick-delivery" class="btn bs" style="flex:1" onclick="setQuickDocType('delivery')">🚚 Delivery</button>
+        <button type="button" id="quick-collection" class="btn bs" style="flex:1" onclick="setQuickDocType('collection')">📦 Collection</button>
+      </div>
     </div>
     <div id="send-artwork-status" style="font-size:12px;margin:6px 0 4px"></div>
     <div class="g2">
@@ -897,6 +904,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="fa" style="flex-wrap:wrap">
       <button class="btn bfl" style="background:#25D366;color:#fff" id="send-wa-btn" onclick="sendApproval('whatsapp')">📱 WhatsApp</button>
       <button class="btn bp bfl" id="send-email-btn" onclick="sendApproval('email')">✉️ Email</button>
+      <button class="btn bs bfl" id="send-open-btn" onclick="sendApproval('open')">📱 Open here</button>
       <button class="btn bs bfl" onclick="closeOv('sendov')">Cancel</button>
     </div>
   </div>
@@ -972,28 +980,48 @@ function normalisePhone(raw){
 }
 
 // ── SEND FOR SIGNATURE (BAT / Delivery / Collection) ──
+var sendQuickMode = false;
+
 function updateSendArtworkStatus(){
   var dt = document.getElementById('send-doctype').value;
   var el = document.getElementById('send-artwork-status');
   var ev = curEv;
   var hasArt = !!(ev && getSendArtworkBase64(ev));
-  if(dt==='bat'){
-    el.innerHTML = hasArt ? '<span style="color:#1E8449">✅ Artwork attached</span>' : '<span style="color:#C0392B">⚠️ No artwork on this job — client will see no visual</span>';
-  } else {
-    el.innerHTML = hasArt ? '<span style="color:#1E8449">📎 Artwork will be attached</span>' : '';
-  }
+  if(dt!=='bat'){ el.innerHTML=''; return; }
+  el.innerHTML = hasArt ? '<span style="color:#1E8449">✅ Artwork attached</span>' : '<span style="color:#C0392B">⚠️ No artwork on this job — client will see no visual</span>';
 }
 
-async function openSendApproval(ev){
+function setQuickDocType(dt){
+  setSel('send-doctype', dt);
+  var db=document.getElementById('quick-delivery'), cb=document.getElementById('quick-collection');
+  db.className = 'btn '+(dt==='delivery'?'bp':'bs'); db.style.flex='1';
+  cb.className = 'btn '+(dt==='collection'?'bp':'bs'); cb.style.flex='1';
+  updateSendArtworkStatus();
+}
+
+// mode: 'full' (owner/Fred, tous les types, menu complet) ou 'quick' (les 3, livraison/enlèvement uniquement)
+async function openSendApproval(ev, mode){
   if(ev){ curEv = await loadFullJob(ev); }
   if(!curEv){toast('No job selected','err');return;}
+  sendQuickMode = (mode==='quick');
+
   document.getElementById('send-client-name').textContent = curEv.client||'';
   document.getElementById('send-name').value = curEv.contact_name||'';
   document.getElementById('send-phone').value = normalisePhone(curEv.contact_phone||'');
   document.getElementById('send-email').value = curEv.client_email||'';
-  setSel('send-doctype', 'bat');
   document.getElementById('send-msg').textContent='';
-  updateSendArtworkStatus();
+
+  document.getElementById('sendov-title').textContent = sendQuickMode ? '✍️ Send sign-in-person link' : '📤 Send for signature';
+  document.getElementById('send-doctype-wrap').style.display = sendQuickMode ? 'none' : '';
+  document.getElementById('send-quick-wrap').style.display = sendQuickMode ? '' : 'none';
+
+  if(sendQuickMode){
+    setQuickDocType(curEv.delivery_type==='Collection' ? 'collection' : 'delivery');
+  } else {
+    setSel('send-doctype', 'bat');
+    updateSendArtworkStatus();
+  }
+
   closeOv('evov');
   closeOv('edov');
   document.getElementById('sendov').classList.add('op');
@@ -1023,6 +1051,17 @@ function getSendArtworkBase64(ev){
   return null;
 }
 
+function sendMessageText(docType, client, url){
+  if(docType==='bat'){
+    return 'Hello, please review and approve the print proof for '+client+' before we start production. Check the artwork carefully — once approved, any change is re-invoiced.\n\n'+url;
+  }
+  if(docType==='collection'){
+    return 'Hello, your order for '+client+' is ready for collection. Once you arrive, please check its contents and sign the collection note using the link below, in the presence of our team.\n\n'+url;
+  }
+  // delivery
+  return 'Hello, our driver is on the way with your order for '+client+'. Once he arrives, please check its contents and sign the delivery note using the link below, in his presence.\n\n'+url;
+}
+
 async function sendApproval(channel){
   var ev = curEv;
   if(!ev){toast('No job selected','err');return;}
@@ -1039,7 +1078,8 @@ async function sendApproval(channel){
   }
   if(channel==='email' && !email){msgEl.textContent='Enter an email address first';return;}
 
-  var btn = document.getElementById(channel==='whatsapp'?'send-wa-btn':'send-email-btn');
+  var btnId = channel==='whatsapp'?'send-wa-btn':channel==='email'?'send-email-btn':'send-open-btn';
+  var btn = document.getElementById(btnId);
   var origText = btn.textContent;
   btn.disabled = true; btn.textContent='...';
 
@@ -1055,8 +1095,11 @@ async function sendApproval(channel){
       cgv_lang: 'en',
       sent_by: role
     };
-    var art = getSendArtworkBase64(ev);
-    if(art){ payload.artwork_base64 = art; payload.artwork_filename = 'artwork'; }
+    // L'artwork n'est utile que pour le BAT — inutile de le re-joindre à un BL/bon d'enlèvement déjà approuvé
+    if(docType==='bat'){
+      var art = getSendArtworkBase64(ev);
+      if(art){ payload.artwork_base64 = art; payload.artwork_filename = 'artwork'; }
+    }
 
     var res = await fetch(APPROVAL_FN_URL, {
       method:'POST',
@@ -1066,16 +1109,17 @@ async function sendApproval(channel){
     var data = await res.json();
     if(!res.ok || !data.url){throw new Error(data.error||'Server error');}
 
-    var docLabel = docType==='bat'?'print proof':docType==='delivery'?'delivery note':'collection note';
-    var text = docType==='bat'
-      ? 'Hello, please review and approve the print proof for '+ev.client+' before we start production. Check the artwork carefully — once approved, any change is re-invoiced.\n\n'+data.url
-      : 'Hello, please review and sign the '+docLabel+' for '+ev.client+':\n\n'+data.url;
-
-    if(channel==='whatsapp'){
-      window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text), '_blank');
+    if(channel==='open'){
+      window.open(data.url, '_blank');
     } else {
-      var subject = 'Swig Cups - '+docLabel+' - '+ev.client;
-      window.location.href = 'mailto:'+email+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text);
+      var text = sendMessageText(docType, ev.client, data.url);
+      if(channel==='whatsapp'){
+        window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text), '_blank');
+      } else {
+        var docLabel = docType==='bat'?'print proof':docType==='delivery'?'delivery note':'collection note';
+        var subject = 'Swig Cups - '+docLabel+' - '+ev.client;
+        window.location.href = 'mailto:'+email+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text);
+      }
     }
     toast('✓ Link ready — '+channel, 'ok');
     closeOv('sendov');
@@ -2013,10 +2057,15 @@ async function loadJobs(){
       (function(jid){cb.addEventListener('click',function(){downloadJobCard(window['j_'+jid]);});})(o.id);
       d.querySelector('div:last-child').appendChild(cb);
       var sndb=document.createElement('button');
-      sndb.className='btn bs bsm';sndb.textContent='📤 Send';
+      sndb.className='btn bs bsm';sndb.textContent='📋 Send proof';
       sndb.style.marginTop='4px';
       (function(jid){sndb.addEventListener('click',function(){openSendApproval(window['j_'+jid]);});})(o.id);
       d.querySelector('div:last-child').appendChild(sndb);
+      var blsndb=document.createElement('button');
+      blsndb.className='btn bs bsm';blsndb.textContent='✍️ Sign link';
+      blsndb.style.marginTop='4px';
+      (function(jid){blsndb.addEventListener('click',function(){openSendApproval(window['j_'+jid],'quick');});})(o.id);
+      d.querySelector('div:last-child').appendChild(blsndb);
     }
     el.appendChild(d);
   }
@@ -3072,13 +3121,18 @@ async function openEvDetail(ev){
     var eb=document.createElement('button');eb.className='btn bp';eb.style.flex='1';eb.textContent='✏️ Edit';
     eb.addEventListener('click',function(){closeOv('evov');openEdit(curEv);});
     act.appendChild(eb);
-    var sb=document.createElement('button');sb.className='btn bs';sb.style.flex='1';sb.textContent='📤 Send';
+  }
+  var db2=document.createElement('button');db2.className='btn bs';db2.style.flex='1';db2.textContent='🖨️ Job card';
+  db2.addEventListener('click',function(){downloadJobCard(curEv);});
+  act.appendChild(db2);
+  if(role!=='warda'){
+    var sb=document.createElement('button');sb.className='btn bs';sb.style.flex='1';sb.textContent='📋 Send proof';
     sb.addEventListener('click',function(){openSendApproval();});
     act.appendChild(sb);
   }
-  var db2=document.createElement('button');db2.className='btn bs';db2.textContent='🖨️ Job card';
-  db2.addEventListener('click',function(){downloadJobCard(curEv);});
-  act.appendChild(db2);
+  var blb=document.createElement('button');blb.className='btn bs';blb.style.flex='1';blb.textContent='✍️ Sign link';
+  blb.addEventListener('click',function(){openSendApproval(null,'quick');});
+  act.appendChild(blb);
   var cb=document.createElement('button');cb.className='btn bs';cb.textContent='Close';
   cb.addEventListener('click',function(){closeOv('evov');});
   act.appendChild(cb);
@@ -4096,6 +4150,12 @@ async function loadDeliveries(){
     (function(jev){cardBtn.addEventListener('click',function(e){e.stopPropagation();downloadDeliveryCard(jev);});})(j);
     btnRow.appendChild(cardBtn);
 
+    var sendBlBtn=document.createElement('button');
+    sendBlBtn.className='btn bs bsm';sendBlBtn.textContent='✍️ Sign link';
+    sendBlBtn.style.fontSize='11px';
+    (function(jev){sendBlBtn.addEventListener('click',function(e){e.stopPropagation();openSendApproval(jev,'quick');});})(j);
+    btnRow.appendChild(sendBlBtn);
+
     if(role==='owner'||role==='fred'){
       var editBtn=document.createElement('button');
       editBtn.className='btn bs bsm';editBtn.textContent='✏️';
@@ -4885,7 +4945,7 @@ function renderApprovals(){
     var isStale=!isSigned&&a.status!=='cancelled'&&days!==null&&days>=2;
 
     var card=document.createElement('div');
-    card.style.cssText='background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:13px 15px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,0.06)'+(isStale?';border-left:4px solid #C0392B':'')+(a.status==='cancelled'?';opacity:0.5':'');
+    card.style.cssText='background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:13px 15px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,0.06)'+(a.disputed?';border-left:4px solid #D35400;background:#FFFAF3':isStale?';border-left:4px solid #C0392B':'')+(a.status==='cancelled'?';opacity:0.5':'');
 
     var detail=[];
     if(snap.size||snap.colour)detail.push((snap.size||'')+' '+(snap.colour||''));
@@ -4906,6 +4966,7 @@ function renderApprovals(){
       +'</div></div>'
       +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'
       +'<span class="pl '+st.cls+'">'+st.label+'</span>'
+      +(a.disputed?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#FDEBD0;color:#8A4B00">⚠️ Issue</span>':'')
       +(isStale?'<span style="font-size:10px;font-weight:700;color:#C0392B">⚠️ chase</span>':'')
       +'</div>';
 
@@ -4979,7 +5040,7 @@ async function openApprovalDetail(id){
       +'<div class="mr"><span class="ml">Signed by</span><span><strong>'+(a.signer_name||'—')+'</strong></span></div>'
       +'<div class="mr"><span class="ml">Date</span><span>'+(a.signed_at?new Date(a.signed_at).toLocaleString('en-GB'):'—')+'</span></div>'
       +'<div class="mr"><span class="ml">IP</span><span style="font-size:11px;color:#666">'+(a.ip_address||'—')+'</span></div>'
-      +(a.remarks?'<div class="mr"><span class="ml">Remarks</span><span style="color:#C0392B">'+a.remarks+'</span></div>':'');
+      +(a.remarks?'<div class="mr"><span class="ml">'+(a.disputed?'⚠️ Issue':'Remarks')+'</span><span style="color:#C0392B">'+a.remarks+'</span></div>':'');
     if(a.signature_data){
       body+='<div style="margin-top:10px;padding:10px;background:#f7f8fa;border-radius:8px;text-align:center">'
         +'<img src="'+a.signature_data+'" style="max-width:100%;max-height:110px;background:#fff;border-radius:6px">'
