@@ -400,7 +400,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <button onclick="showTab('myjobs',this)" id="wmj" style="display:none">✅ My Jobs</button>
     <button onclick="showTab('deliveries',this)">🚚 Deliveries</button>
     <button onclick="showTab('messages',this)">💬 Messages <span class="ab" id="msgbn" style="display:none">!</span></button>
-    <button onclick="showTab('approvals',this)">✍️ Approvals <span class="ab" id="apbn" style="display:none">!</span></button>
     <button onclick="showTab('stats',this)">📊 Stats</button>
     <button onclick="showTab('analytics',this)">📈 Analytics</button>
     <button onclick="showTab('alerts',this)">🚨 Alerts <span class="ab" id="abn">!</span></button>
@@ -409,7 +408,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   <div id="tab-stock" class="sec act">
     <div class="mts" id="smets"></div>
     <div class="card">
-      <div class="ch"><span class="ct">Stock by product</span><button class="btn bs bsm" onclick="loadStock()">↻</button></div>
+      <div class="ch"><span class="ct">Stock by product</span><button class="btn bs bsm" onclick="loadStock(true)">↻</button></div>
       <div id="stbl"><div class="ld"><div class="sp"></div>Loading...</div></div>
     </div>
     <button class="badd" id="badd" style="display:none" onclick="togglePnl('pdel')">+ Record delivery</button>
@@ -461,7 +460,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <!-- Orders panel -->
     <div id="pos-panel-orders">
       <div class="card">
-        <div class="ch"><span class="ct">Purchase orders — Africa Plastics</span><button class="btn bs bsm" onclick="loadPOs()">↻</button></div>
+        <div class="ch"><span class="ct">Purchase orders — Africa Plastics</span><button class="btn bs bsm" onclick="loadPOs(true)">↻</button></div>
         <div id="pol"><div class="ld"><div class="sp"></div></div></div>
       </div>
     </div>
@@ -469,7 +468,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div id="pos-panel-deliveries" style="display:none">
       <div class="mts" id="ap-del-mets"></div>
       <div class="card">
-        <div class="ch"><span class="ct">Deliveries received — Africa Plastics</span><button class="btn bs bsm" onclick="loadAPDeliveries()">↻</button></div>
+        <div class="ch"><span class="ct">Deliveries received — Africa Plastics</span><button class="btn bs bsm" onclick="loadAPDeliveries(true)">↻</button></div>
         <div id="ap-del-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
       </div>
     </div>
@@ -502,7 +501,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
           <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option><option>Orange</option><option>Dark Blue</option></select></div>
           <div class="fg"><label>Qty ★</label><input type="number" id="jq" placeholder="e.g. 2000" oninput="this.nextElementSibling.textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"><span class="hint"></span></div>
         </div>
-        <div class="g3">
+        <div class="fg" style="flex-direction:row;align-items:center;gap:10px;margin:2px 0 10px">
+          <input type="checkbox" id="jnoprint" style="width:18px;height:18px;cursor:pointer;accent-color:#566573" onchange="toggleNoPrintUI('j')">
+          <label style="font-size:13px;font-weight:600;color:#566573;cursor:pointer;text-transform:none;letter-spacing:0" for="jnoprint">⬜ NO PRINT — plain cups, no printing</label>
+        </div>
+        <div class="g3" id="j-print-fields">
           <div class="fg"><label># Colours</label><select id="jnc"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
           <div class="fg"><label>Print colour</label><input type="text" id="jpc" placeholder="e.g. White"></div>
           <div class="fg"><label>Artwork</label><select id="jar"><option>New</option><option>Existing</option><option>Client to send</option><option>TBC</option></select></div>
@@ -522,14 +525,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       </div>
     </div>
     <div class="card" style="margin-top:14px">
-      <div class="ch"><span class="ct">All orders</span><button class="btn bs bsm" onclick="loadJobs()">↻</button></div>
+      <div class="ch"><span class="ct">All orders</span><button class="btn bs bsm" onclick="loadJobs(true)">↻</button></div>
       <div id="jlist"><div class="ld"><div class="sp"></div></div></div>
     </div>
   </div>
 
   <div id="tab-print" class="sec">
     <div class="card">
-      <div class="ch"><span class="ct">Print schedule — Blink (Warda)</span><button class="btn bs bsm" onclick="loadPrint()">↻</button></div>
+      <div class="ch"><span class="ct">Print schedule — Blink (Warda)</span><button class="btn bs bsm" onclick="loadPrint(true)">↻</button></div>
       <div id="plist"><div class="ld"><div class="sp"></div></div></div>
     </div>
   </div>
@@ -601,7 +604,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   <div id="tab-deliveries" class="sec">
     <div class="ch" style="margin-bottom:14px">
       <h2 style="font-size:16px;font-weight:700">🚚 Deliveries & Collections</h2>
-      <button class="btn bs bsm" onclick="loadDeliveries()">↻ Refresh</button>
+      <button class="btn bs bsm" onclick="loadDeliveries(true)">↻ Refresh</button>
     </div>
     <div class="mts" id="del-mets"></div>
     <div class="card" style="margin-bottom:14px">
@@ -670,20 +673,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div id="msg-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
   </div>
 
-  <div id="tab-approvals" class="sec">
-    <div class="ch" style="margin-bottom:14px">
-      <h2 style="font-size:16px;font-weight:700">✍️ Approvals & signatures</h2>
-      <button class="btn bs bsm" onclick="loadApprovals()">↻ Refresh</button>
-    </div>
-    <div class="mts" id="ap-mets"></div>
-    <div style="display:flex;gap:0;margin-bottom:14px;background:#fff;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-      <button id="ap-f-pending" onclick="apFilter('pending')" style="flex:1;padding:11px 8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#0E6655;color:#fff">⏳ Waiting</button>
-      <button id="ap-f-signed" onclick="apFilter('signed')" style="flex:1;padding:11px 8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#666">✅ Signed</button>
-      <button id="ap-f-all" onclick="apFilter('all')" style="flex:1;padding:11px 8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#666">All</button>
-    </div>
-    <div id="ap-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
-  </div>
-
   <div id="tab-stats" class="sec">
     <div class="ch" style="margin-bottom:14px">
       <h2 style="font-size:16px;font-weight:700">📊 Warda Capacity Stats</h2>
@@ -694,7 +683,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
           <option value="12">Last 12 weeks</option>
           <option value="26">Last 26 weeks</option>
         </select>
-        <button class="btn bs bsm" onclick="loadStats()">↻</button>
+        <button class="btn bs bsm" onclick="loadStats(true)">↻</button>
       </div>
     </div>
     <div id="stats-content"><div class="ld"><div class="sp"></div>Loading...</div></div>
@@ -715,7 +704,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
           <option value="330ml">330ml</option>
           <option value="250ml">250ml</option>
         </select>
-        <button class="btn bs bsm" onclick="loadAnalytics()">↻</button>
+        <button class="btn bs bsm" onclick="loadAnalytics(true)">↻</button>
       </div>
     </div>
     <div id="an-content"><div class="ld"><div class="sp"></div>Loading...</div></div>
@@ -724,7 +713,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   <div id="tab-alerts" class="sec">
     <div class="ch" style="margin-bottom:14px">
       <h2 style="font-size:16px;font-weight:700">🚨 Alerts & Actions</h2>
-      <button class="btn bs bsm" onclick="loadAlerts()">↻ Refresh</button>
+      <button class="btn bs bsm" onclick="loadAlerts(true)">↻ Refresh</button>
     </div>
     <div id="alist"><div class="ld"><div class="sp"></div></div></div>
   </div>
@@ -803,11 +792,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div class="fg"><label>Qty ★</label><input type="number" id="eq" oninput="document.getElementById('ecalc').textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"></div>
     </div>
     <div class="hint" id="ecalc">Stock: —</div>
-    <div class="es">Print details</div>
-    <div class="g3">
+    <div class="es" id="e-print-hdr">Print details</div>
+    <div class="g3" id="e-print-fields">
       <div class="fg"><label># Colours</label><select id="enc"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
       <div class="fg"><label>Print colour</label><input type="text" id="epc"></div>
       <div class="fg"><label>Artwork</label><select id="ear"><option>New</option><option>Existing</option><option>Client to send</option><option>TBC</option></select></div>
+    </div>
+    <div id="e-noprint-note" style="display:none;background:#EAECEE;border-left:3px solid #566573;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#566573">
+      ⬜ <strong>No print</strong> — plain cups supplied as-is. No artwork, no screens, nothing scheduled for Warda. Stock is deducted 1:1 (no 5% print waste).
     </div>
     </div>
     <div id="e-complex-fields" style="display:none">
@@ -819,9 +811,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     </div>
     <div class="g2">
       <div class="fg"><label>Status</label><select id="est"><option>Scheduled</option><option>In progress</option><option>Done</option><option>On hold</option><option>Cancelled</option></select></div>
-      <div class="fg"><label>Print type</label><select id="ept"><option>Screen print</option><option>Digital</option><option>Foil</option><option>Mixed</option></select></div>
+      <div class="fg"><label>Print type</label><select id="ept"><option>Screen print</option><option>Digital</option><option>Foil</option><option>Mixed</option><option>No print</option></select></div>
     </div>
     <div class="fg"><label>Notes</label><textarea id="eno" rows="2"></textarea></div>
+    <div class="fg" style="flex-direction:row;align-items:center;gap:10px;margin-bottom:10px">
+      <input type="checkbox" id="enoprint" style="width:18px;height:18px;cursor:pointer;accent-color:#566573" onchange="toggleNoPrintUI('e')">
+      <label style="font-size:13px;font-weight:600;color:#566573;cursor:pointer;text-transform:none;letter-spacing:0" for="enoprint">⬜ NO PRINT — plain cups, no printing</label>
+    </div>
     <div class="fg" style="flex-direction:row;align-items:center;gap:10px;margin-bottom:10px">
       <input type="checkbox" id="eurg" style="width:18px;height:18px;cursor:pointer;accent-color:#C0392B">
       <label style="font-size:13px;font-weight:600;color:#C0392B;cursor:pointer;text-transform:none;letter-spacing:0" for="eurg">🚨 Mark as URGENT — cannot be moved</label>
@@ -841,7 +837,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     </div>
     <div class="ma">
       <button class="btn bp bfl" onclick="saveEdit()">💾 Save</button>
-      <button class="btn bs" id="edit-send-btn" onclick="openSendApproval()">📤 Send</button>
       <button class="bd btn" onclick="delJob()">🗑️</button>
       <button class="btn bs" onclick="closeOv('edov')">Cancel</button>
     </div>
@@ -874,38 +869,24 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   </div>
 </div>
 
-<!-- SEND FOR SIGNATURE (BAT / Delivery / Collection) -->
-<div class="ov" id="sendov">
-  <div class="modal" style="max-width:440px">
-    <div class="mh"><h3 id="sendov-title">📤 Send for signature</h3><button class="mc" onclick="closeOv('sendov')">×</button></div>
-    <div id="send-client-name" style="font-size:13px;font-weight:600;color:#0E6655;margin-bottom:14px"></div>
-    <div class="fg" id="send-doctype-wrap">
-      <label>Document type</label>
-      <select id="send-doctype" onchange="updateSendArtworkStatus()">
-        <option value="bat">Print proof — artwork sign-off</option>
-        <option value="delivery">Delivery note</option>
-        <option value="collection">Collection note</option>
-      </select>
+<!-- BATCH PRODUCTION -->
+<div class="ov" id="batchov">
+  <div class="modal" style="max-width:420px">
+    <div class="mh"><h3>📦 Record production</h3><button class="mc" onclick="closeOv('batchov')">×</button></div>
+    <div style="font-size:15px;font-weight:700;color:#0E6655" id="batch-title"></div>
+    <div style="font-size:12px;color:#666;margin-bottom:14px" id="batch-sub"></div>
+    <div id="batch-progress" style="margin-bottom:16px"></div>
+    <div class="fg"><label>Quantity produced in this batch</label>
+      <input type="number" id="batch-qty" min="1" placeholder="e.g. 10000" style="font-size:17px;font-weight:700"
+             oninput="batchSetQty(parseInt(this.value)||0)">
+      <div class="hint" id="batch-hint"></div>
     </div>
-    <div class="fg" id="send-quick-wrap" style="display:none">
-      <label>Document type</label>
-      <div style="display:flex;gap:8px">
-        <button type="button" id="quick-delivery" class="btn bs" style="flex:1" onclick="setQuickDocType('delivery')">🚚 Delivery</button>
-        <button type="button" id="quick-collection" class="btn bs" style="flex:1" onclick="setQuickDocType('collection')">📦 Collection</button>
-      </div>
-    </div>
-    <div id="send-artwork-status" style="font-size:12px;margin:6px 0 4px"></div>
-    <div class="g2">
-      <div class="fg"><label>Contact name</label><input type="text" id="send-name"></div>
-      <div class="fg"><label>Phone (WhatsApp, intl. no +)</label><input type="text" id="send-phone" placeholder="e.g. 27831234567"></div>
-    </div>
-    <div class="fg"><label>Email</label><input type="text" id="send-email" placeholder="client@company.com"></div>
-    <div id="send-msg" class="hint" style="min-height:16px;color:#C0392B"></div>
-    <div class="fa" style="flex-wrap:wrap">
-      <button class="btn bfl" style="background:#25D366;color:#fff" id="send-wa-btn" onclick="sendApproval('whatsapp')">📱 WhatsApp</button>
-      <button class="btn bp bfl" id="send-email-btn" onclick="sendApproval('email')">✉️ Email</button>
-      <button class="btn bs bfl" id="send-open-btn" onclick="sendApproval('open')">📱 Open here</button>
-      <button class="btn bs bfl" onclick="closeOv('sendov')">Cancel</button>
+    <div id="batch-quick" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+    <div class="fg"><label>Note (optional)</label><input type="text" id="batch-note" placeholder="e.g. run 2, machine 3"></div>
+    <div id="batch-history"></div>
+    <div class="ma">
+      <button class="btn bp bfl" id="batch-save" onclick="saveBatch()">💾 Record batch</button>
+      <button class="btn bs" onclick="closeOv('batchov')">Cancel</button>
     </div>
   </div>
 </div>
@@ -915,11 +896,110 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 <script>
 var SB_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZWx2cWdxbWF6ZHNhcWxzeHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1OTYzOTAsImV4cCI6MjA5NjE3MjM5MH0.xediho7kmpJXmYH5tMO_LyXPjx88229VrQ3M3L1zfqw';
-// Bons à signer (BAT / livraison / enlèvement) — secret dédié, distinct de celui de Xero
-var APPROVAL_FN_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co/functions/v1/create-approval';
-var APPROVAL_SECRET='5f40eae86a87c887a6393b1b567af9a133c4112a4535768a';
 var db=null;
 function DB(){if(!db)db=supabase.createClient(SB_URL,SB_KEY);return db;}
+
+// ═══════════════════ DATA LAYER — cache + explicit columns (perf fix) ═══════════════════
+// Root cause of the slowness: every tab switch re-ran select('*') on print_schedule/stock/
+// purchase_orders/movements from scratch, sequentially, with no cache — so 5 tabs loading in
+// parallel fired 5x the same queries. This layer collapses that into one request per table,
+// reused for 60s, with in-flight de-duplication so parallel calls share a single network hit.
+var PS_COLS='id,week_label,date_period,client,cup_size,cup_colour,qty_printed,print_colour,num_colours,artwork,status,notes,created_at,print_date,delivery_date,print_type,delivery_type,delivery_address,client_email,is_urgent,posis_received,contact_name,contact_phone,created_by,last_edited_by,delivery_done,delivery_status,job_type,n_items,no_print,qty_done,batches';
+var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name';
+var STOCK_COLS='id,product,size,colour,physical_stock,physical_date,total_received,total_outgoing';
+var MOV_COLS='id,date,type,reference,product,qty_in,notes';
+
+var _cache={},_inflight={},CACHE_TTL=60000;
+function cacheBust(keys){
+  if(!keys){_cache={};return;}
+  (Array.isArray(keys)?keys:[keys]).forEach(function(k){delete _cache[k];});
+}
+async function cachedQuery(key,cols,fallbackCols,builder,force){
+  if(!force&&_cache[key]&&(Date.now()-_cache[key].t)<CACHE_TTL)return _cache[key].d;
+  if(_inflight[key])return _inflight[key];
+  _inflight[key]=(async function(){
+    try{
+      var r=await builder(cols);
+      if(r.error&&fallbackCols){console.warn('Column list failed for '+key+', falling back:',r.error.message);r=await builder(fallbackCols);}
+      var d=r.data||[];
+      _cache[key]={d:d,t:Date.now()};
+      return d;
+    } finally { delete _inflight[key]; }
+  })();
+  return _inflight[key];
+}
+function fetchSchedule(force){
+  return cachedQuery('ps',PS_COLS,'*',function(cols){
+    return DB().from('print_schedule').select(cols).order('id');
+  },force);
+}
+function fetchStock(force){
+  return cachedQuery('stock',STOCK_COLS,'*',function(cols){
+    return DB().from('stock').select(cols);
+  },force);
+}
+function fetchPOs(force){
+  return cachedQuery('po',PO_COLS,'*',function(cols){
+    return DB().from('purchase_orders').select(cols).order('po_number',{ascending:false});
+  },force);
+}
+function fetchMovements(force){
+  var cut=new Date();cut.setMonth(cut.getMonth()-12);
+  var cutISO=cut.getFullYear()+'-'+String(cut.getMonth()+1).padStart(2,'0')+'-01';
+  return cachedQuery('mov',MOV_COLS,'*',function(cols){
+    return DB().from('movements').select(cols).eq('type','Delivery').gte('date',cutISO).order('date',{ascending:false});
+  },force);
+}
+// Full single-row fetch (artwork_url + items JSON blob) — only when a specific job is opened,
+// short-lived per-id cache so opening a job then immediately downloading its card doesn't refetch.
+var _fullJobCache={};
+async function fetchFullJob(id,force){
+  var k=String(id);
+  if(!force&&_fullJobCache[k]&&(Date.now()-_fullJobCache[k].t)<15000)return _fullJobCache[k].d;
+  var r=await DB().from('print_schedule').select('*').eq('id',id).single();
+  var d=r.data||null;
+  if(d)_fullJobCache[k]={d:d,t:Date.now()};
+  return d;
+}
+function bustSchedule(){cacheBust('ps');_fullJobCache={};prints=[];}
+function bustStock(){cacheBust(['stock','mov']);}
+function bustPOs(){cacheBust(['po','mov']);}
+
+// ── STOCK HELPER — single source of truth, replaces 5 duplicated inline computations ──
+function curStock(p){return Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));}
+
+// ── NO-PRINT JOBS ──────────────────────────────────────────────────────────
+// Some orders are plain cups, no printing at all. They still consume stock, but there is
+// no print waste (the 5% allowance covers misprints), so the factor drops from 1.05 to 1.00.
+// They must also never appear in Warda's print workload figures.
+function isNoPrint(j){return !!(j&&(j.no_print===true||j.print_type==='No print'));}
+function wasteFactor(j){return isNoPrint(j)?1:1.05;}
+function stockNeeded(j){return Math.round((j&&j.qty_printed||0)*wasteFactor(j));}
+// Prints = physical passes through the machine. A no-print job is zero work for Warda.
+function printCount(j){return isNoPrint(j)?0:((j&&j.qty_printed||0)*(j&&j.num_colours||1));}
+var NOPRINT_BADGE='<span style="font-size:9px;background:#EAECEE;color:#566573;padding:1px 6px;border-radius:8px;font-weight:700;letter-spacing:.02em">⬜ NO PRINT</span>';
+
+// ── BATCH PRODUCTION ───────────────────────────────────────────────────────
+// Large orders (30k–50k cups) are produced over several weeks. qty_done tracks the running
+// total actually produced; each batch deducts its own share of stock immediately, so stock
+// is never wrong just because the order as a whole isn't finished.
+function qtyDone(j){return Math.max(0,(j&&j.qty_done)||0);}
+function qtyRemaining(j){return Math.max(0,((j&&j.qty_printed)||0)-qtyDone(j));}
+function donePct(j){var t=(j&&j.qty_printed)||0;return t?Math.min(100,Math.round(qtyDone(j)/t*100)):0;}
+function isPartial(j){return qtyDone(j)>0&&qtyRemaining(j)>0;}
+function parseBatches(j){
+  if(!j||!j.batches)return [];
+  try{var a=typeof j.batches==='string'?JSON.parse(j.batches):j.batches;return Array.isArray(a)?a:[];}catch(e){return [];}
+}
+// Compact progress bar used on job lists, calendar cells and cards
+function progressBar(j,width){
+  if(!isPartial(j))return '';
+  var pct=donePct(j);
+  return '<div style="margin-top:3px"><div style="height:5px;background:#e0e0e0;border-radius:3px;overflow:hidden'+(width?';width:'+width:'')+'">'
+    +'<div style="height:100%;width:'+pct+'%;background:#D35400;border-radius:3px"></div></div>'
+    +'<div style="font-size:9px;color:#D35400;font-weight:700;margin-top:1px">'+qtyDone(j).toLocaleString()+' / '+((j.qty_printed||0)).toLocaleString()+' · '+pct+'% · reste '+qtyRemaining(j).toLocaleString()+'</div></div>';
+}
+// ═══════════════════════════════════════════════════════════════════════════════
 
 var USERS={'swig2026':'owner','fred2026':'fred','warda2026':'warda'};
 
@@ -969,167 +1049,7 @@ async function uploadArtwork(jobId, file) {
     reader.readAsDataURL(file);
   });
 }
-
-// Convertit un numéro SA local (083..., 0027..., +27...) au format wa.me : 27XXXXXXXXX
-function normalisePhone(raw){
-  var p = String(raw||'').replace(/[^0-9]/g,'');
-  if(!p) return '';
-  if(p.indexOf('0027')===0) p = '27'+p.substring(4);
-  else if(p.charAt(0)==='0') p = '27'+p.substring(1);
-  return p;
-}
-
-// ── SEND FOR SIGNATURE (BAT / Delivery / Collection) ──
-var sendQuickMode = false;
-
-function updateSendArtworkStatus(){
-  var dt = document.getElementById('send-doctype').value;
-  var el = document.getElementById('send-artwork-status');
-  var ev = curEv;
-  var hasArt = !!(ev && getSendArtworkBase64(ev));
-  if(dt!=='bat'){ el.innerHTML=''; return; }
-  el.innerHTML = hasArt ? '<span style="color:#1E8449">✅ Artwork attached</span>' : '<span style="color:#C0392B">⚠️ No artwork on this job — client will see no visual</span>';
-}
-
-function setQuickDocType(dt){
-  setSel('send-doctype', dt);
-  var db=document.getElementById('quick-delivery'), cb=document.getElementById('quick-collection');
-  db.className = 'btn '+(dt==='delivery'?'bp':'bs'); db.style.flex='1';
-  cb.className = 'btn '+(dt==='collection'?'bp':'bs'); cb.style.flex='1';
-  updateSendArtworkStatus();
-}
-
-// mode: 'full' (owner/Fred, tous les types, menu complet) ou 'quick' (les 3, livraison/enlèvement uniquement)
-async function openSendApproval(ev, mode){
-  if(ev){ curEv = await loadFullJob(ev); }
-  if(!curEv){toast('No job selected','err');return;}
-  sendQuickMode = (mode==='quick');
-
-  document.getElementById('send-client-name').textContent = curEv.client||'';
-  document.getElementById('send-name').value = curEv.contact_name||'';
-  document.getElementById('send-phone').value = normalisePhone(curEv.contact_phone||'');
-  document.getElementById('send-email').value = curEv.client_email||'';
-  document.getElementById('send-msg').textContent='';
-
-  document.getElementById('sendov-title').textContent = sendQuickMode ? '✍️ Send sign-in-person link' : '📤 Send for signature';
-  document.getElementById('send-doctype-wrap').style.display = sendQuickMode ? 'none' : '';
-  document.getElementById('send-quick-wrap').style.display = sendQuickMode ? '' : 'none';
-
-  if(sendQuickMode){
-    setQuickDocType(curEv.delivery_type==='Collection' ? 'collection' : 'delivery');
-  } else {
-    setSel('send-doctype', 'bat');
-    updateSendArtworkStatus();
-  }
-
-  closeOv('evov');
-  closeOv('edov');
-  document.getElementById('sendov').classList.add('op');
-}
-
-function buildSendSnapshot(ev){
-  var snap = {};
-  if(ev.cup_size) snap.size = ev.cup_size;
-  if(ev.cup_colour) snap.colour = ev.cup_colour;
-  if(ev.qty_printed) snap.qty = ev.qty_printed;
-  if(ev.print_type) snap.print_type = ev.print_type;
-  if(ev.print_colour) snap.print_colour = ev.print_colour;
-  if(ev.num_colours) snap.num_colours = ev.num_colours;
-  if(ev.delivery_address) snap.delivery_address = ev.delivery_address;
-  return snap;
-}
-
-function getSendArtworkBase64(ev){
-  if(!ev)return null;
-  if(ev.artwork_url && ev.artwork_url.indexOf('data:')===0) return ev.artwork_url;
-  var items = parseItems(ev);
-  if(items){
-    for(var i=0;i<items.length;i++){
-      if(items[i].artwork_url && items[i].artwork_url.indexOf('data:')===0) return items[i].artwork_url;
-    }
-  }
-  return null;
-}
-
-function sendMessageText(docType, client, url){
-  if(docType==='bat'){
-    return 'Hello, please review and approve the print proof for '+client+' before we start production. Check the artwork carefully — once approved, any change is re-invoiced.\n\n'+url;
-  }
-  if(docType==='collection'){
-    return 'Hello, your order for '+client+' is ready for collection. Once you arrive, please check its contents and sign the collection note using the link below, in the presence of our team.\n\n'+url;
-  }
-  // delivery
-  return 'Hello, our driver is on the way with your order for '+client+'. Once he arrives, please check its contents and sign the delivery note using the link below, in his presence.\n\n'+url;
-}
-
-async function sendApproval(channel){
-  var ev = curEv;
-  if(!ev){toast('No job selected','err');return;}
-  var docType = document.getElementById('send-doctype').value;
-  var name = document.getElementById('send-name').value.trim();
-  var phone = normalisePhone(document.getElementById('send-phone').value);
-  var email = document.getElementById('send-email').value.trim();
-  var msgEl = document.getElementById('send-msg');
-  msgEl.textContent='';
-
-  if(channel==='whatsapp'){
-    if(!phone){msgEl.textContent='No phone number — WhatsApp would open with no recipient. Add the number first.';return;}
-    if(phone.length<9){msgEl.textContent='Phone number looks too short: '+phone;return;}
-  }
-  if(channel==='email' && !email){msgEl.textContent='Enter an email address first';return;}
-
-  var btnId = channel==='whatsapp'?'send-wa-btn':channel==='email'?'send-email-btn':'send-open-btn';
-  var btn = document.getElementById(btnId);
-  var origText = btn.textContent;
-  btn.disabled = true; btn.textContent='...';
-
-  try {
-    var payload = {
-      doc_type: docType,
-      job_id: ev.id,
-      client: ev.client,
-      contact_name: name,
-      contact_phone: phone,
-      contact_email: email,
-      product_snapshot: buildSendSnapshot(ev),
-      cgv_lang: 'en',
-      sent_by: role
-    };
-    // L'artwork n'est utile que pour le BAT — inutile de le re-joindre à un BL/bon d'enlèvement déjà approuvé
-    if(docType==='bat'){
-      var art = getSendArtworkBase64(ev);
-      if(art){ payload.artwork_base64 = art; payload.artwork_filename = 'artwork'; }
-    }
-
-    var res = await fetch(APPROVAL_FN_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-app-secret':APPROVAL_SECRET},
-      body: JSON.stringify(payload)
-    });
-    var data = await res.json();
-    if(!res.ok || !data.url){throw new Error(data.error||'Server error');}
-
-    if(channel==='open'){
-      window.open(data.url, '_blank');
-    } else {
-      var text = sendMessageText(docType, ev.client, data.url);
-      if(channel==='whatsapp'){
-        window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text), '_blank');
-      } else {
-        var docLabel = docType==='bat'?'print proof':docType==='delivery'?'delivery note':'collection note';
-        var subject = 'Swig Cups - '+docLabel+' - '+ev.client;
-        window.location.href = 'mailto:'+email+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(text);
-      }
-    }
-    toast('✓ Link ready — '+channel, 'ok');
-    closeOv('sendov');
-  } catch(e){
-    msgEl.textContent = 'Error: '+e.message;
-  } finally {
-    btn.disabled=false; btn.textContent=origText;
-  }
-}
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','approvals','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages','approvals'],warda:['stock','myjobs','cal','deliveries','messages']};
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages'],warda:['stock','myjobs','cal','deliveries','messages']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
 var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},delCalOff=0,delCalSelectedDate=null,delCalView='week';
 
@@ -1150,7 +1070,7 @@ function initRole(r){
   document.getElementById('rt').textContent=RLAB[r];
   var allowed=RTABS[r];
   var btns=document.querySelectorAll('nav button');
-  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','approvals','stats','analytics','alerts'];
+  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','stats','analytics','alerts'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
   if(r==='owner'){document.getElementById('badd').style.display='flex';}
@@ -1166,7 +1086,6 @@ function initRole(r){
     Promise.all([loadStock(), loadCalData(), loadJobs(), loadPrint()]);
   }
   setTimeout(checkUnreadMessages, 2000);
-  if(r==='owner'||r==='fred')setTimeout(loadApprovals, 2500);
 }
 
 function showTab(n,b){
@@ -1180,7 +1099,6 @@ function showTab(n,b){
   if(n==='myjobs')loadMyJobs();
   if(n==='deliveries')loadDeliveries();
   if(n==='messages')loadMessages();
-  if(n==='approvals')loadApprovals();
   if(n==='stats')loadStats();
   if(n==='analytics')loadAnalytics();
 }
@@ -1204,12 +1122,9 @@ function sc2(sz, col) {
 }
 
 // ── STOCK ──
-async function loadStock(){
-  var [r, rpo, rmov] = await Promise.all([
-    DB().from('stock').select('*'),
-    DB().from('purchase_orders').select('product,qty_ordered,status,po_number'),
-    DB().from('movements').select('product,qty_in,reference,notes').eq('type','Delivery')
-  ]);
+async function loadStock(force){
+  var results = await Promise.all([fetchStock(force), fetchPOs(force), fetchMovements(force)]);
+  var r={data:results[0]}, rpo={data:results[1]}, rmov={data:results[2]};
   if(!r.data)return;
   pendByProduct={};
   if(rpo.data){
@@ -1276,7 +1191,7 @@ async function loadStock(){
     consolidated[key].total_outgoing+=(p.total_outgoing||0);
     consolidated[key].ids.push(p.id);
     // Track split source for display, normalized: "Washed Frosted"->"Washed", "Frosted"->"New", colour aliases unified
-    var origQty=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
+    var origQty=curStock(p);
     var srcLabel;
     var pNorm=normKey(p.product);
     if(pNorm.indexOf('washed frosted')>-1)srcLabel='Washed';
@@ -1306,7 +1221,7 @@ async function loadStock(){
   stock=merged;
   var LOW=5000,tot=0,lowc=0,pendc=0;
   merged.forEach(function(p){
-    var cur=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
+    var cur=curStock(p);
     var pending=pendByProduct[p.product]||0;
     tot+=cur;
     if(cur>0&&cur<LOW&&(p.product||'').toLowerCase().indexOf('frosted')>-1)lowc++;
@@ -1332,7 +1247,7 @@ async function loadStock(){
       rows+='<tr style="background:#e6f2ef"><td colspan="6" style="padding:6px 10px;font-size:11px;font-weight:700;color:#0a4033;text-transform:uppercase;letter-spacing:0.06em">'+p.size+'</td></tr>';
       lastSize=p.size;
     }
-    var cur=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
+    var cur=curStock(p);
     var pending=pendByProduct[p.product]||0;
     var after=cur+pending;
     var max=Math.max(after,cur,1);
@@ -1368,7 +1283,7 @@ function openStockEdit(p){
   document.getElementById('stk-data').value=JSON.stringify(p);
   var fieldsEl=document.getElementById('stk-fields');
   fieldsEl.innerHTML='';
-  var split=p.split&&p.split.length>1?p.split:[{name:'Stock',qty:Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0))}];
+  var split=p.split&&p.split.length>1?p.split:[{name:'Stock',qty:curStock(p)}];
   split.forEach(function(s,i){
     var row=document.createElement('div');
     row.className='g2';
@@ -1389,25 +1304,25 @@ async function saveStockEdit(){
   var p=JSON.parse(document.getElementById('stk-data').value||'{}');
   var split=p.split&&p.split.length>1?p.split:[{name:'Stock',ids:p.ids||[p.id]}];
   var anyFail=false;
-  console.log('saveStockEdit split:', JSON.stringify(split));
+  var d=new Date();
+  var todayISO=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   for(var i=0;i<split.length;i++){
     var newQty=parseInt(document.getElementById('stk-val-'+i).value)||0;
     var idsToUpdate=split[i].ids||[];
-    console.log('Source:', split[i].name, 'qty:', newQty, 'ids:', idsToUpdate);
     if(!idsToUpdate.length){console.warn('No IDs for split',split[i].name);continue;}
     for(var j=0;j<idsToUpdate.length;j++){
       var rowId=idsToUpdate[j];
-      var upd={physical_stock:(j===0?newQty:0),total_received:0,total_outgoing:0};
-      console.log('Updating id:', rowId, 'with:', upd);
+      // Physical count resets movement counters AND stamps physical_date — the anchor for curStock()
+      var upd={physical_stock:(j===0?newQty:0),total_received:0,total_outgoing:0,physical_date:todayISO};
       var res=await DB().from('stock').update(upd).eq('id',rowId);
-      console.log('Result for id', rowId, ':', res.error||'OK', 'count:', res.count);
       if(res.error){console.error('Stock update error id',rowId,res.error);anyFail=true;}
     }
   }
   if(anyFail){toast('⚠️ Some rows may not have saved — check console','err');}
-  else{toast('✅ Stock updated','ok');}
+  else{toast('✅ Stock counted & dated '+todayISO,'ok');}
   closeOv('stkov');
-  loadStock();
+  bustStock();
+  loadStock(true);
   loadAlerts();
 }
 
@@ -1469,8 +1384,9 @@ async function saveDel(){
   togglePnl('pdel');
   document.getElementById('dbx').value='';
   document.getElementById('dcalc').textContent='Total: — units';
-  loadStock();
-  loadPOs();
+  bustStock();bustPOs();
+  loadStock(true);
+  loadPOs(true);
 }
 
 // ── PURCHASE ORDERS SUB-TABS ──
@@ -1487,20 +1403,16 @@ function posSubTab(tab){
   if(!isOrders)loadAPDeliveries();
 }
 
-async function loadAPDeliveries(){
+async function loadAPDeliveries(force){
   var el=document.getElementById('ap-del-list');
   var mets=document.getElementById('ap-del-mets');
   el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
 
-  // Fetch POs and movements in parallel
-  var [rpo, rmov] = await Promise.all([
-    DB().from('purchase_orders').select(PO_COLS).order('po_date',{ascending:false}),
-    DB().from('movements').select('*').eq('type','Delivery').order('date',{ascending:false})
-  ]);
-  if(!rpo.data){el.innerHTML='<div class="ld">Error</div>';return;}
-
-  var pos=rpo.data||[];
-  var movs=rmov.data||[];
+  // Fetch POs and movements in parallel — cached, explicit columns
+  var res=await Promise.all([fetchPOs(force),fetchMovements(force)]);
+  var pos=res[0].slice().sort(function(a,b){return (b.po_date||'').localeCompare(a.po_date||'');});
+  var movs=res[1]||[];
+  if(!pos){el.innerHTML='<div class="ld">Error</div>';return;}
 
   // Build delivery map: po_number -> [{date, qty_in, reference}]
   // Match movements to POs via notes or reference field containing PO number
@@ -1698,18 +1610,16 @@ async function loadAPDeliveries(){
   el.innerHTML=html;
 }
 // ── PURCHASE ORDERS ──
-// Columns WITHOUT payment_proof (base64 blob) — fetched on demand only, keeps lists fast
-var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name';
-// Slim columns for print_schedule lists/calendars — EXCLUDES heavy base64 blobs (artwork_url, items, product_photo)
-var PS_COLS='id,week_label,date_period,client,cup_size,cup_colour,qty_printed,print_colour,num_colours,artwork,status,notes,created_at,print_date,delivery_date,print_type,delivery_type,delivery_address,client_email,is_urgent,posis_received,contact_name,contact_phone,created_by,last_edited_by,delivery_done,delivery_status,job_type,n_items';
-// Fetch the FULL row (with blobs) on demand, only when a card/detail/edit is opened
+// Fetch the FULL row (with blobs: artwork_url, items, product_photo, payment_proof) on demand,
+// only when a card/detail/edit is opened. Cached 15s so opening a job then downloading its
+// card right after doesn't double-fetch.
 async function loadFullJob(ev){
   if(!ev||!ev.id)return ev;
-  try{var r=await DB().from('print_schedule').select('*').eq('id',ev.id).single();return r.data||ev;}catch(e){return ev;}
+  try{ return (await fetchFullJob(ev.id))||ev; }catch(e){ return ev; }
 }
-async function loadPOs(){
-  // Sort DESC: most recent first
-  var r=await DB().from('purchase_orders').select(PO_COLS).order('po_number',{ascending:false});
+async function loadPOs(force){
+  var d=await fetchPOs(force);
+  var r={data:d.slice().sort(function(a,b){return (b.po_number||'').localeCompare(a.po_number||'');})};
   if(!r.data)return;
   var tot=r.data.reduce(function(s,p){return s+(p.qty_ordered||0);},0);
   var val=r.data.reduce(function(s,p){return s+(p.qty_ordered||0)*(p.unit_price||0)*1.15;},0);
@@ -1854,7 +1764,7 @@ async function editInvoice(id){
   if(val===null)return;
   await DB().from('purchase_orders').update({invoice_number:val||null}).eq('id',id);
   toast('✅ Invoice number saved','ok');
-  loadPOs();
+  bustPOs();loadPOs(true);
 }
 
 async function receiveDelivery(id, totalOrdered){
@@ -1904,8 +1814,9 @@ async function receiveDelivery(id, totalOrdered){
   }
 
   toast(isComplete?'✅ PO fully delivered!':'📦 Partial delivery recorded — '+qty.toLocaleString()+' units','ok');
-  loadAPDeliveries();
-  loadStock();
+  bustPOs();bustStock();
+  loadAPDeliveries(true);
+  loadStock(true);
 }
 
 // ── PROOF OF PAYMENT ──
@@ -1923,7 +1834,7 @@ function uploadProof(id){
       var r=await DB().from('purchase_orders').update({payment_proof:b64,payment_proof_name:file.name}).eq('id',id);
       if(r.error){toast('Upload failed: '+r.error.message,'err');return;}
       toast('📎 Proof of payment saved','ok');
-      loadPOs();
+      bustPOs();loadPOs(true);
     };
     reader.readAsDataURL(file);
   };
@@ -1969,14 +1880,14 @@ async function deleteProof(id){
   await DB().from('purchase_orders').update({payment_proof:null,payment_proof_name:null}).eq('id',id);
   var m=document.getElementById('proof-modal');if(m)m.remove();
   toast('🗑️ Proof deleted','ok');
-  loadPOs();
+  bustPOs();loadPOs(true);
 }
 
 async function markPaid(id,alreadyPaid){
   if(alreadyPaid){
     if(!confirm('Undo payment for this PO?'))return;
     await DB().from('purchase_orders').update({paid:false,paid_date:null}).eq('id',id);
-    toast('↩️ Payment cancelled','ok');loadPOs();
+    toast('↩️ Payment cancelled','ok');bustPOs();loadPOs(true);
     return;
   }
   var d=new Date();
@@ -1984,14 +1895,14 @@ async function markPaid(id,alreadyPaid){
   var cd=prompt('Payment date:',ds);
   if(cd===null)return;
   await DB().from('purchase_orders').update({paid:true,paid_date:cd||ds}).eq('id',id);
-  toast('✅ PO marked as paid','ok');loadPOs();
+  toast('✅ PO marked as paid','ok');bustPOs();loadPOs(true);
 }
 
 async function markDelivered(id, alreadyDelivered){
   if(alreadyDelivered){
     if(!confirm('Undo delivery status for this PO?'))return;
     await DB().from('purchase_orders').update({status:'Pending',delivery_date:null}).eq('id',id);
-    toast('↩️ Status reset to Pending','ok');loadPOs();
+    toast('↩️ Status reset to Pending','ok');bustPOs();loadPOs(true);
     return;
   }
   var d=new Date();
@@ -1999,7 +1910,7 @@ async function markDelivered(id, alreadyDelivered){
   var cd=prompt('Delivery date:',ds);
   if(cd===null)return;
   await DB().from('purchase_orders').update({status:'Delivered',delivery_date:cd||ds}).eq('id',id);
-  toast('🚚 PO marked as delivered','ok');loadPOs();
+  toast('🚚 PO marked as delivered','ok');bustPOs();loadPOs(true);
 }
 
 async function editPO(id){
@@ -2010,12 +1921,13 @@ async function editPO(id){
   var nd=prompt('Delivery date:',r.data.delivery_date||'');
   var up={status:ns};if(nd!==null)up.delivery_date=nd||null;
   await DB().from('purchase_orders').update(up).eq('id',id);
-  toast('✅ PO updated','ok');loadPOs();
+  toast('✅ PO updated','ok');bustPOs();loadPOs(true);
 }
 
 // ── JOBS ──
-async function loadJobs(){
-  var r=await DB().from('print_schedule').select(PS_COLS).order('id',{ascending:false});
+async function loadJobs(force){
+  var d=await fetchSchedule(force);
+  var r={data:d.slice().sort(function(a,b){return (b.id||0)-(a.id||0);})};
   if(!r.data)return;
   document.getElementById('jt').textContent=r.data.length;
   document.getElementById('js').textContent=r.data.filter(function(o){return o.status==='Scheduled';}).length;
@@ -2036,12 +1948,14 @@ async function loadJobs(){
     var _isComplex=o.job_type==='complex';
     var _nLines=o.n_items||0;
     var _badge=_isComplex?' <span style="font-size:10px;background:#E8DAEF;color:#6C3483;padding:1px 7px;border-radius:9px;font-weight:700">🧩 '+(_nLines?_nLines+' lines':'multi')+'</span>':'';
+    if(isNoPrint(o))_badge+=' '+NOPRINT_BADGE;
+    var _printLine=isNoPrint(o)?'<span style="color:#566573;font-weight:600">Plain cups — no printing</span>':((o.print_colour||'—')+' · '+(o.num_colours||1)+' col.');
     d.innerHTML='<div style="flex:1">'+
       '<div style="font-weight:600;font-size:14px">'+o.client+_badge+'</div>'+
       '<div style="font-size:12px;color:#666;margin-top:3px;line-height:1.6">'+
       (o.cup_size||'—')+' · '+(o.cup_colour||'—')+' · <strong>'+(o.qty_printed||0).toLocaleString()+' cups</strong><br>'+
-      (o.print_colour||'—')+' · '+(o.num_colours||1)+' col. · '+(o.date_period||'—')+'<br>'+
-      'Stock: <strong>'+Math.round((o.qty_printed||0)*1.05).toLocaleString()+'</strong></div></div>'+
+      _printLine+' · '+(o.date_period||'—')+'<br>'+
+      'Stock: <strong>'+stockNeeded(o).toLocaleString()+'</strong></div>'+progressBar(o)+'</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'+
       pill(o.status||'Scheduled')+
       (o.posis_received?'<span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:2px 7px;border-radius:10px;font-weight:700">✅ POSIS</span>':'')+'</div>';
@@ -2056,16 +1970,13 @@ async function loadJobs(){
       cb.style.marginTop='4px';
       (function(jid){cb.addEventListener('click',function(){downloadJobCard(window['j_'+jid]);});})(o.id);
       d.querySelector('div:last-child').appendChild(cb);
-      var sndb=document.createElement('button');
-      sndb.className='btn bs bsm';sndb.textContent='📋 Send proof';
-      sndb.style.marginTop='4px';
-      (function(jid){sndb.addEventListener('click',function(){openSendApproval(window['j_'+jid]);});})(o.id);
-      d.querySelector('div:last-child').appendChild(sndb);
-      var blsndb=document.createElement('button');
-      blsndb.className='btn bs bsm';blsndb.textContent='✍️ Sign link';
-      blsndb.style.marginTop='4px';
-      (function(jid){blsndb.addEventListener('click',function(){openSendApproval(window['j_'+jid],'quick');});})(o.id);
-      d.querySelector('div:last-child').appendChild(blsndb);
+      if(o.status!=='Done'&&o.status!=='Cancelled'){
+        var bb=document.createElement('button');
+        bb.className='btn bs bsm';bb.textContent='📦 Batch';
+        bb.style.cssText='margin-top:4px;color:#D35400;border-color:#D35400';
+        (function(jid){bb.addEventListener('click',function(){openBatch(jid);});})(o.id);
+        d.querySelector('div:last-child').appendChild(bb);
+      }
     }
     el.appendChild(d);
   }
@@ -2234,6 +2145,7 @@ function resetJobPanel(){
   document.getElementById('jsave-btn').textContent='Save order';
   ['jc2','jq','jpc','jno','jdl'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('jitems').innerHTML='';
+  var _jnp=document.getElementById('jnoprint');if(_jnp){_jnp.checked=false;toggleNoPrintUI('j');}
   setJobMode('simple');
   updateJobSummary();
 }
@@ -2277,18 +2189,21 @@ async function saveJob(){
   } else {
     var qty=parseInt(document.getElementById('jq').value)||0;
     if(!qty){toast('Quantity required','err');return;}
+    var jnp=document.getElementById('jnoprint')&&document.getElementById('jnoprint').checked;
     rec={
       week_label:pr.wl,date_period:pr.period,client:client,
       cup_size:document.getElementById('jsz').value,
       cup_colour:document.getElementById('jcl').value,
-      qty_printed:qty,num_colours:parseInt(document.getElementById('jnc').value)||1,
-      print_colour:document.getElementById('jpc').value,
-      artwork:document.getElementById('jar').value,
+      qty_printed:qty,num_colours:jnp?0:(parseInt(document.getElementById('jnc').value)||1),
+      print_colour:jnp?null:document.getElementById('jpc').value,
+      artwork:jnp?'None':document.getElementById('jar').value,
       delivery_date:deliv||null,
       notes:document.getElementById('jno').value,
       job_type:'simple',
       items:null,
-      n_items:null
+      n_items:null,
+      no_print:!!jnp,
+      print_type:jnp?'No print':'Screen print'
     };
   }
   var res;
@@ -2303,7 +2218,7 @@ async function saveJob(){
   toast('✓ '+client+(jobEditId?' updated':' added'),'ok');
   togglePnl('pjob');document.getElementById('bajob').style.display='flex';
   resetJobPanel();
-  loadJobs();prints=[];loadCalData();loadMyJobs&&loadMyJobs();
+  bustSchedule();loadJobs(true);loadCalData(true);loadMyJobs&&loadMyJobs();
 }
 
 function openJobEdit(ev){
@@ -2328,14 +2243,46 @@ function openJobEdit(ev){
     setSel('jnc',String(ev.num_colours||1));
     document.getElementById('jpc').value=ev.print_colour||'';
     setSel('jar',ev.artwork||'New');
+    var _jnp2=document.getElementById('jnoprint');if(_jnp2){_jnp2.checked=isNoPrint(ev);toggleNoPrintUI('j');}
   }
   document.getElementById('pjob').classList.add('op');
   document.getElementById('bajob').style.display='none';
 }
 
 // ── PRINT ──
-async function loadPrint(){
-  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
+// Shared renderer for the print schedule list — MUST stay top-level: loadPrintNoReschedule()
+// calls it too, and it used to be nested inside loadPrint() (silently broke every save/delete).
+function renderGroupPrint(items,isArchive,el,thisMonISO){
+  var lastW='';
+  items.forEach(function(p){
+    window['p_'+p.id]=p;
+    var isDone=p.status==='Done';
+    var grey=isArchive||isDone;
+    var wk=p.print_date||p.week_label||'';
+    if(wk!==lastW){
+      var h=document.createElement('div');
+      h.className='wh';
+      h.style.cssText=grey?'background:#e0e0e0;color:#aaa;':'';
+      h.textContent=(p.print_date?'📅 '+p.print_date+' — '+(p.week_label||''):(p.week_label||'—')+' · '+(p.date_period||''));
+      el.appendChild(h);lastW=wk;
+    }
+    var used=stockNeeded(p).toLocaleString();
+    var bc=grey?'#ccc':isNoPrint(p)?'#95A5A6':(p.cup_size||'').indexOf('500')>-1?'#43A047':(p.cup_size||'').indexOf('330')>-1?'#FDD835':'#1E88E5';
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #e0e0e0'+(grey?';opacity:0.42;background:#fafafa':'');
+    row.innerHTML='<div style="width:4px;height:40px;border-radius:2px;background:'+bc+';flex-shrink:0"></div>'+
+      '<div style="flex:1">'+
+      '<div style="font-weight:600'+(grey?';text-decoration:line-through;color:#aaa':'')+'">'+p.client+(isNoPrint(p)?' '+NOPRINT_BADGE:'')+(p.artwork&&!grey&&!isNoPrint(p)?'<span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:1px 6px;border-radius:10px;margin-left:4px">'+p.artwork+' artwork</span>':'')+'</div>'+
+      '<div style="font-size:11px;color:#bbb">'+(p.cup_size||'—')+' · '+(p.cup_colour||'—')+(isNoPrint(p)?' · no printing':' · 🎨 '+(p.print_colour||'—')+' · '+(p.num_colours||1)+' col.')+'</div>'+
+      (p.print_date?'<div style="font-size:11px;color:#ccc;font-weight:500">Print: '+p.print_date+'</div>':'')+progressBar(p)+'</div>'+
+      '<div style="text-align:right"><div style="font-weight:700;color:#bbb">'+(p.qty_printed||0).toLocaleString()+'</div><div style="font-size:11px;color:#ddd">−'+used+'</div></div>'+
+      '<div>'+pill(p.status||'Scheduled')+'</div>';
+    el.appendChild(row);
+  });
+}
+
+async function loadPrint(force){
+  var r={data:await fetchSchedule(force)};
   if(!r.data)return;
 
   // Compute current week monday ISO
@@ -2362,7 +2309,8 @@ async function loadPrint(){
       .update({print_date:thisMonISO,week_label:newWL,date_period:newPeriod})
       .in('id',reschedIds);
     // Reload after rescheduling
-    r=await DB().from('print_schedule').select(PS_COLS).order('id');
+    bustSchedule();
+    r={data:await fetchSchedule(true)};
     if(!r.data)return;
     if(toReschedule.length===1){
       toast('↗️ '+toReschedule[0].client+' moved to '+newWL,'ok');
@@ -2391,34 +2339,7 @@ async function loadPrint(){
   prints=r.data;
   var el=document.getElementById('plist');el.innerHTML='';
 
-  function renderGroupPrint(items,isArchive,el,thisMonISO){
-    var lastW='';
-    items.forEach(function(p){
-      window['p_'+p.id]=p;
-      var isDone=p.status==='Done';
-      var grey=isArchive||isDone;
-      var wk=p.print_date||p.week_label||'';
-      if(wk!==lastW){
-        var h=document.createElement('div');
-        h.className='wh';
-        h.style.cssText=grey?'background:#e0e0e0;color:#aaa;':'';
-        h.textContent=(p.print_date?'📅 '+p.print_date+' — '+(p.week_label||''):(p.week_label||'—')+' · '+(p.date_period||''));
-        el.appendChild(h);lastW=wk;
-      }
-      var used=Math.round((p.qty_printed||0)*1.05).toLocaleString();
-      var bc=grey?'#ccc':(p.cup_size||'').indexOf('500')>-1?'#43A047':(p.cup_size||'').indexOf('330')>-1?'#FDD835':'#1E88E5';
-      var row=document.createElement('div');
-      row.style.cssText='display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #e0e0e0'+(grey?';opacity:0.42;background:#fafafa':'');
-      row.innerHTML='<div style="width:4px;height:40px;border-radius:2px;background:'+bc+';flex-shrink:0"></div>'+
-        '<div style="flex:1">'+
-        '<div style="font-weight:600'+(grey?';text-decoration:line-through;color:#aaa':'')+'">'+p.client+(p.artwork&&!grey?'<span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:1px 6px;border-radius:10px;margin-left:4px">'+p.artwork+' artwork</span>':'')+'</div>'+
-        '<div style="font-size:11px;color:#bbb">'+(p.cup_size||'—')+' · '+(p.cup_colour||'—')+' · 🎨 '+(p.print_colour||'—')+' · '+(p.num_colours||1)+' col.</div>'+
-        (p.print_date?'<div style="font-size:11px;color:#ccc;font-weight:500">Print: '+p.print_date+'</div>':'')+'</div>'+
-        '<div style="text-align:right"><div style="font-weight:700;color:#bbb">'+(p.qty_printed||0).toLocaleString()+'</div><div style="font-size:11px;color:#ddd">−'+used+'</div></div>'+
-        '<div>'+pill(p.status||'Scheduled')+'</div>';
-      el.appendChild(row);
-    });
-  }
+
 
   renderGroupPrint(active,false,el,thisMonISO);
 
@@ -2454,10 +2375,9 @@ function makeAlert(cls,html,key){
   }
   return w;
 }
-async function loadAlerts(){
-  var rs=await DB().from('stock').select('*');
-  var rp=await DB().from('purchase_orders').select(PO_COLS);
-  var rj=await DB().from('print_schedule').select(PS_COLS);
+async function loadAlerts(force){
+  var res=await Promise.all([fetchStock(force),fetchPOs(force),fetchSchedule(force)]);
+  var rs={data:res[0]},rp={data:res[1]},rj={data:res[2]};
   if(!rs.data||!rp.data||!rj.data)return;
   var el=document.getElementById('alist');el.innerHTML='';
 
@@ -2467,7 +2387,7 @@ async function loadAlerts(){
   
   var stockMap={}; // key: size+'||'+normColour -> {available, incoming}
   rs.data.forEach(function(s){
-    var cur=Math.max(0,(s.physical_stock||0)+(s.total_received||0)-(s.total_outgoing||0));
+    var cur=curStock(s);
     var sz=(s.size||'').toLowerCase();
     var col=(s.colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
     var k=sz+'||'+col;
@@ -2493,7 +2413,7 @@ async function loadAlerts(){
     var col=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
     var k=sz+'||'+col;
     if(!demandMap[k])demandMap[k]={needed:0,clients:[]};
-    demandMap[k].needed+=Math.round((j.qty_printed||0)*1.05);
+    demandMap[k].needed+=Math.round(qtyRemaining(j)*wasteFactor(j));
     if(demandMap[k].clients.indexOf(j.client)===-1)demandMap[k].clients.push(j.client);
   });
 
@@ -2591,8 +2511,8 @@ function weekJobs(mon){
   });
 }
 
-async function loadCalData(){
-  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
+async function loadCalData(force){
+  var r={data:await fetchSchedule(force)};
   if(r&&r.data){
     prints=r.data;
     // Rebuild window cache from fresh data
@@ -2612,7 +2532,7 @@ function renderCal(){
   document.getElementById('clbl').textContent=fmt(mon)+' – '+fmt(fri)+' 2026';
   var cw=weekJobs(getMon(calOff)),nw=weekJobs(getMon(calOff+1));
   document.getElementById('ctw').textContent=cw.length;
-  var cwPrints=cw.reduce(function(s,j){return s+(j.qty_printed||0)*(j.num_colours||1);},0);
+  var cwPrints=cw.reduce(function(s,j){return s+printCount(j);},0);
   document.getElementById('ctu').textContent=cwPrints.toLocaleString();
   document.getElementById('cnw').textContent=nw.length;
   var cwMonth=(prints||[]).filter(function(j){
@@ -2666,19 +2586,24 @@ function renderCal(){
       var ce=document.createElement('div');
       ce.className='ce '+sc+(isUrg?' urgent':'');
       ce.draggable=!isUrg;
-      var prints = (ev.qty_printed||0) * (ev.num_colours||1);
+      var prints = printCount(ev);
+      var _np=isNoPrint(ev);
       ce.innerHTML=(isUrg?'<div class="urg-badge">🚨 URGENT</div>':'')+
+        (_np?'<div style="font-size:9px;font-weight:700;color:#566573;letter-spacing:.02em">⬜ NO PRINT</div>':'')+
         '<div class="ec">'+ev.client+'</div>'+
         '<div class="ed">'+(ev.qty_printed||0).toLocaleString()+' cups · '+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div>'+
-        '<div class="ed">🖨️ '+prints.toLocaleString()+' prints · '+(ev.num_colours||1)+' col.</div>'+
+        (_np?'<div class="ed">📦 Plain cups — no printing</div>'
+            :'<div class="ed">🖨️ '+prints.toLocaleString()+' prints · '+(ev.num_colours||1)+' col.</div>')+
         (isUrg?'<div class="urg-lock">🔒 Cannot be moved</div>':'')+
-        (ev.artwork?'<div class="ed">📋 '+ev.artwork+' artwork</div>':'');
+        (ev.artwork&&!_np?'<div class="ed">📋 '+ev.artwork+' artwork</div>':'')+
+        progressBar(ev);
       ce.dataset.tip = [
         ev.client,
         ev.print_date?'📅 Print: '+ev.print_date:'',
         ev.delivery_date?'🚚 Del: '+ev.delivery_date:'',
         (ev.qty_printed||0).toLocaleString()+' '+( ev.cup_size||'')+' '+(ev.cup_colour||''),
-        '🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.',
+        isNoPrint(ev)?'⬜ NO PRINT — plain cups':'🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.',
+        isPartial(ev)?('📦 Produced '+qtyDone(ev).toLocaleString()+' / '+(ev.qty_printed||0).toLocaleString()+' — '+qtyRemaining(ev).toLocaleString()+' left'):'',
         ev.artwork?'📋 '+ev.artwork+' artwork':'',
         ev.notes?'📝 '+ev.notes:'',
         ev.posis_received?'✅ POSIS received':'❌ POSIS not received',
@@ -2708,7 +2633,7 @@ function renderCal(){
             e.stopPropagation();
             downloadJobCard(window['ev_'+eid]);
           } else {
-            openEvDetail(window['ev_'+eid]);
+            if(role!=='warda')openEdit(window['ev_'+eid]);else openEvDetail(window['ev_'+eid]);
           }
         });
       })(ev.id, ev.status);
@@ -2750,15 +2675,16 @@ function renderCal(){
         window['ev_'+ev.id]=ev;
         var isDone=(ev.status||'').toLowerCase()==='done';
         var isUrg=ev.is_urgent||false;
-        var bc=isDone?'#ccc':isUrg?'#C0392B':(ev.cup_size||'').indexOf('500')>-1?'#43A047':(ev.cup_size||'').indexOf('330')>-1?'#FDD835':'#1E88E5';
+        var bc=isDone?'#ccc':isUrg?'#C0392B':isNoPrint(ev)?'#95A5A6':(ev.cup_size||'').indexOf('500')>-1?'#43A047':(ev.cup_size||'').indexOf('330')>-1?'#FDD835':'#1E88E5';
         var jobEl=document.createElement('div');
         jobEl.className='mcal-job';
         jobEl.style.opacity=isDone?'0.5':'1';
         jobEl.innerHTML='<div class="mj-bar" style="background:'+bc+'"></div>'
           +'<div class="mj-body">'
-          +'<div class="mj-client">'+(isUrg?'🚨 ':'')+ev.client+'</div>'
+          +'<div class="mj-client">'+(isUrg?'🚨 ':'')+ev.client+(isNoPrint(ev)?' '+NOPRINT_BADGE:'')+'</div>'
           +'<div class="mj-detail">'+(ev.qty_printed||0).toLocaleString()+' · '+(ev.cup_size||'—')+' '+(ev.cup_colour||'—')+'</div>'
-          +(ev.print_colour?'<div class="mj-detail">🎨 '+ev.print_colour+' · '+(ev.num_colours||1)+' col.</div>':'')
+          +(isNoPrint(ev)?'<div class="mj-detail">📦 No printing</div>':(ev.print_colour?'<div class="mj-detail">🎨 '+ev.print_colour+' · '+(ev.num_colours||1)+' col.</div>':''))
+          +progressBar(ev)
           +'</div>'
           +'<div class="mj-right">'
           +'<span class="mj-qty">'+(ev.qty_printed||0).toLocaleString()+'</span>'
@@ -2806,8 +2732,8 @@ function renderCal(){
         var col=(j.cup_colour||'Unknown');
         var key=sz+'||'+col;
         if(!grouped[key])grouped[key]={size:sz,colour:col,qty:0,stock:0,jobs:[]};
-        grouped[key].qty+=(j.qty_printed||0);
-        grouped[key].stock+=Math.round((j.qty_printed||0)*1.05);
+        grouped[key].qty+=qtyRemaining(j);
+        grouped[key].stock+=Math.round(qtyRemaining(j)*wasteFactor(j));
         grouped[key].jobs.push(j.client);
       });
       // Sort by size order then colour
@@ -2851,7 +2777,7 @@ function renderCal(){
           var rSz=r.size.toLowerCase();
           var rCol=r.colour.toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
           if(jSz===rSz&&jCol===rCol){
-            alreadyCommitted+=Math.round((j.qty_printed||0)*1.05);
+            alreadyCommitted+=Math.round(qtyRemaining(j)*wasteFactor(j));
           }
         });
 
@@ -2890,7 +2816,7 @@ function renderCal(){
             if(!jMon2||jMon2>=viewMon2)return;
             var jSz=(j.cup_size||'').toLowerCase();
             var jCol=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
-            if(jSz===r.size.toLowerCase()&&jCol===r.colour.toLowerCase())comm2+=Math.round((j.qty_printed||0)*1.05);
+            if(jSz===r.size.toLowerCase()&&jCol===r.colour.toLowerCase())comm2+=Math.round(qtyRemaining(j)*wasteFactor(j));
           });
           var af2=Math.max(0,avail2+inc2-comm2);
           return r.stock>af2;
@@ -2906,7 +2832,7 @@ function renderCal(){
             if(!jMon2||jMon2>=viewMon2)return;
             var jSz=(j.cup_size||'').toLowerCase();
             var jCol=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
-            if(jSz===r.size.toLowerCase()&&jCol===r.colour.toLowerCase())comm2+=Math.round((j.qty_printed||0)*1.05);
+            if(jSz===r.size.toLowerCase()&&jCol===r.colour.toLowerCase())comm2+=Math.round(qtyRemaining(j)*wasteFactor(j));
           });
           var af2=Math.max(0,avail2+inc2-comm2);
           return r.size+' '+r.colour+': <strong>'+(r.stock-af2).toLocaleString()+' short</strong>';
@@ -2970,11 +2896,11 @@ function renderCal(){
       wh.textContent=(ev.week_label||'—')+' · '+(ev.date_period||'');
       listEl.appendChild(wh);lastW2=ev.week_label;
     }
-    var used=Math.round((ev.qty_printed||0)*1.05).toLocaleString();
+    var used=stockNeeded(ev).toLocaleString();
     var row=document.createElement('div');
     row.style.cssText='display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e0e0e0;cursor:pointer';
-    row.innerHTML='<div style="flex:1"><div style="font-weight:500">'+ev.client+'</div>'+
-      '<div style="font-size:11px;color:#666">'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div></div>'+
+    row.innerHTML='<div style="flex:1"><div style="font-weight:500">'+ev.client+(isNoPrint(ev)?' '+NOPRINT_BADGE:'')+'</div>'+
+      '<div style="font-size:11px;color:#666">'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div>'+progressBar(ev,'120px')+'</div>'+
       '<div style="text-align:right;font-weight:600">'+(ev.qty_printed||0).toLocaleString()+'</div>'+
       '<div style="font-size:11px;color:#D35400">−'+used+'</div>'+
       '<div>'+pill(ev.status||'Scheduled')+'</div>';
@@ -2996,7 +2922,7 @@ async function onDrop(dateISO){
   await DB().from('print_schedule').update({week_label:'W'+wn,date_period:np,print_date:dateISO}).eq('id',dragId);
   var ev=(prints||[]).find(function(e){return e.id===dragId;});
   toast('✓ '+(ev?ev.client:'Job')+' moved to W'+wn,'ok');
-  dragId=null;loadCalData();
+  dragId=null;bustSchedule();loadCalData(true);
 }
 
 // ── QUICK ADD → now opens the FULL job form ──
@@ -3007,7 +2933,6 @@ function openQA(dateISO){
 // Open the full edit modal as a NEW blank job (all options: simple/complex, all colours, all fields)
 function openEditNew(prefill){
   prefill=prefill||{};
-  var _esb2=document.getElementById('edit-send-btn');if(_esb2)_esb2.style.display='none';
   document.getElementById('eid').value='';
   document.getElementById('ecl').value='';
   document.getElementById('epd').value=prefill.print_date||'';
@@ -3021,6 +2946,7 @@ function openEditNew(prefill){
   document.getElementById('edt').value='';document.getElementById('eda').value='';
   document.getElementById('ecn').value='';document.getElementById('ecp').value='';
   document.getElementById('eurg').checked=false;document.getElementById('eposis').checked=false;
+  document.getElementById('enoprint').checked=false;toggleNoPrintUI('e');
   pendingArtworkFile=null;
   document.getElementById('artwork-file').value='';
   document.getElementById('artwork-preview').style.display='none';
@@ -3054,7 +2980,7 @@ async function saveQA(){
   toast('✓ '+c+' added','ok');
   closeOv('qaov');
   document.getElementById('qac').value='';document.getElementById('qaq').value='';
-  prints=[];loadCalData();loadJobs();loadMyJobs();
+  bustSchedule();loadCalData(true);loadJobs(true);loadMyJobs();
 }
 
 // ── JOB ITEMS RENDER (shared) ──
@@ -3107,8 +3033,9 @@ async function openEvDetail(ev){
     (_items?renderJobItems(ev,false):
       ('<div class="mr"><span class="ml">Cup</span><span>'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</span></div>'+
        '<div class="mr"><span class="ml">Qty</span><span><strong>'+(ev.qty_printed||0).toLocaleString()+'</strong> units</span></div>'+
-       '<div class="mr"><span class="ml">Print</span><span>'+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.</span></div>'))+
-    '<div class="mr"><span class="ml">Stock used</span><span><strong>'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+'</strong> units</span></div>'+
+       '<div class="mr"><span class="ml">Print</span><span>'+(isNoPrint(ev)?'⬜ <strong>NO PRINT</strong> — plain cups':((ev.print_colour||'—')+' · '+(ev.num_colours||1)+' col.'))+'</span></div>'))+
+    (isPartial(ev)?('<div class="mr"><span class="ml">Produced</span><span><strong style="color:#1E8449">'+qtyDone(ev).toLocaleString()+'</strong> / '+(ev.qty_printed||0).toLocaleString()+' · <strong style="color:#C0392B">'+qtyRemaining(ev).toLocaleString()+' left</strong></span></div>'):'')+
+    '<div class="mr"><span class="ml">Stock used</span><span><strong>'+stockNeeded(ev).toLocaleString()+'</strong> units'+(isNoPrint(ev)?' <span style="font-size:11px;color:#888">(no print waste)</span>':'')+'</span></div>'+
     '<div class="mr"><span class="ml">Status</span><span>'+pill(ev.status||'Scheduled')+'</span></div>'+
     (ev.posis_received?'<div class="mr"><span class="ml">POSIS</span><span style="color:#1F4E79;font-weight:700">✅ Received</span></div>':
     '<div class="mr"><span class="ml">POSIS</span><span style="color:#aaa">Not received yet</span></div>')+
@@ -3122,17 +3049,15 @@ async function openEvDetail(ev){
     eb.addEventListener('click',function(){closeOv('evov');openEdit(curEv);});
     act.appendChild(eb);
   }
-  var db2=document.createElement('button');db2.className='btn bs';db2.style.flex='1';db2.textContent='🖨️ Job card';
+  if(ev.status!=='Done'&&ev.status!=='Cancelled'){
+    var bbt=document.createElement('button');bbt.className='btn bs';
+    bbt.style.cssText='color:#D35400;border-color:#D35400';bbt.textContent='📦 Batch';
+    bbt.addEventListener('click',function(){closeOv('evov');openBatch(curEv.id);});
+    act.appendChild(bbt);
+  }
+  var db2=document.createElement('button');db2.className='btn bs';db2.textContent='🖨️ Job card';
   db2.addEventListener('click',function(){downloadJobCard(curEv);});
   act.appendChild(db2);
-  if(role!=='warda'){
-    var sb=document.createElement('button');sb.className='btn bs';sb.style.flex='1';sb.textContent='📋 Send proof';
-    sb.addEventListener('click',function(){openSendApproval();});
-    act.appendChild(sb);
-  }
-  var blb=document.createElement('button');blb.className='btn bs';blb.style.flex='1';blb.textContent='✍️ Sign link';
-  blb.addEventListener('click',function(){openSendApproval(null,'quick');});
-  act.appendChild(blb);
   var cb=document.createElement('button');cb.className='btn bs';cb.textContent='Close';
   cb.addEventListener('click',function(){closeOv('evov');});
   act.appendChild(cb);
@@ -3140,6 +3065,26 @@ async function openEvDetail(ev){
 }
 
 // ── EDIT ──
+// Hide print-specific fields when the order is plain cups. prefix 'e' = edit modal, 'j' = create panel.
+function toggleNoPrintUI(prefix){
+  var cb=document.getElementById(prefix==='e'?'enoprint':'jnoprint');
+  if(!cb)return;
+  var on=cb.checked;
+  if(prefix==='e'){
+    var f=document.getElementById('e-print-fields'),h=document.getElementById('e-print-hdr'),n=document.getElementById('e-noprint-note');
+    if(f)f.style.display=on?'none':'';
+    if(h)h.style.display=on?'none':'';
+    if(n)n.style.display=on?'':'none';
+    var art=document.getElementById('e-artwork-section');
+    if(art&&window._editMode!=='complex')art.style.display=on?'none':'';
+    if(on)setSel('ept','No print');
+    else if(document.getElementById('ept').value==='No print')setSel('ept','Screen print');
+  } else {
+    var jf=document.getElementById('j-print-fields');
+    if(jf)jf.style.display=on?'none':'';
+  }
+}
+
 function setSel(id,v){
   var s=document.getElementById(id);
   if(!s)return;
@@ -3151,8 +3096,6 @@ function setSel(id,v){
 async function openEdit(ev){
   if(!ev)return;
   ev=await loadFullJob(ev);
-  curEv=ev;
-  var _esb=document.getElementById('edit-send-btn');if(_esb)_esb.style.display=(role==='warda')?'none':'';
   document.getElementById('eid').value=ev.id||'';
   document.getElementById('ecl').value=ev.client||'';
   document.getElementById('ewl').value=ev.week_label||'';
@@ -3188,6 +3131,8 @@ async function openEdit(ev){
   document.getElementById('ecp').value  = ev.contact_phone||'';
   document.getElementById('eurg').checked = ev.is_urgent||false;
   document.getElementById('eposis').checked = ev.posis_received||false;
+  document.getElementById('enoprint').checked = isNoPrint(ev);
+  toggleNoPrintUI('e');
   // multi-line mode
   var _pit=parseItems(ev);
   document.getElementById('e-jitems').innerHTML='';
@@ -3263,6 +3208,13 @@ async function saveEdit(){
     updateData.artwork=document.getElementById('ear').value;
     updateData.job_type='simple';updateData.items=null;updateData.n_items=null;
   }
+  // No-print orders carry no colours / artwork at all
+  try {
+    var _np=document.getElementById('enoprint').checked;
+    updateData.no_print=_np;
+    updateData.print_type=_np?'No print':document.getElementById('ept').value;
+    if(_np){updateData.num_colours=0;updateData.print_colour=null;updateData.artwork='None';}
+  } catch(e){}
   try { updateData.posis_received = document.getElementById('eposis').checked; } catch(e){}
 
   // Add is_urgent only if column exists (won't break if missing)
@@ -3290,6 +3242,7 @@ async function saveEdit(){
       var artworkUrl = await uploadArtwork(id, pendingArtworkFile);
       if(artworkUrl){
         await DB().from('print_schedule').update({artwork_url:artworkUrl}).eq('id',id);
+        delete _fullJobCache[String(id)];
         toast('✓ '+client+' saved + artwork uploaded','ok');
       } else {
         toast('✓ '+client+' saved (artwork upload failed)','ok');
@@ -3303,7 +3256,7 @@ async function saveEdit(){
 
   closeOv('edov');
   pendingArtworkFile=null;
-  prints=[];loadCalData();loadJobs();loadPrintNoReschedule();loadMyJobs();
+  bustSchedule();loadCalData(true);loadJobs(true);loadPrintNoReschedule();loadMyJobs();
 }
 
 async function delJob(){
@@ -3346,8 +3299,10 @@ async function delJob(){
   closeOv('edov');
 
   // Purge from ALL memory caches
+  bustSchedule();
   var sid=String(id);
-  prints = prints.filter(function(p){ return String(p.id) !== sid; });
+  prints = (prints||[]).filter(function(p){ return String(p.id) !== sid; });
+  delete _fullJobCache[sid];
   [id, numId].forEach(function(k){
     delete window['ev_'+k];
     delete window['p_'+k];
@@ -3359,17 +3314,17 @@ async function delJob(){
 
   // Full fresh reload from DB
   setTimeout(async function(){
-    await loadCalData();
-    loadJobs();
+    await loadCalData(true);
+    loadJobs(true);
     loadPrintNoReschedule();
     loadMyJobs();
-    loadDeliveries();
+    loadDeliveries(true);
   }, 500);
 }
 
 // Load print tab WITHOUT triggering auto-reschedule (used after delete/save)
 async function loadPrintNoReschedule(){
-  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
+  var r={data:await fetchSchedule()};
   if(!r.data)return;
   var now=new Date();now.setHours(0,0,0,0);
   var dow=now.getDay();
@@ -3402,8 +3357,8 @@ async function loadPrintNoReschedule(){
 }
 
 // ── WARDA ──
-async function loadMyJobs(){
-  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
+async function loadMyJobs(force){
+  var r={data:await fetchSchedule(force)};
   if(!r.data)return;
   var tot=r.data.length,done=r.data.filter(function(j){return j.status==='Done';}).length;
   var units=r.data.filter(function(j){return j.status==='Done';}).reduce(function(s,j){return s+(j.qty_printed||0);},0);
@@ -3432,13 +3387,14 @@ async function loadMyJobs(){
       var isDone=j.status==='Done';
       var isUrg=j.is_urgent||false;
       var sc=isDone?'dn2':(j.cup_size||'').indexOf('500')>-1?'s5b':(j.cup_size||'').indexOf('330')>-1?'s3b':'s2b';
-      var waste=Math.round((j.qty_printed||0)*0.05).toLocaleString();
+      var _np=isNoPrint(j);
+      var waste=Math.round((j.qty_printed||0)*(_np?0:0.05)).toLocaleString();
       var card=document.createElement('div');card.className='pj '+sc+(isUrg?' urg-card':'');
       card.innerHTML='<div class="ck">'+(isDone?'✓':'')+'</div>'+
-        '<div class="ji"><div class="jc">'+(isUrg?'<span class="urg-badge">🚨 URGENT</span> ':'')+j.client+(j.posis_received?' <span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:1px 6px;border-radius:8px;font-weight:700">✅ POSIS</span>':'')+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+' · '+(j.print_colour||'—')+'<br>'+(j.print_date?'📅 '+j.print_date:'')+'</div></div>'+
+        '<div class="ji"><div class="jc">'+(isUrg?'<span class="urg-badge">🚨 URGENT</span> ':'')+j.client+(_np?' '+NOPRINT_BADGE:'')+(j.posis_received?' <span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:1px 6px;border-radius:8px;font-weight:700">✅ POSIS</span>':'')+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+(_np?' · no printing':' · '+(j.print_colour||'—'))+'<br>'+(j.print_date?'📅 '+j.print_date:'')+'</div>'+progressBar(j)+'</div>'+
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
-        '<div><div class="jq">'+(j.qty_printed||0).toLocaleString()+'</div><div class="jw">+'+waste+'</div></div>'+
-        '<div style="display:flex;gap:4px;margin-top:4px">'+(isDone?'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px;color:#D35400;border-color:#D35400">↩️ Undo</button>':'<button class="btn bp bsm" style="font-size:10px;padding:3px 8px">✅ Done</button>')+'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px">🖨️ Card</button></div>'+
+        '<div><div class="jq">'+(j.qty_printed||0).toLocaleString()+'</div>'+(_np?'':'<div class="jw">+'+waste+'</div>')+'</div>'+
+        '<div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">'+(isDone?'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px;color:#D35400;border-color:#D35400">↩️ Undo</button>':'<button class="btn bp bsm" style="font-size:10px;padding:3px 8px">✅ Done</button>')+'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px">🖨️ Card</button>'+(isDone?'':'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px;color:#D35400;border-color:#D35400">📦 Batch</button>')+'</div>'+
         '</div>';
       (function(jid,jst,jev){
         card.addEventListener('click',function(e){
@@ -3448,57 +3404,166 @@ async function loadMyJobs(){
         var btns = card.querySelectorAll('button');
         if(btns[0])btns[0].addEventListener('click',function(e){e.stopPropagation();toggleDone(jid,jst);});
         if(btns[1])btns[1].addEventListener('click',function(e){e.stopPropagation();downloadJobCard(jev);});
+        if(btns[2])btns[2].addEventListener('click',function(e){e.stopPropagation();openBatch(jid);});
       })(j.id,j.status,j);
       el.appendChild(card);
     });
   });
 }
 
+// ── STOCK MOVEMENT ─────────────────────────────────────────────────────────
+// Single place where cups leave stock. Positive delta = cups consumed, negative = given back.
+// Always reads the row live from the DB (never from the in-memory stock[] array) so two
+// people recording batches at the same time can't overwrite each other's totals.
+async function applyStockDelta(job,deltaUnits){
+  if(!job||!deltaUnits)return true;
+  var jobColourNorm=(job.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted').replace('dark blue','blue');
+  var isFrosted=jobColourNorm==='frosted';
+  var row=null;
+  if(isFrosted){
+    // Frosted: consume the "new" row, never the in-house Washed one
+    var rawR=await DB().from('stock').select('id,product,total_outgoing')
+      .eq('size',job.cup_size).ilike('product','%frosted%').not('product','ilike','%washed%');
+    if(rawR.data&&rawR.data.length)row=rawR.data[0];
+  } else {
+    var colourSearch=jobColourNorm.charAt(0).toUpperCase()+jobColourNorm.slice(1);
+    var nonFrR=await DB().from('stock').select('id,product,total_outgoing')
+      .eq('size',job.cup_size).ilike('colour',colourSearch);
+    if(nonFrR.data&&nonFrR.data.length)row=nonFrR.data[0];
+  }
+  if(!row){
+    console.warn('No stock row found for',job.cup_size,job.cup_colour);
+    toast('⚠️ Stock row not found for '+(job.cup_size||'?')+' '+(job.cup_colour||'?'),'err');
+    return false;
+  }
+  var newOut=Math.max(0,(row.total_outgoing||0)+deltaUnits);
+  var upRes=await DB().from('stock').update({total_outgoing:newOut}).eq('id',row.id);
+  if(upRes.error){
+    console.error('Stock update error:',upRes.error);
+    toast('⚠️ Stock update failed: '+upRes.error.message,'err');
+    return false;
+  }
+  return true;
+}
+
 async function toggleDone(id,st){
   var ns=st==='Done'?'In progress':'Done';
-  // Always fetch job fresh from DB to ensure accurate qty
-  var jobR=await DB().from('print_schedule').select('*').eq('id',id).single();
+  // Fetch job fresh from DB — narrow columns only, no artwork/items blob needed for the stock-delta math
+  var jobR=await DB().from('print_schedule').select('id,client,cup_size,cup_colour,qty_printed,status,no_print,print_type,qty_done,batches').eq('id',id).single();
   var job=jobR.data||((prints||[]).find(function(p){return String(p.id)===String(id);})||window['ev_'+id]||window['p_'+id]||window['j_'+id]);
-  await DB().from('print_schedule').update({status:ns}).eq('id',id);
 
-  // Adjust stock total_outgoing when toggling Done
+  // Stock is deducted per batch, so completing a job only consumes what is still OUTSTANDING.
+  // Undoing gives back everything already counted and resets the batch progress to zero.
+  var upd={status:ns};
   if(job){
-    var used=Math.round((job.qty_printed||0)*1.05);
-    var jobColourNorm=(job.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted').replace('dark blue','blue');
-    var isFrosted=jobColourNorm==='frosted';
-    var delta=ns==='Done'?used:-used;
-
-    if(isFrosted){
-      // Frosted: update first matching row (ignore Washed distinction)
-      var rawR=await DB().from('stock').select('id,product,total_outgoing')
-        .eq('size',job.cup_size).ilike('product','%frosted%').not('product','ilike','%washed%');
-      if(rawR.data&&rawR.data.length){
-        var fr=rawR.data[0];
-        var newOutFr=Math.max(0,(fr.total_outgoing||0)+delta);
-        await DB().from('stock').update({total_outgoing:newOutFr}).eq('id',fr.id);
+    var factor=wasteFactor(job);
+    var alreadyDone=qtyDone(job);
+    var total=job.qty_printed||0;
+    if(ns==='Done'){
+      var remaining=Math.max(0,total-alreadyDone);
+      if(remaining>0)await applyStockDelta(job,Math.round(remaining*factor));
+      upd.qty_done=total;
+      if(remaining>0){
+        var bl=parseBatches(job);
+        bl.push({date:new Date().toISOString().slice(0,10),qty:remaining,by:role,note:'Completed'});
+        upd.batches=JSON.stringify(bl);
       }
     } else {
-      // Non-Frosted: fetch live from DB by size + colour
-      var colourSearch=jobColourNorm.charAt(0).toUpperCase()+jobColourNorm.slice(1);
-      var nonFrR=await DB().from('stock').select('id,product,total_outgoing')
-        .eq('size',job.cup_size).ilike('colour',colourSearch);
-      if(nonFrR.data&&nonFrR.data.length){
-        var srow2=nonFrR.data[0];
-        var newOut2=Math.max(0,(srow2.total_outgoing||0)+delta);
-        var upRes=await DB().from('stock').update({total_outgoing:newOut2}).eq('id',srow2.id);
-        if(upRes.error){
-          console.error('Stock update error:',upRes.error);
-          toast('⚠️ Stock update failed: '+upRes.error.message,'err');
-        }
-      } else {
-        console.warn('No stock row found for',job.cup_size,colourSearch);
-        toast('⚠️ Stock row not found for '+job.cup_size+' '+colourSearch,'err');
-      }
+      if(alreadyDone>0)await applyStockDelta(job,-Math.round(alreadyDone*factor));
+      upd.qty_done=0;
+      upd.batches=JSON.stringify([]);
     }
+  }
+  var wr=await DB().from('print_schedule').update(upd).eq('id',id);
+  if(wr.error){
+    // Older DBs without the batch columns: fall back to a status-only update
+    console.warn('Batch columns missing, status-only update:',wr.error.message);
+    await DB().from('print_schedule').update({status:ns}).eq('id',id);
   }
 
   toast(ns==='Done'?'✅ Done!':'↩️ In progress','ok');
-  prints=[];loadMyJobs();loadCalData();loadPrintNoReschedule();loadStock();
+  bustSchedule();bustStock();
+  loadMyJobs(true);loadCalData(true);loadPrintNoReschedule();loadStock(true);
+}
+
+// ── RECORD A PRODUCTION BATCH ──────────────────────────────────────────────
+// Opens on a job, records how many cups were actually produced this run, deducts exactly
+// that many from stock, and closes the job automatically once the full quantity is reached.
+var batchJob=null;
+async function openBatch(id){
+  var r=await DB().from('print_schedule').select('id,client,cup_size,cup_colour,qty_printed,status,no_print,print_type,qty_done,batches,print_date').eq('id',id).single();
+  if(!r.data){toast('Could not load job','err');return;}
+  batchJob=r.data;
+  var j=batchJob;
+  var done=qtyDone(j),total=j.qty_printed||0,left=qtyRemaining(j);
+  document.getElementById('batch-title').textContent=j.client+(isNoPrint(j)?' — no print':'');
+  document.getElementById('batch-sub').textContent=(j.cup_size||'—')+' · '+(j.cup_colour||'—')+' · '+total.toLocaleString()+' cups total';
+  var pct=donePct(j);
+  document.getElementById('batch-progress').innerHTML=
+    '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:5px">'
+    +'<span style="color:#1E8449">Produced: '+done.toLocaleString()+'</span>'
+    +'<span style="color:#C0392B">Remaining: '+left.toLocaleString()+'</span></div>'
+    +'<div style="height:12px;background:#e0e0e0;border-radius:6px;overflow:hidden">'
+    +'<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#0E6655,#16A085);border-radius:6px"></div></div>'
+    +'<div style="text-align:center;font-size:11px;color:#666;margin-top:4px">'+pct+'% complete</div>';
+  var qi=document.getElementById('batch-qty');
+  qi.value=left||'';qi.max=left;
+  document.getElementById('batch-hint').textContent=left
+    ? 'Stock deducted for this batch: '+Math.round(left*wasteFactor(j)).toLocaleString()+' units'
+    : 'Order already fully produced';
+  // Quick-fill buttons sized to what is actually left
+  var quick=document.getElementById('batch-quick');
+  var opts=[5000,10000,20000].filter(function(n){return n<left;});
+  quick.innerHTML=opts.map(function(n){return '<button type="button" class="btn bs bsm" onclick="batchSetQty('+n+')">'+n.toLocaleString()+'</button>';}).join('')
+    +(left?'<button type="button" class="btn bs bsm" onclick="batchSetQty('+left+')">All ('+left.toLocaleString()+')</button>':'');
+  // History
+  var bl=parseBatches(j);
+  document.getElementById('batch-history').innerHTML=bl.length
+    ? '<div style="font-size:10px;font-weight:700;color:#666;text-transform:uppercase;margin:14px 0 6px">Production history</div>'
+      +bl.map(function(b,i){return '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #f0f0f0">'
+        +'<span>'+(i+1)+'. '+(b.date||'')+(b.by?' · '+b.by:'')+(b.note?' · '+b.note:'')+'</span>'
+        +'<strong style="color:#0E6655">'+(b.qty||0).toLocaleString()+'</strong></div>';}).join('')
+    : '';
+  document.getElementById('batchov').classList.add('op');
+  setTimeout(function(){qi.focus();qi.select();},100);
+}
+function batchSetQty(n){
+  var qi=document.getElementById('batch-qty');
+  qi.value=n;
+  if(batchJob)document.getElementById('batch-hint').textContent='Stock deducted for this batch: '+Math.round(n*wasteFactor(batchJob)).toLocaleString()+' units';
+}
+async function saveBatch(){
+  if(!batchJob)return;
+  var j=batchJob;
+  var qty=parseInt(document.getElementById('batch-qty').value)||0;
+  var left=qtyRemaining(j);
+  if(qty<=0){toast('Enter a quantity','err');return;}
+  if(qty>left){toast('Only '+left.toLocaleString()+' cups left on this order','err');return;}
+  var btn=document.getElementById('batch-save');
+  btn.disabled=true;btn.textContent='⏳ Saving...';
+
+  var factor=wasteFactor(j);
+  var ok=await applyStockDelta(j,Math.round(qty*factor));
+  if(!ok){btn.disabled=false;btn.textContent='💾 Record batch';return;}
+
+  var newDone=qtyDone(j)+qty;
+  var full=newDone>=(j.qty_printed||0);
+  var bl=parseBatches(j);
+  bl.push({date:new Date().toISOString().slice(0,10),qty:qty,by:role,note:document.getElementById('batch-note').value||''});
+  var upd={qty_done:newDone,batches:JSON.stringify(bl),status:full?'Done':'In progress'};
+  var wr=await DB().from('print_schedule').update(upd).eq('id',j.id);
+  btn.disabled=false;btn.textContent='💾 Record batch';
+  if(wr.error){
+    toast('❌ '+wr.error.message,'err');
+    // roll the stock back so the two never drift apart
+    await applyStockDelta(j,-Math.round(qty*factor));
+    return;
+  }
+  toast(full?'✅ Order complete — '+newDone.toLocaleString()+' cups produced':'📦 Batch of '+qty.toLocaleString()+' recorded — '+qtyRemaining({qty_printed:j.qty_printed,qty_done:newDone}).toLocaleString()+' left','ok');
+  document.getElementById('batch-note').value='';
+  closeOv('batchov');
+  bustSchedule();bustStock();
+  loadMyJobs(true);loadCalData(true);loadPrintNoReschedule();loadStock(true);loadJobs(true);
 }
 
 // ── JOB CARD ──
@@ -3529,6 +3594,7 @@ async function downloadJobCard(ev) {
   } else {
     artSection='<div style="margin:0 0 16px;padding:12px;background:#f2f3f4;border-radius:8px;border:1.5px dashed #ccc;text-align:center;color:#999;font-size:12px">No artwork uploaded</div>';
   }
+  if(isNoPrint(ev))artSection=''; // plain cups: no artwork block at all
   var linesSection='';
   if(complexItems){ artSection=''; linesSection='<div style="margin:0 0 16px;padding:14px;background:#f7f8fa;border-radius:10px;border:1.5px solid #0E6655">'+renderJobItems(ev,true)+'</div>'; }
 
@@ -3584,22 +3650,39 @@ async function downloadJobCard(ev) {
     + '<div style="flex:1">'
     + '<div style="font-size:20px;font-weight:700">'+(ev.qty_printed||0).toLocaleString()+' cups</div>'
     + '<div style="font-size:13px;color:#666;margin-top:2px">'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div>'
-    + '<div style="font-size:13px;color:#666;margin-top:2px">🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' colour'+(ev.num_colours>1?'s':'')+'</div>'
+    + (isNoPrint(ev)
+        ? '<div style="font-size:13px;color:#566573;margin-top:2px;font-weight:700">⬜ NO PRINT — plain cups, nothing to print</div>'
+        : '<div style="font-size:13px;color:#666;margin-top:2px">🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' colour'+(ev.num_colours>1?'s':'')+'</div>')
     + '</div>'
     + '<div style="text-align:right">'
     + '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:3px">Stock to use</div>'
-    + '<div style="font-size:22px;font-weight:700;color:#0E6655">'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+'</div>'
-    + '<div style="font-size:11px;color:#999">units</div>'
+    + '<div style="font-size:22px;font-weight:700;color:#0E6655">'+stockNeeded(ev).toLocaleString()+'</div>'
+    + '<div style="font-size:11px;color:#999">units'+(isNoPrint(ev)?' (1:1)':'')+'</div>'
     + '</div>'
     + '</div>'
+    // Batch production status — only shown when the order is partially produced
+    + (isPartial(ev)
+        ? '<div style="background:#FDEBD0;border:1.5px solid #D35400;border-radius:10px;padding:13px 16px;margin-bottom:14px">'
+          + '<div style="font-size:10px;font-weight:700;color:#7E5109;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Production in batches</div>'
+          + '<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;margin-bottom:6px">'
+          + '<span style="color:#1E8449">Done: '+qtyDone(ev).toLocaleString()+'</span>'
+          + '<span style="color:#C0392B">Remaining: '+qtyRemaining(ev).toLocaleString()+'</span></div>'
+          + '<div style="height:12px;background:#fff;border-radius:6px;overflow:hidden;border:1px solid #E5C08A">'
+          + '<div style="height:100%;width:'+donePct(ev)+'%;background:#D35400"></div></div>'
+          + '<div style="text-align:center;font-size:11px;color:#7E5109;margin-top:5px;font-weight:700">'+donePct(ev)+'% of '+(ev.qty_printed||0).toLocaleString()+' cups</div>'
+          + (parseBatches(ev).length?'<div style="margin-top:9px;font-size:11px;color:#7E5109">'
+              +parseBatches(ev).map(function(b,i){return (i+1)+'. '+(b.date||'')+' — <strong>'+(b.qty||0).toLocaleString()+'</strong>'+(b.note?' ('+b.note+')':'');}).join('<br>')
+              +'</div>':'')
+          + '</div>'
+        : '')
 
     // Created by banner
     + (ev.created_by||ev.last_edited_by?'<div style="background:'+(ev.last_edited_by==='owner'||ev.created_by==='owner'?'#D1F2EB':'#D6EAF8')+';border-radius:8px;padding:9px 14px;margin-bottom:14px;display:flex;align-items:center;gap:8px"><span style="font-size:16px">'+(ev.last_edited_by==='owner'||ev.created_by==='owner'?'👤':'🖨️')+'</span><div><div style="font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.04em">'+(ev.last_edited_by?'Last edited by':'Created by')+'</div><div style="font-size:14px;font-weight:700;color:#1a1a1a">'+(ev.last_edited_by==='owner'||ev.created_by==='owner'?'Sébastien (Owner)':ev.last_edited_by==='fred'||ev.created_by==='fred'?'Fred':'Warda')+'</div></div></div>':'')
 
     // Details grid
     + '<div class="grid">'
-    + '<div class="field"><div class="lb">Print type</div><div class="vl">'+(ev.print_type||'Screen print')+'</div></div>'
-    + '<div class="field"><div class="lb">Artwork</div><div class="vl">'+(ev.artwork||'—')+' artwork</div></div>'
+    + '<div class="field"><div class="lb">Print type</div><div class="vl">'+(isNoPrint(ev)?'⬜ No print':(ev.print_type||'Screen print'))+'</div></div>'
+    + '<div class="field"><div class="lb">Artwork</div><div class="vl">'+(isNoPrint(ev)?'—':((ev.artwork||'—')+' artwork'))+'</div></div>'
     + '<div class="field"><div class="lb">Print date</div><div class="vl">'+(ev.print_date||'—')+'</div></div>'
     + '<div class="field"><div class="lb">Delivery date</div><div class="vl">'+(ev.delivery_date||'—')+'</div></div>'
     + (ev.notes?'<div class="field" style="grid-column:1/-1"><div class="lb">Notes</div><div class="vl" style="font-size:13px;font-weight:500">'+ev.notes+'</div></div>':'')
@@ -3710,8 +3793,9 @@ async function downloadJobCard(ev) {
       ev.delivery_type?(ev.delivery_type+': '+(ev.delivery_address||'')):null,
       ev.contact_name?('Contact: '+ev.contact_name+(ev.contact_phone?' / '+ev.contact_phone:'')):null,
       'Cups: '+(ev.qty_printed||0).toLocaleString()+' x '+(ev.cup_size||'')+' '+(ev.cup_colour||''),
-      'Print colour: '+(ev.print_colour||'-')+' x '+(ev.num_colours||1)+' col.',
-      'Stock to pull: '+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+' units'
+      isNoPrint(ev)?'NO PRINT - plain cups':('Print colour: '+(ev.print_colour||'-')+' x '+(ev.num_colours||1)+' col.'),
+      isPartial(ev)?('Produced: '+qtyDone(ev).toLocaleString()+' / '+(ev.qty_printed||0).toLocaleString()+' - '+qtyRemaining(ev).toLocaleString()+' left'):null,
+      'Stock to pull: '+stockNeeded(ev).toLocaleString()+' units'
     ];
     var msg=parts.filter(Boolean).join('%0A');
     genJobPng(function(err,canvas){
@@ -3767,7 +3851,7 @@ document.addEventListener('mouseout', function(e) {
   if(ce) tipEl.classList.remove('show');
 });
 
-['evov','edov','qaov','cardov','stkov','sendov'].forEach(function(id){
+['evov','edov','qaov','cardov','stkov','batchov'].forEach(function(id){
   document.getElementById(id).addEventListener('click',function(e){
     if(e.target===this)closeOv(id);
   });
@@ -3801,9 +3885,8 @@ async function loadToday(){
     phEl.textContent='ZA Public Holiday: '+SA_HOLIDAYS[iso];
   } else { phEl.style.display='none'; }
 
-  var r = await DB().from('print_schedule').select(PS_COLS).order('id');
-  if(!r.data) return;
-  var all = r.data;
+  var all = await fetchSchedule();
+  if(!all) return;
 
   var prints_today = all.filter(function(j){ return j.print_date===iso; });
   var deliveries   = all.filter(function(j){ return j.delivery_date===iso; });
@@ -3833,7 +3916,8 @@ async function loadToday(){
       (j.delivery_type?'<br>'+(j.delivery_type==='Collection'?'📦 Collection':'🚚 Delivery'):'')+
       (j.delivery_address?'<br>📍 '+j.delivery_address:'')+
       '<br>'+(j.cup_size||'-')+' - '+(j.cup_colour||'-')+' - <strong>'+(j.qty_printed||0).toLocaleString()+' cups</strong>'+
-      (j.print_colour?'<br>'+(j.print_colour)+(j.num_colours?' - '+(j.num_colours)+' col.':''):'')+
+      (isNoPrint(j)?'<br>⬜ NO PRINT - plain cups':(j.print_colour?'<br>'+(j.print_colour)+(j.num_colours?' - '+(j.num_colours)+' col.':''):''))+
+      (isPartial(j)?'<br><strong style="color:#D35400">📦 '+qtyDone(j).toLocaleString()+'/'+(j.qty_printed||0).toLocaleString()+' produced - '+qtyRemaining(j).toLocaleString()+' left</strong>':'')+
       (j.print_date&&type!=='print'?'<br>Print: '+j.print_date:'')+
       (j.delivery_date&&type!=='delivery'&&type!=='upcoming'?'<br>Delivery: '+j.delivery_date:'')+
       (j.notes?'<br>'+j.notes:'')+
@@ -4061,9 +4145,10 @@ function renderDelWeekCal(){
 }
 
 // ── DELIVERIES & COLLECTIONS TAB ──
-async function loadDeliveries(){
-  var r=await DB().from('print_schedule').select(PS_COLS).order('delivery_date',{ascending:true});
-  if(!r.data)return;
+async function loadDeliveries(force){
+  var d=await fetchSchedule(force);
+  if(!d)return;
+  var r={data:d.slice().sort(function(a,b){return (a.delivery_date||'9999').localeCompare(b.delivery_date||'9999');})};
   prints=r.data;
   renderDelCal();
 
@@ -4119,7 +4204,8 @@ async function loadDeliveries(){
       (j.delivery_address?'<br>📍 '+j.delivery_address:'')+
       (j.contact_name?'<br>👤 '+j.contact_name+(j.contact_phone?' · 📞 '+j.contact_phone:''):'')+
       '<br>'+(j.cup_size||'—')+' · '+(j.cup_colour||'—')+' · <strong>'+(j.qty_printed||0).toLocaleString()+' cups</strong>'+
-      (j.print_colour?'<br>🎨 '+j.print_colour+(j.num_colours?' · '+(j.num_colours)+' col.':''):'')+
+      (isNoPrint(j)?'<br>'+NOPRINT_BADGE:(j.print_colour?'<br>🎨 '+j.print_colour+(j.num_colours?' · '+(j.num_colours)+' col.':''):''))+
+      (isPartial(j)?'<br><strong style="color:#D35400">📦 '+qtyDone(j).toLocaleString()+'/'+(j.qty_printed||0).toLocaleString()+' produced</strong>':'')+
       (j.notes?'<br>📝 '+j.notes:'')+
       '</div>';
     card.appendChild(body);
@@ -4149,12 +4235,6 @@ async function loadDeliveries(){
     cardBtn.style.fontSize='11px';
     (function(jev){cardBtn.addEventListener('click',function(e){e.stopPropagation();downloadDeliveryCard(jev);});})(j);
     btnRow.appendChild(cardBtn);
-
-    var sendBlBtn=document.createElement('button');
-    sendBlBtn.className='btn bs bsm';sendBlBtn.textContent='✍️ Sign link';
-    sendBlBtn.style.fontSize='11px';
-    (function(jev){sendBlBtn.addEventListener('click',function(e){e.stopPropagation();openSendApproval(jev,'quick');});})(j);
-    btnRow.appendChild(sendBlBtn);
 
     if(role==='owner'||role==='fred'){
       var editBtn=document.createElement('button');
@@ -4259,6 +4339,7 @@ async function downloadDeliveryCard(ev){
     }
   }
 
+  if(isNoPrint(ev))artSection=''; // plain cups: no artwork on the delivery note
   // Build the card's inner HTML (used for both PNG capture and HTML fallback)
   var cardInner=
     // Header
@@ -4286,9 +4367,12 @@ async function downloadDeliveryCard(ev){
     +'<div class="cup-info">'
     +'<div class="main">'+(ev.qty_printed||0).toLocaleString()+' cups</div>'
     +'<div class="sub2">'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</div>'
-    +'<div class="sub2" style="margin-top:2px">🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' colour'+(ev.num_colours>1?'s':'')+'</div>'
+    +(isNoPrint(ev)
+       ?'<div class="sub2" style="margin-top:2px;font-weight:700;color:#566573">⬜ NO PRINT — plain cups</div>'
+       :'<div class="sub2" style="margin-top:2px">🎨 '+(ev.print_colour||'—')+' · '+(ev.num_colours||1)+' colour'+(ev.num_colours>1?'s':'')+'</div>')
     +'</div>'
     +'</div>'
+    +(isPartial(ev)?'<div style="background:#FDEBD0;border:1.5px solid #D35400;border-radius:10px;padding:11px 15px;margin-bottom:16px;font-size:13px;color:#7E5109"><strong>⚠️ Partial order</strong> — '+qtyDone(ev).toLocaleString()+' of '+(ev.qty_printed||0).toLocaleString()+' cups produced so far ('+qtyRemaining(ev).toLocaleString()+' still to come)</div>':'')
 
     // Client packing boxes
     +boxField
@@ -4488,11 +4572,15 @@ async function downloadWardaDayList(){
   var dateVal=document.getElementById('warda-print-date').value;
   if(!dateVal){toast('Please select a date first','err');return;}
 
-  var r=await DB().from('print_schedule').select(PS_COLS).order('id');
-  if(!r.data){toast('Could not load jobs','err');return;}
+  var d0=await fetchSchedule();
+  if(!d0){toast('Could not load jobs','err');return;}
 
-  // Jobs for that print date
-  var jobs=r.data.filter(function(j){return j.print_date===dateVal;});
+  // Jobs for that print date — artwork blobs fetched only for these few jobs (lazy)
+  var jobs=d0.filter(function(j){return j.print_date===dateVal;});
+  await Promise.all(jobs.map(async function(j,i){
+    var full=await fetchFullJob(j.id);
+    if(full)jobs[i]=full;
+  }));
 
   // Format date nicely
   var dp=new Date(dateVal+'T00:00:00');
@@ -4504,7 +4592,7 @@ async function downloadWardaDayList(){
   var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
 
   var totalCups=jobs.reduce(function(s,j){return s+(j.qty_printed||0);},0);
-  var totalPrints=jobs.reduce(function(s,j){return s+(j.qty_printed||0)*(j.num_colours||1);},0);
+  var totalPrints=jobs.reduce(function(s,j){return s+printCount(j);},0);
 
   var rows='';
   jobs.forEach(function(j,i){
@@ -4512,7 +4600,9 @@ async function downloadWardaDayList(){
     var isUrg=j.is_urgent||false;
     var isDone=j.status==='Done';
     var artHtml='';
-    if(j.artwork_url&&j.artwork_url.startsWith('data:image')){
+    if(isNoPrint(j)){
+      artHtml='<span style="font-size:11px;color:#566573;font-weight:700">⬜ NO PRINT</span>';
+    } else if(j.artwork_url&&j.artwork_url.startsWith('data:image')){
       artHtml='<img src="'+j.artwork_url+'" style="max-width:120px;max-height:80px;border-radius:4px;margin-top:6px;display:block">';
     } else if(j.artwork_url&&j.artwork_url.startsWith('data:application/pdf')){
       artHtml='<span style="font-size:11px;color:#1F4E79">📄 PDF</span>';
@@ -4524,6 +4614,8 @@ async function downloadWardaDayList(){
       '<td style="padding:12px 10px">'+
         (isUrg?'<span style="background:#C0392B;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;margin-bottom:3px;display:inline-block">URGENT</span><br>':'')+
         '<span style="font-weight:700;font-size:14px">'+j.client+'</span>'+
+        (isNoPrint(j)?'<span style="font-size:9px;background:#EAECEE;color:#566573;padding:1px 6px;border-radius:8px;font-weight:700;margin-left:4px">⬜ NO PRINT</span>':'')+
+        (isPartial(j)?'<div style="font-size:10px;color:#D35400;font-weight:700;margin-top:2px">📦 '+qtyDone(j).toLocaleString()+'/'+(j.qty_printed||0).toLocaleString()+' done · '+qtyRemaining(j).toLocaleString()+' left</div>':'')+
         (j.posis_received?'<span style="font-size:9px;background:#D6EAF8;color:#1F4E79;padding:1px 6px;border-radius:8px;font-weight:700;margin-left:4px">✅ POSIS</span>':'')+
       '</td>'+
       '<td style="padding:12px 10px;text-align:center">'+
@@ -4532,8 +4624,9 @@ async function downloadWardaDayList(){
       '</td>'+
       '<td style="padding:12px 10px;text-align:center;font-weight:700">'+(j.qty_printed||0).toLocaleString()+'</td>'+
       '<td style="padding:12px 10px;text-align:center">'+
-        '<span style="font-weight:600;color:#444">'+( j.print_colour||'—')+'</span><br>'+
-        '<span style="font-size:11px;color:#888">'+(j.num_colours||1)+' col.</span>'+
+        (isNoPrint(j)
+          ?'<span style="font-weight:700;color:#566573">— no print —</span>'
+          :'<span style="font-weight:600;color:#444">'+( j.print_colour||'—')+'</span><br><span style="font-size:11px;color:#888">'+(j.num_colours||1)+' col.</span>')+
       '</td>'+
       '<td style="padding:12px 10px;text-align:center">'+artHtml+'</td>'+
       '<td style="padding:12px 10px;text-align:center">'+
@@ -4610,7 +4703,7 @@ async function downloadWardaDayList(){
 
 
 // ── MESSAGES ──
-var MSG_NAMES={owner:'Sébastien',fred:'Fred',warda:'Warda',client:'✍️ Signatures'};
+var MSG_NAMES={owner:'Sébastien',fred:'Fred',warda:'Warda'};
 
 function msgToOptions(){
   // Owner can message Fred or Warda (or both)
@@ -4632,7 +4725,7 @@ async function loadMessages(){
   el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
 
   // Fetch all messages where current role is sender or recipient
-  var r=await DB().from('messages').select('*').order('id',{ascending:false});
+  var r=await DB().from('messages').select('id,from_role,to_roles,message,ref_type,ref_id,ref_label,is_urgent,read_by,archived_by,created_at').order('id',{ascending:false}).limit(300);
   if(!r.data){el.innerHTML='<div class="ld">Error loading messages</div>';return;}
 
   // Filter: owner sees all; others see messages they sent or received
@@ -4861,218 +4954,6 @@ async function checkUnreadMessages(){
 }
 
 
-// ── APPROVALS TAB ──
-var APPROVAL_LIST_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co/functions/v1/list-approvals';
-var apAll=[], apView='pending';
-
-var AP_DOC={bat:{label:'Proof',icon:'🖨️',col:'#1F4E79',bg:'#D6EAF8'},
-            delivery:{label:'Delivery',icon:'🚚',col:'#1A3A5C',bg:'#D6EAF8'},
-            collection:{label:'Collection',icon:'📦',col:'#0B5E2F',bg:'#D5F5E3'}};
-var AP_ST={sent:{label:'Sent',cls:'pend'},opened:{label:'Opened',cls:'prog'},
-           signed:{label:'Signed',cls:'done'},draft:{label:'Draft',cls:'sch'},
-           cancelled:{label:'Cancelled',cls:'ndel'},expired:{label:'Expired',cls:'low'}};
-
-function apFilter(v){
-  apView=v;
-  ['pending','signed','all'].forEach(function(k){
-    var b=document.getElementById('ap-f-'+k);
-    if(b){b.style.background=(k===v)?'#0E6655':'#fff';b.style.color=(k===v)?'#fff':'#666';}
-  });
-  renderApprovals();
-}
-
-async function apiApprovals(payload){
-  var r=await fetch(APPROVAL_LIST_URL,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-app-secret':APPROVAL_SECRET},
-    body:JSON.stringify(payload||{})
-  });
-  return await r.json();
-}
-
-async function loadApprovals(){
-  var el=document.getElementById('ap-list');
-  if(el)el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
-  try{
-    var d=await apiApprovals({action:'list'});
-    apAll=d.approvals||[];
-    renderApprovals();
-  }catch(e){
-    if(el)el.innerHTML='<div class="ld">Could not load approvals</div>';
-  }
-}
-
-function apDaysAgo(iso){
-  if(!iso)return null;
-  return Math.floor((Date.now()-new Date(iso).getTime())/86400000);
-}
-
-function renderApprovals(){
-  var el=document.getElementById('ap-list');
-  if(!el)return;
-
-  var signed=apAll.filter(function(a){return a.status==='signed';});
-  var pending=apAll.filter(function(a){return a.status==='sent'||a.status==='opened'||a.status==='draft';});
-  var opened=apAll.filter(function(a){return a.status==='opened';});
-  var stale=pending.filter(function(a){var d=apDaysAgo(a.sent_at||a.created_at);return d!==null&&d>=2;});
-
-  var mets=document.getElementById('ap-mets');
-  if(mets){
-    mets.innerHTML=
-      '<div class="mt or"><div class="lb">Waiting</div><div class="vl">'+pending.length+'</div><div class="sb2">not signed</div></div>'+
-      '<div class="mt gn"><div class="lb">Signed</div><div class="vl">'+signed.length+'</div><div class="sb2">approved</div></div>'+
-      '<div class="mt"><div class="lb">Opened, not signed</div><div class="vl">'+opened.length+'</div><div class="sb2">client saw it</div></div>'+
-      '<div class="mt '+(stale.length?'rd':'gn')+'"><div class="lb">Over 48h</div><div class="vl">'+stale.length+'</div><div class="sb2">needs chasing</div></div>';
-  }
-
-  var badge=document.getElementById('apbn');
-  if(badge){badge.style.display=stale.length?'':'none';badge.textContent=stale.length||'';}
-
-  var rows=apView==='signed'?signed:apView==='pending'?pending:apAll;
-  if(!rows.length){
-    el.innerHTML='<div style="text-align:center;padding:32px;color:#aaa;font-size:13px">Nothing here yet</div>';
-    return;
-  }
-
-  el.innerHTML='';
-  rows.forEach(function(a){
-    window['ap_'+a.id]=a;
-    var doc=AP_DOC[a.doc_type]||{label:a.doc_type,icon:'📄',col:'#666',bg:'#f2f3f4'};
-    var st=AP_ST[a.status]||{label:a.status,cls:'pend'};
-    var snap=a.product_snapshot||{};
-    var isSigned=a.status==='signed';
-    var days=apDaysAgo(a.sent_at||a.created_at);
-    var isStale=!isSigned&&a.status!=='cancelled'&&days!==null&&days>=2;
-
-    var card=document.createElement('div');
-    card.style.cssText='background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:13px 15px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,0.06)'+(a.disputed?';border-left:4px solid #D35400;background:#FFFAF3':isStale?';border-left:4px solid #C0392B':'')+(a.status==='cancelled'?';opacity:0.5':'');
-
-    var detail=[];
-    if(snap.size||snap.colour)detail.push((snap.size||'')+' '+(snap.colour||''));
-    if(snap.qty)detail.push('<strong>'+Number(snap.qty).toLocaleString()+' cups</strong>');
-    if(snap.print_colour)detail.push('🎨 '+snap.print_colour);
-
-    card.innerHTML='<div style="flex:1;min-width:0">'
-      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">'
-      +'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:'+doc.bg+';color:'+doc.col+'">'+doc.icon+' '+doc.label+'</span>'
-      +'<span style="font-weight:700;font-size:14px">'+(a.client||'—')+'</span>'
-      +'</div>'
-      +'<div style="font-size:12px;color:#666;line-height:1.7">'
-      +(detail.length?detail.join(' · ')+'<br>':'')
-      +(isSigned
-        ?'✍️ <strong>'+(a.signer_name||'—')+'</strong> · '+(a.signed_at?new Date(a.signed_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')
-        :'📤 Sent '+(days===0?'today':days===1?'yesterday':days+' days ago')+(a.sent_by?' by '+a.sent_by:''))
-      +(a.remarks?'<br>📝 <span style="color:#C0392B">'+a.remarks+'</span>':'')
-      +'</div></div>'
-      +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'
-      +'<span class="pl '+st.cls+'">'+st.label+'</span>'
-      +(a.disputed?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#FDEBD0;color:#8A4B00">⚠️ Issue</span>':'')
-      +(isStale?'<span style="font-size:10px;font-weight:700;color:#C0392B">⚠️ chase</span>':'')
-      +'</div>';
-
-    var btnRow=document.createElement('div');
-    btnRow.style.cssText='display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;justify-content:flex-end';
-
-    var viewBtn=document.createElement('button');
-    viewBtn.className='btn bs bsm';viewBtn.style.fontSize='11px';viewBtn.textContent='👁️ Open';
-    (function(id){viewBtn.addEventListener('click',function(e){e.stopPropagation();openApprovalDetail(id);});})(a.id);
-    btnRow.appendChild(viewBtn);
-
-    if(!isSigned&&a.status!=='cancelled'){
-      var linkBtn=document.createElement('button');
-      linkBtn.className='btn bs bsm';linkBtn.style.fontSize='11px';linkBtn.textContent='🔗 Copy link';
-      (function(id){linkBtn.addEventListener('click',function(e){
-        e.stopPropagation();
-        var u='https://sebastien676.github.io/swigcups-app/bat.html?t='+id;
-        if(navigator.clipboard){navigator.clipboard.writeText(u);toast('🔗 Link copied','ok');}
-        else{prompt('Copy this link:',u);}
-      });})(a.id);
-      btnRow.appendChild(linkBtn);
-
-      if(a.contact_phone){
-        var waBtn=document.createElement('button');
-        waBtn.className='btn bsm';waBtn.style.cssText='font-size:11px;background:#25D366;color:#fff;border:none';
-        waBtn.textContent='📱 Chase';
-        (function(ap){waBtn.addEventListener('click',function(e){
-          e.stopPropagation();
-          var u='https://sebastien676.github.io/swigcups-app/bat.html?t='+ap.id;
-          var txt='Hello, a quick reminder to approve this document for '+(ap.client||'')+': '+u;
-          window.open('https://wa.me/'+normalisePhone(ap.contact_phone)+'?text='+encodeURIComponent(txt),'_blank');
-        });})(a);
-        btnRow.appendChild(waBtn);
-      }
-
-      var canBtn=document.createElement('button');
-      canBtn.className='btn bs bsm';canBtn.style.cssText='font-size:11px;color:#C0392B';canBtn.textContent='✖';
-      canBtn.title='Cancel this approval';
-      (function(id,cl){canBtn.addEventListener('click',async function(e){
-        e.stopPropagation();
-        if(!confirm('Cancel the approval request for '+cl+'? The link will stop working.'))return;
-        await apiApprovals({action:'cancel',id:id,actor:role});
-        toast('✖ Approval cancelled','ok');
-        loadApprovals();
-      });})(a.id,a.client||'this client');
-      btnRow.appendChild(canBtn);
-    }
-
-    card.querySelector('div:last-child').appendChild(btnRow);
-    el.appendChild(card);
-  });
-}
-
-async function openApprovalDetail(id){
-  var d=await apiApprovals({action:'detail',id:id});
-  if(!d||!d.approval){toast('Could not load','err');return;}
-  var a=d.approval, ev=d.events||[];
-  var doc=AP_DOC[a.doc_type]||{label:a.doc_type,icon:'📄'};
-  var snap=a.product_snapshot||{};
-
-  var body='<div class="mr"><span class="ml">Document</span><span>'+doc.icon+' '+doc.label+'</span></div>'
-    +'<div class="mr"><span class="ml">Client</span><span><strong>'+(a.client||'—')+'</strong></span></div>'
-    +(a.contact_name?'<div class="mr"><span class="ml">Contact</span><span>'+a.contact_name+'</span></div>':'')
-    +(snap.size?'<div class="mr"><span class="ml">Cup</span><span>'+(snap.size||'')+' · '+(snap.colour||'')+'</span></div>':'')
-    +(snap.qty?'<div class="mr"><span class="ml">Qty</span><span><strong>'+Number(snap.qty).toLocaleString()+'</strong></span></div>':'')
-    +'<div class="mr"><span class="ml">Status</span><span class="pl '+((AP_ST[a.status]||{}).cls||'pend')+'">'+((AP_ST[a.status]||{}).label||a.status)+'</span></div>'
-    +'<div class="mr"><span class="ml">Terms</span><span>v'+(a.cgv_version||'—')+'</span></div>';
-
-  if(a.status==='signed'){
-    body+='<div class="es">Signature — legal record</div>'
-      +'<div class="mr"><span class="ml">Signed by</span><span><strong>'+(a.signer_name||'—')+'</strong></span></div>'
-      +'<div class="mr"><span class="ml">Date</span><span>'+(a.signed_at?new Date(a.signed_at).toLocaleString('en-GB'):'—')+'</span></div>'
-      +'<div class="mr"><span class="ml">IP</span><span style="font-size:11px;color:#666">'+(a.ip_address||'—')+'</span></div>'
-      +(a.remarks?'<div class="mr"><span class="ml">'+(a.disputed?'⚠️ Issue':'Remarks')+'</span><span style="color:#C0392B">'+a.remarks+'</span></div>':'');
-    if(a.signature_data){
-      body+='<div style="margin-top:10px;padding:10px;background:#f7f8fa;border-radius:8px;text-align:center">'
-        +'<img src="'+a.signature_data+'" style="max-width:100%;max-height:110px;background:#fff;border-radius:6px">'
-        +'</div>';
-    }
-  }
-
-  if(a.artwork_url){
-    body+='<div class="es">Artwork</div>';
-    body+=(a.artwork_url.toLowerCase().indexOf('.pdf')>-1)
-      ?'<a href="'+a.artwork_url+'" target="_blank" style="color:#0E6655;font-weight:600;font-size:13px">📄 Open PDF</a>'
-      :'<img src="'+a.artwork_url+'" style="max-width:100%;border-radius:8px;margin-top:4px">';
-  }
-
-  if(ev.length){
-    body+='<div class="es">History</div><div style="font-size:12px;color:#666;line-height:1.9">';
-    ev.forEach(function(e){
-      body+='• '+e.event_type+(e.actor?' — '+e.actor:'')+' · '+new Date(e.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'<br>';
-    });
-    body+='</div>';
-  }
-
-  document.getElementById('evtitle').textContent=(a.client||'Approval');
-  document.getElementById('evbody').innerHTML=body;
-  var act=document.getElementById('evact');
-  act.innerHTML='';
-  var cb=document.createElement('button');cb.className='btn bs';cb.style.flex='1';cb.textContent='Close';
-  cb.addEventListener('click',function(){closeOv('evov');});
-  act.appendChild(cb);
-  document.getElementById('evov').classList.add('op');
-}
-
 // ── WARDA CAPACITY STATS ──
 // ── ORDER ANALYTICS ──
 var AN_COL={'frosted':'#7FB3A6','washed frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00'};
@@ -5080,12 +4961,13 @@ var AN_SIZECOL={'500ml':'#0E6655','330ml':'#E67E22','250ml':'#8E44AD'};
 function anColour(c){return AN_COL[(c||'').toLowerCase().trim()]||'#95a5a6';}
 function anNum(n){return (n||0).toLocaleString('fr-FR');}
 
-async function loadAnalytics(){
+async function loadAnalytics(force){
   var el=document.getElementById('an-content');
   el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
   var period=document.getElementById('an-period').value;
   var sizeF=document.getElementById('an-size').value;
-  var r=await DB().from('purchase_orders').select('po_number,po_date,delivery_date,product,size,colour,qty_ordered,unit_price,status').order('po_date',{ascending:true});
+  var dAll=await fetchPOs(force);
+  var r={data:dAll.slice().sort(function(a,b){return (a.po_date||'').localeCompare(b.po_date||'');})};
   if(!r.data){el.innerHTML='<div class="ld">Loading error</div>';return;}
   var rows=r.data.filter(function(p){return p.status!=='Cancelled';});
   if(sizeF!=='all')rows=rows.filter(function(p){return p.size===sizeF;});
@@ -5254,14 +5136,15 @@ async function loadAnalytics(){
   el.innerHTML=html;
 }
 
-async function loadStats(){
+async function loadStats(force){
   var el=document.getElementById('stats-content');
   el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
   var weeksEl=document.getElementById('stats-weeks');
   var nWeeks=weeksEl?parseInt(weeksEl.value)||8:8;
 
-  // Fetch all Done jobs
-  var r=await DB().from('print_schedule').select(PS_COLS).eq('status','Done');
+  // Done jobs from the cached schedule — reuses whatever other tabs already fetched
+  var dAll=await fetchSchedule(force);
+  var r={data:(dAll||[]).filter(function(j){return j.status==='Done';})};
   if(!r.data){el.innerHTML='<div class="ld">Error</div>';return;}
 
   var jobs=r.data.filter(function(j){return j.print_date;});
@@ -5279,7 +5162,7 @@ async function loadStats(){
     if(!byDate[d])byDate[d]={jobs:0,cups:0,prints:0,colours:{}};
     byDate[d].jobs++;
     byDate[d].cups+=(j.qty_printed||0);
-    byDate[d].prints+=(j.qty_printed||0)*(j.num_colours||1);
+    byDate[d].prints+=printCount(j);
     var nc=j.num_colours||1;
     byDate[d].colours[nc]=(byDate[d].colours[nc]||0)+1;
   });
@@ -5290,7 +5173,7 @@ async function loadStats(){
   // ── Averages ──
   var totalJobs=filtered.length;
   var totalCups=filtered.reduce(function(s,j){return s+(j.qty_printed||0);},0);
-  var totalPrints=filtered.reduce(function(s,j){return s+(j.qty_printed||0)*(j.num_colours||1);},0);
+  var totalPrints=filtered.reduce(function(s,j){return s+printCount(j);},0);
   var avgJobsDay=nDays?(totalJobs/nDays).toFixed(1):0;
   var avgCupsDay=nDays?Math.round(totalCups/nDays):0;
   var avgPrintsDay=nDays?Math.round(totalPrints/nDays):0;
@@ -5320,7 +5203,7 @@ async function loadStats(){
     if(!byWeek[wk])byWeek[wk]={jobs:0,cups:0,prints:0};
     byWeek[wk].jobs++;
     byWeek[wk].cups+=(j.qty_printed||0);
-    byWeek[wk].prints+=(j.qty_printed||0)*(j.num_colours||1);
+    byWeek[wk].prints+=printCount(j);
   });
   var weeks=Object.keys(byWeek).sort().slice(-nWeeks);
 
