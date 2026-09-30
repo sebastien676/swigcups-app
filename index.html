@@ -1207,7 +1207,7 @@ function sc2(sz, col) {
 async function loadStock(){
   var [r, rpo, rmov] = await Promise.all([
     DB().from('stock').select('*'),
-    DB().from('purchase_orders').select('product,qty_ordered,status,po_number'),
+    DB().from('purchase_orders').select('product,qty_ordered,status,po_number,qty_received'),
     DB().from('movements').select('product,qty_in,reference,notes').eq('type','Delivery')
   ]);
   if(!r.data)return;
@@ -1239,7 +1239,7 @@ async function loadStock(){
       // For Partial: subtract already received to get true remaining
       if(s==='partial'){
         var poRec=(receivedByPO[p.po_number]||{});
-        var received=poRec[key]||0;
+        var received=Math.max(poRec[key]||0,p.qty_received||0);
         ordered=Math.max(0,ordered-received);
       }
       pendByProduct[key]=(pendByProduct[key]||0)+ordered;
@@ -1332,7 +1332,9 @@ async function loadStock(){
       rows+='<tr style="background:#e6f2ef"><td colspan="6" style="padding:6px 10px;font-size:11px;font-weight:700;color:#0a4033;text-transform:uppercase;letter-spacing:0.06em">'+p.size+'</td></tr>';
       lastSize=p.size;
     }
-    var cur=Math.max(0,(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0));
+    var rawCur=(p.physical_stock||0)+(p.total_received||0)-(p.total_outgoing||0);
+    var cur=Math.max(0,rawCur);
+    var checkBadge=rawCur<0?' <span title="Calcul negatif ('+rawCur.toLocaleString()+') : une entree manque ou un comptage est faux" style="background:#FDECEA;color:#C0392B;font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px;white-space:nowrap">⚠ A verifier</span>':'';
     var pending=pendByProduct[p.product]||0;
     var after=cur+pending;
     var max=Math.max(after,cur,1);
@@ -1353,7 +1355,7 @@ async function loadStock(){
       ?'<td><button class="btn bs bsm" onclick="openStockEdit(window[\'stk_'+p.id+'\'])">✏️</button></td>'
       :'<td></td>';
     rows+='<tr><td><strong>'+dot+p.product+'</strong>'+splitHtml+'</td><td style="color:#666">'+p.size+'</td>'+
-      '<td class="nr">'+cur.toLocaleString()+'</td>'+
+      '<td class="nr">'+cur.toLocaleString()+checkBadge+'</td>'+
       '<td class="nr">'+afterCell+'</td>'+
       '<td><div class="bar"><div class="barf" style="width:'+pct+'%;background:'+alertBc+'"></div></div></td>'+
       '<td>'+pill(st==='ok'?'ok':st==='low'?'low':st==='warn'?'warn':'pend')+'</td>'+editBtn+'</tr>';
@@ -1397,7 +1399,8 @@ async function saveStockEdit(){
     if(!idsToUpdate.length){console.warn('No IDs for split',split[i].name);continue;}
     for(var j=0;j<idsToUpdate.length;j++){
       var rowId=idsToUpdate[j];
-      var upd={physical_stock:(j===0?newQty:0),total_received:0,total_outgoing:0};
+      var todayStr=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0')+'-'+String(new Date().getDate()).padStart(2,'0');
+      var upd={physical_stock:(j===0?newQty:0),total_received:0,total_outgoing:0,physical_date:todayStr};
       console.log('Updating id:', rowId, 'with:', upd);
       var res=await DB().from('stock').update(upd).eq('id',rowId);
       console.log('Result for id', rowId, ':', res.error||'OK', 'count:', res.count);
@@ -1452,14 +1455,17 @@ async function saveDel(){
     for(var pi=0;pi<poMatches.length;pi++){
       var poNum=poMatches[pi].toUpperCase();
       // Find matching PO with this product
-      var poRes=await DB().from('purchase_orders').select('id,qty_ordered,status')
+      var poRes=await DB().from('purchase_orders').select('id,qty_ordered,status,qty_received')
         .eq('po_number',poNum).ilike('product',prod.split(' ')[0]+'%');
       if(poRes.data&&poRes.data.length){
         var po=poRes.data[0];
+        // Cumulate received qty on the PO (only when a single PO is referenced, otherwise the split is unknown)
+        var newRec=(po.qty_received||0)+(poMatches.length===1?tot:0);
+        var fullyIn=newRec>=(po.qty_ordered||0)*0.99;
         // If marked COMPLETE or full qty received → mark Delivered
-        var newStatus=isComplete?'Delivered':'Partial';
+        var newStatus=(isComplete||fullyIn)?'Delivered':'Partial';
         if(po.status!=='Delivered'&&po.status!=='Over-delivered'){
-          await DB().from('purchase_orders').update({status:newStatus,delivery_date:date}).eq('id',po.id);
+          await DB().from('purchase_orders').update({status:newStatus,delivery_date:date,qty_received:newRec}).eq('id',po.id);
         }
       }
     }
@@ -1699,7 +1705,7 @@ async function loadAPDeliveries(){
 }
 // ── PURCHASE ORDERS ──
 // Columns WITHOUT payment_proof (base64 blob) — fetched on demand only, keeps lists fast
-var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name';
+var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name,qty_received';
 // Slim columns for print_schedule lists/calendars — EXCLUDES heavy base64 blobs (artwork_url, items, product_photo)
 var PS_COLS='id,week_label,date_period,client,cup_size,cup_colour,qty_printed,print_colour,num_colours,artwork,status,notes,created_at,print_date,delivery_date,print_type,delivery_type,delivery_address,client_email,is_urgent,posis_received,contact_name,contact_phone,created_by,last_edited_by,delivery_done,delivery_status,job_type,n_items';
 // Fetch the FULL row (with blobs) on demand, only when a card/detail/edit is opened
@@ -3470,25 +3476,35 @@ async function toggleDone(id,st){
 
     if(isFrosted){
       // Frosted: update first matching row (ignore Washed distinction)
-      var rawR=await DB().from('stock').select('id,product,total_outgoing')
+      var rawR=await DB().from('stock').select('id,product,total_outgoing,physical_date')
         .eq('size',job.cup_size).ilike('product','%frosted%').not('product','ilike','%washed%');
       if(rawR.data&&rawR.data.length){
         var fr=rawR.data[0];
-        var newOutFr=Math.max(0,(fr.total_outgoing||0)+delta);
-        await DB().from('stock').update({total_outgoing:newOutFr}).eq('id',fr.id);
+        // Job printed before the last physical count is already reflected in that count
+        if(job.print_date&&fr.physical_date&&job.print_date<fr.physical_date){
+          toast('ℹ️ Job anterieur au dernier comptage : stock inchange','ok');
+        } else {
+          var newOutFr=Math.max(0,(fr.total_outgoing||0)+delta);
+          await DB().from('stock').update({total_outgoing:newOutFr}).eq('id',fr.id);
+        }
       }
     } else {
       // Non-Frosted: fetch live from DB by size + colour
       var colourSearch=jobColourNorm.charAt(0).toUpperCase()+jobColourNorm.slice(1);
-      var nonFrR=await DB().from('stock').select('id,product,total_outgoing')
+      var nonFrR=await DB().from('stock').select('id,product,total_outgoing,physical_date')
         .eq('size',job.cup_size).ilike('colour',colourSearch);
       if(nonFrR.data&&nonFrR.data.length){
         var srow2=nonFrR.data[0];
-        var newOut2=Math.max(0,(srow2.total_outgoing||0)+delta);
-        var upRes=await DB().from('stock').update({total_outgoing:newOut2}).eq('id',srow2.id);
-        if(upRes.error){
-          console.error('Stock update error:',upRes.error);
-          toast('⚠️ Stock update failed: '+upRes.error.message,'err');
+        // Job printed before the last physical count is already reflected in that count
+        if(job.print_date&&srow2.physical_date&&job.print_date<srow2.physical_date){
+          toast('ℹ️ Job anterieur au dernier comptage : stock inchange','ok');
+        } else {
+          var newOut2=Math.max(0,(srow2.total_outgoing||0)+delta);
+          var upRes=await DB().from('stock').update({total_outgoing:newOut2}).eq('id',srow2.id);
+          if(upRes.error){
+            console.error('Stock update error:',upRes.error);
+            toast('⚠️ Stock update failed: '+upRes.error.message,'err');
+          }
         }
       } else {
         console.warn('No stock row found for',job.cup_size,colourSearch);
