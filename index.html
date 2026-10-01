@@ -401,6 +401,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <button onclick="showTab('deliveries',this)">🚚 Deliveries</button>
     <button onclick="showTab('messages',this)">💬 Messages <span class="ab" id="msgbn" style="display:none">!</span></button>
     <button onclick="showTab('approvals',this)">✍️ Approvals <span class="ab" id="apbn" style="display:none">!</span></button>
+    <button onclick="showTab('quotes',this)">💼 Quotes <span class="ab" id="qtbn" style="display:none">!</span></button>
     <button onclick="showTab('stats',this)">📊 Stats</button>
     <button onclick="showTab('analytics',this)">📈 Analytics</button>
     <button onclick="showTab('alerts',this)">🚨 Alerts <span class="ab" id="abn">!</span></button>
@@ -682,6 +683,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <button id="ap-f-all" onclick="apFilter('all')" style="flex:1;padding:11px 8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#666">All</button>
     </div>
     <div id="ap-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
+  </div>
+
+  <div id="tab-quotes" class="sec">
+    <div class="ch" style="margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:700">💼 Quotes &amp; order progress</h2>
+      <div style="display:flex;gap:6px">
+        <button class="btn bs bsm" onclick="qSync()">🔗 Sync Xero</button>
+        <button class="btn bs bsm" onclick="loadQuotes()">↻</button>
+      </div>
+    </div>
+    <div class="mts" id="q-mets"></div>
+    <div id="q-filters" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+    <div id="q-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
   </div>
 
   <div id="tab-stats" class="sec">
@@ -1129,7 +1143,7 @@ async function sendApproval(channel){
     btn.disabled=false; btn.textContent=origText;
   }
 }
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','approvals','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages','approvals'],warda:['stock','myjobs','cal','deliveries','messages']};
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','approvals','quotes','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages','approvals','quotes'],warda:['stock','myjobs','cal','deliveries','messages']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
 var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},delCalOff=0,delCalSelectedDate=null,delCalView='week';
 
@@ -1150,7 +1164,7 @@ function initRole(r){
   document.getElementById('rt').textContent=RLAB[r];
   var allowed=RTABS[r];
   var btns=document.querySelectorAll('nav button');
-  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','approvals','stats','analytics','alerts'];
+  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','approvals','quotes','stats','analytics','alerts'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
   if(r==='owner'){document.getElementById('badd').style.display='flex';}
@@ -1167,6 +1181,7 @@ function initRole(r){
   }
   setTimeout(checkUnreadMessages, 2000);
   if(r==='owner'||r==='fred')setTimeout(loadApprovals, 2500);
+  if(r==='owner'||r==='fred')setTimeout(loadQuotes, 3500);
 }
 
 function showTab(n,b){
@@ -1181,6 +1196,7 @@ function showTab(n,b){
   if(n==='deliveries')loadDeliveries();
   if(n==='messages')loadMessages();
   if(n==='approvals')loadApprovals();
+  if(n==='quotes')loadQuotes();
   if(n==='stats')loadStats();
   if(n==='analytics')loadAnalytics();
 }
@@ -4878,6 +4894,181 @@ async function checkUnreadMessages(){
 
 
 // ── APPROVALS TAB ──
+// ── QUOTES BOARD (devis -> livraison -> paiement) ──
+var QB_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co/functions/v1/quotes-board';
+var qAll=[],qFilter='active',qOpen=null;
+var Q_STAGES={
+  demande_recue:{l:'New request',bg:'#D6EAF8',fg:'#1A3A5C'},
+  devis_prepare:{l:'Quote drafted',bg:'#E8DAEF',fg:'#5B2C6F'},
+  devis_envoye:{l:'Quote sent',bg:'#FCF3CF',fg:'#7D6608'},
+  devis_accepte:{l:'Accepted',bg:'#D5F5E3',fg:'#0B5E2F'},
+  acompte:{l:'Deposit received',bg:'#D5F5E3',fg:'#0B5E2F'},
+  design:{l:'Design / artwork',bg:'#FDEBD0',fg:'#784212'},
+  bat:{l:'Proof (BAT)',bg:'#FDEBD0',fg:'#784212'},
+  impression:{l:'Printing',bg:'#FAD7A0',fg:'#6E2C00'},
+  attente_livraison:{l:'Ready to deliver',bg:'#D4E6F1',fg:'#154360'},
+  livre:{l:'Delivered',bg:'#D4EFDF',fg:'#0B5345'},
+  facture_envoyee:{l:'Invoiced',bg:'#FCF3CF',fg:'#7D6608'},
+  paye:{l:'Paid ✓',bg:'#0E6655',fg:'#fff'},
+  refuse:{l:'Declined',bg:'#FADBD8',fg:'#922B21'},
+  annule:{l:'Cancelled',bg:'#E5E7E9',fg:'#5D6D7E'},
+  job_planifie:{l:'Job planned',bg:'#FAD7A0',fg:'#6E2C00'},
+  job_effectue:{l:'Job done',bg:'#D4E6F1',fg:'#154360'}
+};
+var Q_FLOW=['demande_recue','devis_prepare','devis_envoye','devis_accepte','acompte','design','bat','impression','attente_livraison','livre','facture_envoyee','paye'];
+var Q_PATH=Q_FLOW.slice(2);
+var Q_LEGACY={job_planifie:'impression',job_effectue:'attente_livraison'};
+var Q_FILTERS=[['active','Active'],['new','New / to send'],['sent','Waiting client'],['prog','In progress'],['bill','To collect'],['paid','Paid'],['closed','Declined / cancelled'],['all','All']];
+function qEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function qNorm(st){return Q_LEGACY[st]||st;}
+function qGroup(st){
+  st=qNorm(st);
+  if(st==='paye')return 'paid';
+  if(st==='refuse'||st==='annule')return 'closed';
+  if(st==='demande_recue'||st==='devis_prepare')return 'new';
+  if(st==='devis_envoye')return 'sent';
+  if(st==='livre'||st==='facture_envoyee')return 'bill';
+  return 'prog';
+}
+async function qApi(payload){
+  var r=await fetch(QB_URL,{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':APPROVAL_SECRET},body:JSON.stringify(payload||{})});
+  return await r.json();
+}
+async function loadQuotes(){
+  var el=document.getElementById('q-list');
+  if(el&&!qAll.length)el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
+  try{
+    var d=await qApi({action:'list'});
+    if(d.error)throw new Error(d.error);
+    qAll=d.quotes||[];
+    renderQuotes();
+  }catch(e){
+    if(el)el.innerHTML='<div class="ld">Could not load quotes</div>';
+  }
+}
+function qMoney(q){
+  if(q.quote_amount==null||q.quote_amount==='')return '';
+  var n=Number(q.quote_amount);
+  var za=(q.country||'').toLowerCase().indexOf('south africa')>-1;
+  return (za?'R ':'US$ ')+n.toLocaleString(undefined,{maximumFractionDigits:0});
+}
+function qQty(q){
+  var p=[];
+  if(q.qty_250)p.push('250ml ×'+Number(q.qty_250).toLocaleString());
+  if(q.qty_330)p.push('330ml ×'+Number(q.qty_330).toLocaleString());
+  if(q.qty_500)p.push('500ml ×'+Number(q.qty_500).toLocaleString());
+  return p.join(' · ');
+}
+function qPrint(t){return {screen:'Screen print',dtf:'DTF',label:'Heat label',unknown:''}[t]||'';}
+function qDays(iso){return iso?Math.floor((Date.now()-new Date(iso).getTime())/86400000):null;}
+function qFmt(iso){return iso?new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'';}
+function qFilterSet(f){qFilter=f;renderQuotes();}
+function renderQuotes(){
+  var el=document.getElementById('q-list');if(!el)return;
+  var cnt={new:0,sent:0,prog:0,bill:0,paid:0,closed:0};
+  qAll.forEach(function(q){cnt[qGroup(q.status)]++;});
+  var newReq=qAll.filter(function(q){return q.status==='demande_recue';}).length;
+  var bd=document.getElementById('qtbn');
+  if(bd){bd.style.display=newReq?'':'none';bd.textContent=newReq;}
+  var mets=document.getElementById('q-mets');
+  if(mets){
+    mets.innerHTML=
+      '<div class="mt or"><div class="lb">New / to send</div><div class="vl">'+cnt.new+'</div><div class="sb2">quote to prepare or send</div></div>'+
+      '<div class="mt"><div class="lb">Waiting client</div><div class="vl">'+cnt.sent+'</div><div class="sb2">quote sent</div></div>'+
+      '<div class="mt gn"><div class="lb">In progress</div><div class="vl">'+cnt.prog+'</div><div class="sb2">accepted to ready</div></div>'+
+      '<div class="mt"><div class="lb">To collect</div><div class="vl">'+cnt.bill+'</div><div class="sb2">delivered / invoiced</div></div>';
+  }
+  var fb=document.getElementById('q-filters');
+  if(fb){
+    fb.innerHTML=Q_FILTERS.map(function(f){
+      var n=f[0]==='active'?(cnt.new+cnt.sent+cnt.prog+cnt.bill):f[0]==='all'?qAll.length:cnt[f[0]];
+      var on=qFilter===f[0];
+      return '<button onclick="qFilterSet(\''+f[0]+'\')" style="padding:6px 11px;border-radius:16px;border:1px solid '+(on?'#0E6655':'#e0e0e0')+';background:'+(on?'#0E6655':'#fff')+';color:'+(on?'#fff':'#555')+';font-size:12px;font-weight:600;cursor:pointer">'+f[1]+' <span style="opacity:.75">'+n+'</span></button>';
+    }).join('');
+  }
+  var list=qAll.filter(function(q){
+    var g=qGroup(q.status);
+    if(qFilter==='all')return true;
+    if(qFilter==='active')return g!=='paid'&&g!=='closed';
+    return g===qFilter;
+  }).sort(function(a,b){return new Date(b.stage_updated_at||b.created_at)-new Date(a.stage_updated_at||a.created_at);});
+  if(!list.length){el.innerHTML='<div class="ld">Nothing here</div>';return;}
+  el.innerHTML=list.map(qRow).join('');
+}
+function qRow(q){
+  var st=Q_STAGES[q.status]||{l:q.status,bg:'#eee',fg:'#333'};
+  var ns=qNorm(q.status);
+  var idx=Q_PATH.indexOf(ns);
+  var closed=(ns==='refuse'||ns==='annule');
+  var age=qDays(q.stage_updated_at||q.created_at);
+  var ageTag=(age!==null&&!closed&&ns!=='paye')?'<span style="font-size:11px;color:'+(age>21?'#C0392B':'#888')+'">'+age+'d in stage</span>':'';
+  var who=q.company&&q.company!==q.name?(q.company+' — '+q.name):(q.name||q.company||'?');
+  var bar='';
+  if(!closed){
+    bar='<div style="display:flex;gap:3px;padding:0 12px 10px">'+Q_PATH.map(function(s,i){
+      var col=i<idx?'#0E6655':(i===idx?'#E2962E':'#e3e3e3');
+      return '<div title="'+qEsc(Q_STAGES[s].l)+'" style="flex:1;height:5px;border-radius:3px;background:'+col+'"></div>';
+    }).join('')+'</div>';
+  }
+  var head='<div onclick="qToggle(\''+q.id+'\')" style="display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;padding:10px 12px;cursor:pointer">'+
+    '<span style="background:'+st.bg+';color:'+st.fg+';font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;white-space:nowrap">'+qEsc(st.l)+'</span>'+
+    '<strong style="font-size:13px">'+qEsc(who)+'</strong>'+
+    '<span style="color:#666;font-size:12px">'+qEsc(q.country||'')+'</span>'+
+    '<span style="font-size:12px;color:#333">'+qEsc(qQty(q))+'</span>'+
+    '<span style="font-size:12px;color:#666">'+qEsc(qPrint(q.print_type))+'</span>'+
+    (q.event_date?'<span style="font-size:12px;color:#666">📅 '+qEsc(qFmt(q.event_date))+'</span>':'')+
+    '<span style="margin-left:auto;display:flex;gap:10px;align-items:center">'+ageTag+
+    (q.xero_quote_number?'<span style="font-size:11px;color:#888">'+qEsc(q.xero_quote_number)+'</span>':'')+
+    '<strong style="font-size:13px">'+qEsc(qMoney(q))+'</strong></span></div>';
+  return '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">'+head+bar+(qOpen===q.id?qDetail(q):'')+'</div>';
+}
+function qToggle(id){qOpen=(qOpen===id)?null:id;renderQuotes();}
+function qDetail(q){
+  var d=q.details||{};
+  if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){d={};}}
+  var lines=[];
+  function add(label,v){if(v)lines.push('<div><span style="color:#888">'+label+':</span> '+qEsc(v)+'</div>');}
+  add('Email',q.email);add('Phone',q.phone);add('Event',[q.event_type,q.attendees&&('~'+q.attendees+' guests')].filter(Boolean).join(' · '));
+  add('Cup colour',d.cup_colour_label||d.cup_colour);add('Print colours',d.colours_label);add('Artwork',d.artwork_label);
+  add('Delivery',[d.delivery_mode,d.delivery_city||d.city].filter(Boolean).join(' · '));add('Deadline',d.deadline);
+  if(q.xero_invoice_number)add('Xero invoice',q.xero_invoice_number+(q.xero_invoice_status?' ('+q.xero_invoice_status+')':''));
+  if(q.xero_status)add('Xero quote status',q.xero_status);
+  add('Message',q.message);add('Notes',q.notes);add('Decline reason',q.refused_reason);
+  var hist=(Array.isArray(q.stage_history)?q.stage_history:[]).slice().reverse().map(function(h){
+    var s=Q_STAGES[h.stage]||{l:h.stage};
+    return '<div style="font-size:11px;color:#666">'+qEsc(qFmt(h.at))+' · <strong>'+qEsc(s.l)+'</strong>'+(h.by?' · '+qEsc(h.by):'')+(h.note?' · '+qEsc(h.note):'')+'</div>';
+  }).join('');
+  var ns=qNorm(q.status);
+  var i=Q_FLOW.indexOf(ns);
+  var next=(i>-1&&i<Q_FLOW.length-1)?Q_FLOW[i+1]:null;
+  var opts=Q_FLOW.concat(['refuse','annule']).map(function(s){return '<option value="'+s+'"'+(s===ns?' selected':'')+'>'+qEsc(Q_STAGES[s].l)+'</option>';}).join('');
+  var btns=(next?'<button class="btn bp bsm" onclick="qSet(\''+q.id+'\',\''+next+'\')">➡ '+qEsc(Q_STAGES[next].l)+'</button>':'')+
+    '<select onchange="if(this.value)qSet(\''+q.id+'\',this.value)" style="font-size:12px;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px"><option value="">Move to…</option>'+opts+'</select>'+
+    (ns!=='refuse'&&ns!=='annule'?'<button class="btn bs bsm" style="color:#C0392B" onclick="qSet(\''+q.id+'\',\'refuse\')">✖ Client declined</button>':'');
+  return '<div style="border-top:1px solid #eee;padding:10px 12px;display:grid;gap:8px;font-size:12px">'+
+    '<div style="display:grid;gap:3px">'+(lines.join('')||'<div style="color:#888">No extra details</div>')+'</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+btns+'</div>'+
+    (hist?'<div style="display:grid;gap:2px;border-top:1px dashed #eee;padding-top:8px">'+hist+'</div>':'')+'</div>';
+}
+async function qSet(id,stage){
+  var note=null;
+  if(stage==='refuse'){note=prompt('Reason for decline (optional):','');if(note===null){renderQuotes();return;}}
+  try{
+    var d=await qApi({action:'set_stage',id:id,stage:stage,note:note||null,actor:RLAB[role]||role});
+    if(d.error)throw new Error(d.error);
+    toast('✅ '+(Q_STAGES[stage]||{l:stage}).l,'ok');
+    await loadQuotes();
+  }catch(e){toast('⚠️ Could not update: '+e.message,'err');renderQuotes();}
+}
+async function qSync(){
+  toast('Syncing with Xero…','ok');
+  try{
+    var d=await qApi({action:'sync'});
+    if(d.error)throw new Error(d.error);
+    toast('✅ Xero: '+d.checked+' checked, '+d.moved+' updated'+(d.invoiceError?' (invoices not read)':''),'ok');
+    await loadQuotes();
+  }catch(e){toast('⚠️ Xero sync failed: '+e.message,'err');}
+}
 var APPROVAL_LIST_URL='https://pxelvqgqmazdsaqlsxyx.supabase.co/functions/v1/list-approvals';
 var apAll=[], apView='pending';
 
