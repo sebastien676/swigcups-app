@@ -1143,7 +1143,7 @@ async function sendApproval(channel){
     btn.disabled=false; btn.textContent=origText;
   }
 }
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','approvals','quotes','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages','approvals','quotes'],warda:['stock','myjobs','cal','deliveries','messages']};
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','approvals','quotes','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages','approvals'],warda:['stock','myjobs','cal','deliveries','messages']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
 var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},delCalOff=0,delCalSelectedDate=null,delCalView='week';
 
@@ -1181,7 +1181,7 @@ function initRole(r){
   }
   setTimeout(checkUnreadMessages, 2000);
   if(r==='owner'||r==='fred')setTimeout(loadApprovals, 2500);
-  if(r==='owner'||r==='fred')setTimeout(loadQuotes, 3500);
+  if(r==='owner')setTimeout(loadQuotes, 3500); // Quotes : owner uniquement (Fred plus tard)
 }
 
 function showTab(n,b){
@@ -4949,8 +4949,11 @@ async function loadQuotes(){
 function qMoney(q){
   if(q.quote_amount==null||q.quote_amount==='')return '';
   var n=Number(q.quote_amount);
-  var za=(q.country||'').toLowerCase().indexOf('south africa')>-1;
-  return (za?'R ':'US$ ')+n.toLocaleString(undefined,{maximumFractionDigits:0});
+  // Devise : celle du devis Xero ; à défaut ZAR (Afrique du Sud ou pays inconnu), USD pour l'export
+  var c=(q.currency||'').toUpperCase();
+  if(!c){var ctry=(q.country||'').toLowerCase();c=(!ctry||ctry.indexOf('south africa')>-1)?'ZAR':'USD';}
+  var sym=c==='ZAR'?'R ':c==='USD'?'US$ ':c+' ';
+  return sym+n.toLocaleString(undefined,{maximumFractionDigits:0});
 }
 function qQty(q){
   var p=[];
