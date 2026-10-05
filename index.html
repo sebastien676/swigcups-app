@@ -380,7 +380,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div style="font-size:48px">🥤</div>
     <h1>Swig Cups</h1>
     <p>Stock & Print Manager</p>
-    <input type="password" id="pw" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <select id="who" style="width:100%;padding:12px;margin-bottom:10px;border-radius:8px;font-size:16px"><option value="owner">Seb</option><option value="fred">Fred</option><option value="warda">Warda / Blink</option></select>
+    <input type="password" id="pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="sb" onclick="doLogin()">Sign in</button>
     <div class="le" id="le">Wrong password. Try again.</div>
   </div>
@@ -935,7 +936,6 @@ var APPROVAL_SECRET='5f40eae86a87c887a6393b1b567af9a133c4112a4535768a';
 var db=null;
 function DB(){if(!db)db=supabase.createClient(SB_URL,SB_KEY);return db;}
 
-var USERS={'swig2026':'owner','fred2026':'fred','warda2026':'warda'};
 
 // ── ARTWORK UPLOAD ──
 var pendingArtworkFile = null;
@@ -1150,16 +1150,31 @@ var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL
 // South Africa public holidays
 var SA_HOLIDAYS={"2026-01-01":"New Years Day","2026-03-21":"Human Rights Day","2026-04-03":"Good Friday","2026-04-06":"Family Day","2026-04-27":"Freedom Day","2026-05-01":"Workers Day","2026-06-16":"Youth Day","2026-08-09":"Womens Day","2026-08-10":"Womens Day (obs.)","2026-09-24":"Heritage Day","2026-12-16":"Day of Reconciliation","2026-12-25":"Christmas Day","2026-12-26":"Day of Goodwill"};
 
-function doLogin(){
-  var pw=document.getElementById('pw').value.trim();
-  var r=USERS[pw];
-  if(!r){document.getElementById('le').style.display='block';document.getElementById('pw').value='';return;}
+var LOGIN_EMAILS={owner:'seb@swigcups.co.za',fred:'fred@swigcups.co.za',warda:'warda@swigcups.co.za'};
+function roleFromEmail(e){e=(e||'').toLowerCase();for(var k in LOGIN_EMAILS)if(LOGIN_EMAILS[k]===e)return k;return null;}
+function startApp(r){
   role=r;
   document.getElementById('lw').style.display='none';
   document.getElementById('app').style.display='block';
   initRole(r);
 }
-
+async function doLogin(){
+  var who=document.getElementById('who').value;
+  var pw=document.getElementById('pw').value.trim();
+  var res=null;
+  try{res=await DB().auth.signInWithPassword({email:LOGIN_EMAILS[who],password:pw});}catch(e){}
+  if(!res||res.error||!res.data||!res.data.session){document.getElementById('le').style.display='block';document.getElementById('pw').value='';return;}
+  startApp(who);
+}
+// Session conservee sur l'appareil : plus de mot de passe a retaper
+(async function(){
+  try{
+    var s=await DB().auth.getSession();
+    var u=s.data&&s.data.session&&s.data.session.user;
+    var r=u&&roleFromEmail(u.email);
+    if(r)startApp(r);
+  }catch(e){}
+})();
 function initRole(r){
   document.getElementById('rt').textContent=RLAB[r];
   var allowed=RTABS[r];
