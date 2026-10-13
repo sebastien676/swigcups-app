@@ -380,7 +380,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div style="font-size:48px">🥤</div>
     <h1>Swig Cups</h1>
     <p>Stock & Print Manager</p>
-    <select id="who" style="width:100%;padding:12px;margin-bottom:10px;border-radius:8px;font-size:16px"><option value="owner">Seb</option><option value="fred">Fred</option><option value="warda">Warda / Blink</option></select>
+    <select id="who" style="width:100%;padding:12px;margin-bottom:10px;border-radius:8px;font-size:16px"><option value="owner">Seb</option><option value="fred">Fred</option><option value="warda">Warda / Blink</option><option value="emilie">Emilie</option></select>
     <input type="password" id="pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="sb" onclick="doLogin()">Sign in</button>
     <div class="le" id="le">Wrong password. Try again.</div>
@@ -1143,14 +1143,14 @@ async function sendApproval(channel){
     btn.disabled=false; btn.textContent=origText;
   }
 }
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','approvals','quotes','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages','approvals'],warda:['stock','myjobs','cal','deliveries','messages']};
-var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink'};
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','approvals','quotes','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages','approvals'],warda:['stock','myjobs','cal','deliveries','messages'],emilie:['stock','pos','cal','deliveries','quotes','stats','analytics']};
+var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink',emilie:'Emilie'};
 var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},pendDetail={},delCalOff=0,delCalSelectedDate=null,delCalView='week';
 
 // South Africa public holidays
 var SA_HOLIDAYS={"2026-01-01":"New Years Day","2026-03-21":"Human Rights Day","2026-04-03":"Good Friday","2026-04-06":"Family Day","2026-04-27":"Freedom Day","2026-05-01":"Workers Day","2026-06-16":"Youth Day","2026-08-09":"Womens Day","2026-08-10":"Womens Day (obs.)","2026-09-24":"Heritage Day","2026-12-16":"Day of Reconciliation","2026-12-25":"Christmas Day","2026-12-26":"Day of Goodwill"};
 
-var LOGIN_EMAILS={owner:'seb@swigcups.co.za',fred:'fred@swigcups.co.za',warda:'warda@swigcups.co.za'};
+var LOGIN_EMAILS={owner:'seb@swigcups.co.za',fred:'fred@swigcups.co.za',warda:'warda@swigcups.co.za',emilie:'emilie@swigcups.co.za'};
 function roleFromEmail(e){e=(e||'').toLowerCase();for(var k in LOGIN_EMAILS)if(LOGIN_EMAILS[k]===e)return k;return null;}
 function startApp(r){
   role=r;
@@ -1188,6 +1188,7 @@ function initRole(r){
   // Load data in parallel — owner loads everything, Fred/Warda load lighter set
   if(r==='owner'){
     Promise.all([loadStock(), loadPOs(), loadCalData(), loadJobs(), loadPrint()]);
+  } else if(r==='emilie'){ Promise.all([loadStock(), loadPOs(), loadCalData()]);
   } else if(r==='warda'){
     Promise.all([loadStock(), loadCalData(), loadMyJobs()]);
   } else {
@@ -1196,7 +1197,7 @@ function initRole(r){
   }
   setTimeout(checkUnreadMessages, 2000);
   if(r==='owner'||r==='fred')setTimeout(loadApprovals, 2500);
-  if(r==='owner')setTimeout(loadQuotes, 3500); // Quotes : owner uniquement (Fred plus tard)
+  if(r==='owner'||r==='emilie')setTimeout(loadQuotes, 3500); // Quotes : owner uniquement (Fred plus tard)
 }
 
 function showTab(n,b){
@@ -1783,7 +1784,7 @@ async function loadAPDeliveries(){
 // Columns WITHOUT payment_proof (base64 blob) — fetched on demand only, keeps lists fast
 var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name,qty_received';
 // Slim columns for print_schedule lists/calendars — EXCLUDES heavy base64 blobs (artwork_url, items, product_photo)
-var PS_COLS='id,week_label,date_period,client,cup_size,cup_colour,qty_printed,print_colour,num_colours,artwork,status,notes,created_at,print_date,delivery_date,print_type,delivery_type,delivery_address,client_email,is_urgent,posis_received,contact_name,contact_phone,created_by,last_edited_by,delivery_done,delivery_status,job_type,n_items';
+var PS_COLS='id,week_label,date_period,client,cup_size,cup_colour,qty_printed,print_colour,num_colours,artwork,status,notes,created_at,print_date,delivery_date,print_type,delivery_type,delivery_address,client_email,is_urgent,posis_received,contact_name,contact_phone,created_by,last_edited_by,delivery_done,delivery_status,job_type,n_items,qty_done';
 // Fetch the FULL row (with blobs) on demand, only when a card/detail/edit is opened
 async function loadFullJob(ev){
   if(!ev||!ev.id)return ev;
@@ -3519,8 +3520,8 @@ async function loadMyJobs(){
       card.innerHTML='<div class="ck">'+(isDone?'✓':'')+'</div>'+
         '<div class="ji"><div class="jc">'+(isUrg?'<span class="urg-badge">🚨 URGENT</span> ':'')+j.client+(j.posis_received?' <span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:1px 6px;border-radius:8px;font-weight:700">✅ POSIS</span>':'')+'</div><div class="jd">'+(j.cup_size||'—')+' '+(j.cup_colour||'—')+' · '+(j.print_colour||'—')+'<br>'+(j.print_date?'📅 '+j.print_date:'')+'</div></div>'+
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+
-        '<div><div class="jq">'+(j.qty_printed||0).toLocaleString()+'</div><div class="jw">+'+waste+'</div></div>'+
-        '<div style="display:flex;gap:4px;margin-top:4px">'+(isDone?'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px;color:#D35400;border-color:#D35400">↩️ Undo</button>':'<button class="btn bp bsm" style="font-size:10px;padding:3px 8px">✅ Done</button>')+'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px">🖨️ Card</button></div>'+
+        '<div><div class="jq">'+(j.qty_printed||0).toLocaleString()+'</div><div class="jw">+'+waste+'</div>'+((j.qty_done>0&&!isDone)?'<div style="font-size:10px;color:#D35400;font-weight:700">'+j.qty_done.toLocaleString()+' done</div>':'')+'</div>'+
+        '<div style="display:flex;gap:4px;margin-top:4px">'+(isDone?'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px;color:#D35400;border-color:#D35400">↩️ Undo</button>':'<button class="btn bp bsm" style="font-size:10px;padding:3px 8px">✅ Done</button>')+'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px">🖨️ Card</button>'+(isDone?'':'<button class="btn bs bsm" style="font-size:10px;padding:3px 8px">◐ Partial</button>')+'</div>'+
         '</div>';
       (function(jid,jst,jev){
         card.addEventListener('click',function(e){
@@ -3530,10 +3531,31 @@ async function loadMyJobs(){
         var btns = card.querySelectorAll('button');
         if(btns[0])btns[0].addEventListener('click',function(e){e.stopPropagation();toggleDone(jid,jst);});
         if(btns[1])btns[1].addEventListener('click',function(e){e.stopPropagation();downloadJobCard(jev);});
+        if(btns[2])btns[2].addEventListener('click',function(e){e.stopPropagation();partialDone(jid);});
       })(j.id,j.status,j);
       el.appendChild(card);
     });
   });
+}
+
+// Partial progress: ask how many cups were printed now, deduct them from stock, keep the job open.
+// Reaching qty_printed marks the job Done. qty_done = cups already deducted; batches = JSON log [{d,q}].
+async function partialDone(id){
+  var jobR=await DB().from('print_schedule').select('*').eq('id',id).single();
+  var job=jobR.data; if(!job){toast('Job introuvable','err');return;}
+  var total=job.qty_printed||0, already=job.qty_done||0, left=total-already;
+  if(left<=0){toast('Job deja complet','ok');return;}
+  var v=prompt(job.client+' : '+already+' / '+total+' deja faits.\nCombien viens-tu d\'imprimer ? (max '+left+')','');
+  if(v===null)return;
+  var q=parseInt(String(v).replace(/\s/g,''),10);
+  if(!q||q<=0||q>left){toast('Quantite invalide (1 a '+left+')','err');return;}
+  var batches=[]; try{batches=JSON.parse(job.batches||'[]');}catch(e){}
+  batches.push({d:new Date().toISOString().slice(0,10),q:q});
+  var nd=already+q, complete=nd>=total;
+  await DB().from('print_schedule').update({qty_done:nd,batches:JSON.stringify(batches),status:complete?'Done':'In progress'}).eq('id',id);
+  await applyStockDelta(job,q,1);
+  toast(complete?'✅ Job termine':'◐ '+q+' deduits ('+nd+' / '+total+')','ok');
+  prints=[];loadMyJobs();loadCalData();loadPrintNoReschedule();loadStock();
 }
 
 async function toggleDone(id,st){
@@ -3541,9 +3563,19 @@ async function toggleDone(id,st){
   // Always fetch job fresh from DB to ensure accurate qty
   var jobR=await DB().from('print_schedule').select('*').eq('id',id).single();
   var job=jobR.data||((prints||[]).find(function(p){return String(p.id)===String(id);})||window['ev_'+id]||window['p_'+id]||window['j_'+id]);
-  await DB().from('print_schedule').update({status:ns}).eq('id',id);
+  var totalQ=(job&&job.qty_printed)||0, doneQ=(job&&job.qty_done)||0;
+  // Done: deduct only what is not already deducted by partial batches. Undo: give back everything deducted.
+  var amount=ns==='Done'?Math.max(0,totalQ-doneQ):(doneQ>0?doneQ:totalQ);
+  await DB().from('print_schedule').update(ns==='Done'?{status:ns,qty_done:totalQ}:{status:ns,qty_done:0,batches:''}).eq('id',id);
+  await applyStockDelta(job,amount,ns==='Done'?1:-1);
+  toast(ns==='Done'?'✅ Done!':'↩️ In progress','ok');
+  prints=[];loadMyJobs();loadCalData();loadPrintNoReschedule();loadStock();
+}
 
-  // Adjust stock total_outgoing when toggling Done
+// Adjust stock total_outgoing for `amount` cups of a job (sign +1 deduct, -1 give back)
+async function applyStockDelta(job,amount,sign){
+  var ns=sign>0?'Done':'In progress';
+  var jobQty=(job&&job.qty_printed)||0, factor=jobQty>0?amount/jobQty:0;
   // Pieces to deduct: each item of a Multi job (size/colour/qty), otherwise the job itself
   var parts=[],jobItems=null;
   try{ if(job&&typeof job.items==='string'&&job.items.charAt(0)==='[')jobItems=JSON.parse(job.items); }catch(e){}
@@ -3551,7 +3583,7 @@ async function toggleDone(id,st){
   else if(job){ parts.push(job); }
   for(var pi=0;pi<parts.length;pi++){
     var jb=parts[pi];
-    var used=Math.round((jb.qty_printed||0)*1.05);
+    var used=Math.round((jb.qty_printed||0)*factor*1.05);
     var jobColourNorm=(jb.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted').replace('dark blue','blue');
     var isFrosted=jobColourNorm==='frosted';
     var delta=ns==='Done'?used:-used;
@@ -3594,9 +3626,6 @@ async function toggleDone(id,st){
       }
     }
   }
-
-  toast(ns==='Done'?'✅ Done!':'↩️ In progress','ok');
-  prints=[];loadMyJobs();loadCalData();loadPrintNoReschedule();loadStock();
 }
 
 // ── JOB CARD ──
