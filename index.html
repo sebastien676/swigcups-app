@@ -1782,7 +1782,7 @@ async function loadAPDeliveries(){
 }
 // ── PURCHASE ORDERS ──
 // Columns WITHOUT payment_proof (base64 blob) — fetched on demand only, keeps lists fast
-var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name,qty_received';
+var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name,payment_proof_2_name,qty_received';
 // Slim columns for print_schedule lists/calendars — EXCLUDES heavy base64 blobs (artwork_url, items, product_photo)
 var PS_COLS='id,week_label,date_period,client,cup_size,cup_colour,qty_printed,print_colour,num_colours,artwork,status,notes,created_at,print_date,delivery_date,print_type,delivery_type,delivery_address,client_email,is_urgent,posis_received,contact_name,contact_phone,created_by,last_edited_by,delivery_done,delivery_status,job_type,n_items,qty_done';
 // Fetch the FULL row (with blobs) on demand, only when a card/detail/edit is opened
@@ -1870,7 +1870,7 @@ async function loadPOs(){
         :'<td></td>';
       var proofCell;
       if(p.payment_proof_name){
-        proofCell='<td style="white-space:nowrap"><button class="btn bs bsm btn-proof" style="font-size:12px;padding:2px 6px;color:#fff;background:#1E8449;border-color:#1E8449" onclick="viewProof('+p.id+')" title="'+p.payment_proof_name.replace(/"/g,'&quot;')+'">👍</button></td>';
+        proofCell='<td style="white-space:nowrap"><button class="btn bs bsm btn-proof" style="font-size:12px;padding:2px 6px;color:#fff;background:#1E8449;border-color:#1E8449" onclick="viewProof('+p.id+')" title="'+(p.payment_proof_name+(p.payment_proof_2_name?' + '+p.payment_proof_2_name:'')).replace(/"/g,'&quot;')+'">👍'+(p.payment_proof_2_name?'<sup style="font-size:9px;font-weight:700"> 2</sup>':'')+'</button></td>';
       } else {
         proofCell=role==='owner'
           ?'<td><button class="btn bs bsm btn-proof" style="font-size:10px;padding:2px 6px;color:#888" onclick="uploadProof('+p.id+')" title="Upload proof of payment">📎</button></td>'
@@ -1992,7 +1992,10 @@ async function receiveDelivery(id, totalOrdered){
 }
 
 // ── PROOF OF PAYMENT ──
-function uploadProof(id){
+// Jusqu'à 2 preuves par ligne de PO : emplacement 1 = payment_proof, emplacement 2 = payment_proof_2
+function proofCols(slot){return slot===2?{d:'payment_proof_2',n:'payment_proof_2_name'}:{d:'payment_proof',n:'payment_proof_name'};}
+function uploadProof(id,slot){
+  slot=slot===2?2:1;
   var inp=document.createElement('input');
   inp.type='file';
   inp.accept='application/pdf,image/*';
@@ -2003,19 +2006,23 @@ function uploadProof(id){
     var reader=new FileReader();
     reader.onload=async function(e){
       var b64=e.target.result;
-      var r=await DB().from('purchase_orders').update({payment_proof:b64,payment_proof_name:file.name}).eq('id',id);
+      var c=proofCols(slot),upd={};upd[c.d]=b64;upd[c.n]=file.name;
+      var r=await DB().from('purchase_orders').update(upd).eq('id',id);
       if(r.error){toast('Upload failed: '+r.error.message,'err');return;}
-      toast('📎 Proof of payment saved','ok');
+      toast('📎 Proof of payment '+slot+' saved','ok');
       loadPOs();
     };
     reader.readAsDataURL(file);
   };
   inp.click();
 }
-async function viewProof(id){
-  var r=await DB().from('purchase_orders').select('po_number,payment_proof,payment_proof_name').eq('id',id).single();
-  if(!r.data||!r.data.payment_proof){toast('No proof found','err');return;}
-  var p=r.data;
+async function viewProof(id,slot){
+  slot=slot===2?2:1;
+  var c=proofCols(slot);
+  var r=await DB().from('purchase_orders').select('po_number,payment_proof_name,payment_proof_2_name,'+c.d).eq('id',id).single();
+  if(!r.data||!r.data[c.d]){toast('No proof found','err');return;}
+  var p={po_number:r.data.po_number,payment_proof:r.data[c.d],payment_proof_name:r.data[c.n]};
+  var has2=!!r.data.payment_proof_2_name;
   var old=document.getElementById('proof-modal');if(old)old.remove();
   var ov=document.createElement('div');
   ov.id='proof-modal';
@@ -2032,24 +2039,41 @@ async function viewProof(id){
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">'
     +'<strong style="color:#0E6655">📎 '+p.po_number+' — '+name+'</strong>'
     +'<span style="white-space:nowrap">'
-    +'<button class="btn bs bsm" style="margin-right:6px" onclick="downloadProof('+id+')">⬇️ Download</button>'
-    +(role==='owner'?'<button class="btn bs bsm" style="margin-right:6px;color:#D35400" onclick="uploadProof('+id+');document.getElementById(\'proof-modal\').remove()">🔄 Replace</button>':'')
-    +(role==='owner'?'<button class="btn bs bsm" style="margin-right:6px;color:#C0392B" onclick="deleteProof('+id+')">🗑️</button>':'')
+    +'<button class="btn bs bsm" style="margin-right:6px" onclick="downloadProof('+id+','+slot+')">⬇️ Download</button>'
+    +(role==='owner'?'<button class="btn bs bsm" style="margin-right:6px;color:#D35400" onclick="uploadProof('+id+','+slot+');document.getElementById(\'proof-modal\').remove()">🔄 Replace</button>':'')
+    +(role==='owner'?'<button class="btn bs bsm" style="margin-right:6px;color:#C0392B" onclick="deleteProof('+id+','+slot+')">🗑️</button>':'')
     +'<button class="btn bs bsm" onclick="document.getElementById(\'proof-modal\').remove()">✖</button>'
-    +'</span></div>'+body+'</div>';
+    +'</span></div>'
+    // Choix de la preuve 1 / 2, ou ajout d'une 2e preuve
+    +'<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">'
+    +(has2
+      ?'<button class="btn bs bsm" style="'+(slot===1?'background:#0E6655;color:#fff':'')+'" onclick="viewProof('+id+',1)">Proof 1</button>'
+       +'<button class="btn bs bsm" style="'+(slot===2?'background:#0E6655;color:#fff':'')+'" onclick="viewProof('+id+',2)">Proof 2</button>'
+      :(role==='owner'?'<button class="btn bs bsm" onclick="uploadProof('+id+',2);document.getElementById(\'proof-modal\').remove()">➕ Add 2nd proof</button>':''))
+    +'</div>'+body+'</div>';
   document.body.appendChild(ov);
 }
-async function downloadProof(id){
-  var r=await DB().from('purchase_orders').select('po_number,payment_proof,payment_proof_name').eq('id',id).single();
-  if(!r.data||!r.data.payment_proof){toast('No proof found','err');return;}
+async function downloadProof(id,slot){
+  slot=slot===2?2:1;
+  var c=proofCols(slot);
+  var r=await DB().from('purchase_orders').select('po_number,'+c.d+','+c.n).eq('id',id).single();
+  if(!r.data||!r.data[c.d]){toast('No proof found','err');return;}
   var a=document.createElement('a');
-  a.href=r.data.payment_proof;
-  a.download=r.data.payment_proof_name||(r.data.po_number+'-proof');
+  a.href=r.data[c.d];
+  a.download=r.data[c.n]||(r.data.po_number+'-proof'+(slot===2?'-2':''));
   document.body.appendChild(a);a.click();a.remove();
 }
-async function deleteProof(id){
-  if(!confirm('Delete this proof of payment?'))return;
-  await DB().from('purchase_orders').update({payment_proof:null,payment_proof_name:null}).eq('id',id);
+async function deleteProof(id,slot){
+  slot=slot===2?2:1;
+  if(!confirm('Delete proof of payment '+slot+'?'))return;
+  if(slot===2){
+    await DB().from('purchase_orders').update({payment_proof_2:null,payment_proof_2_name:null}).eq('id',id);
+  } else {
+    // Si une 2e preuve existe, elle devient la preuve 1
+    var r=await DB().from('purchase_orders').select('payment_proof_2,payment_proof_2_name').eq('id',id).single();
+    var d=r.data||{};
+    await DB().from('purchase_orders').update({payment_proof:d.payment_proof_2||null,payment_proof_name:d.payment_proof_2_name||null,payment_proof_2:null,payment_proof_2_name:null}).eq('id',id);
+  }
   var m=document.getElementById('proof-modal');if(m)m.remove();
   toast('🗑️ Proof deleted','ok');
   loadPOs();
