@@ -271,16 +271,31 @@
       detailsHtml += '<div class="row"><span class="lbl">' + esc(label) + '</span><span class="val">' + esc(snap[k]) + '</span></div>';
     });
 
-    const isPdfArtwork = data.artwork_url && data.artwork_url.toLowerCase().indexOf(".pdf") > -1;
-    const artworkHtml = data.artwork_url
-      ? '<div class="card"><div class="section-title">' + esc(t.artwork_title) + '</div><div class="artwork">' +
-        (isPdfArtwork
-          ? '<a href="' + esc(data.artwork_url) + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:16px;background:#FBF7EF;border-radius:10px;border:1px solid #EFE6D6;color:var(--leaf);font-weight:700;text-decoration:none">' + esc(t.artwork_pdf) + '</a>'
-          : '<img src="' + esc(data.artwork_url) + '" alt="artwork" id="artworkImg">') +
+    // Un visuel (ancien format) ou plusieurs designs (jobs multi-designs : data.artworks)
+    function oneArtwork(url){
+      const isPdf = url.toLowerCase().indexOf(".pdf") > -1;
+      return '<div class="artwork">' +
+        (isPdf
+          ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:16px;background:#FBF7EF;border-radius:10px;border:1px solid #EFE6D6;color:var(--leaf);font-weight:700;text-decoration:none">' + esc(t.artwork_pdf) + '</a>'
+          : '<img src="' + esc(url) + '" alt="artwork" class="aw-img">') +
         '</div>' +
-        (isPdfArtwork ? '' : '<div class="tap-hint">' + esc(t.artwork_tap) + '</div>') +
-        '</div>'
-      : "";
+        (isPdf ? '' : '<div class="tap-hint">' + esc(t.artwork_tap) + '</div>');
+    }
+    const designs = Array.isArray(data.artworks) ? data.artworks.filter(function(a){ return a; }) : [];
+    let artworkHtml = "";
+    if (designs.length) {
+      designs.forEach(function(a, i){
+        const facts = [a.size, a.colour, a.qty ? Number(a.qty).toLocaleString() + " cups" : null, a.print_colour]
+          .filter(function(x){ return x; }).join(" · ");
+        artworkHtml += '<div class="card"><div class="section-title">' + esc(t.artwork_title) + ' ' + (i + 1) + '/' + designs.length +
+          (a.label ? ' — ' + esc(a.label) : '') + '</div>' +
+          (facts ? '<div class="row"><span class="val">' + esc(facts) + '</span></div>' : '') +
+          (a.url ? oneArtwork(a.url) : '<div class="hint">—</div>') +
+          '</div>';
+      });
+    } else if (data.artwork_url) {
+      artworkHtml = '<div class="card"><div class="section-title">' + esc(t.artwork_title) + '</div>' + oneArtwork(data.artwork_url) + '</div>';
+    }
 
     const remarksLabel = data.doc_type === "delivery" ? t.remarks_label_delivery
       : data.doc_type === "collection" ? t.remarks_label_collection
@@ -348,8 +363,8 @@
     if(old) old.remove();
     document.body.style.overflow = "";
 
-    const img = document.getElementById("artworkImg");
-    if(!img) return;
+    const imgs = document.querySelectorAll(".aw-img");
+    if(!imgs.length) return;
 
     const lb = document.createElement("div");
     lb.className = "lightbox";
@@ -376,11 +391,13 @@
       document.body.style.overflow = "";
     }
 
-    img.addEventListener("click", function(){
-      bigImg.src = data.artwork_url;
-      lb.classList.add("open");
-      setZoom(false);
-      document.body.style.overflow = "hidden";
+    imgs.forEach(function(img){
+      img.addEventListener("click", function(){
+        bigImg.src = img.src;
+        lb.classList.add("open");
+        setZoom(false);
+        document.body.style.overflow = "hidden";
+      });
     });
     zoomBtn.addEventListener("click", function(){
       setZoom(!stage.classList.contains("zoomed"));

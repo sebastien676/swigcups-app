@@ -1002,6 +1002,14 @@ function updateSendArtworkStatus(){
   var ev = curEv;
   var hasArt = !!(ev && getSendArtworkBase64(ev));
   if(dt!=='bat'){ el.innerHTML=''; return; }
+  var arts = ev && getSendArtworks(ev);
+  if(arts){
+    var nArt = arts.filter(function(a){return a.base64;}).length;
+    el.innerHTML = nArt===arts.length
+      ? '<span style="color:#1E8449">✅ '+nArt+' designs attached</span>'
+      : '<span style="color:#C0392B">⚠️ '+nArt+' of '+arts.length+' designs have artwork — missing ones will show no visual</span>';
+    return;
+  }
   el.innerHTML = hasArt ? '<span style="color:#1E8449">✅ Artwork attached</span>' : '<span style="color:#C0392B">⚠️ No artwork on this job — client will see no visual</span>';
 }
 
@@ -1065,6 +1073,20 @@ function getSendArtworkBase64(ev){
   return null;
 }
 
+// Jobs multi-designs : un visuel par ligne (design, taille, couleur, quantité)
+function getSendArtworks(ev){
+  var items = parseItems(ev);
+  if(!items || items.length<2) return null;
+  return items.map(function(it, idx){
+    return {
+      label: it.design || ('Design '+(idx+1)),
+      size: it.size || null, colour: it.colour || null, qty: it.qty || null,
+      print_colour: it.print_colour || null,
+      base64: (it.artwork_url && it.artwork_url.indexOf('data:')===0) ? it.artwork_url : null
+    };
+  });
+}
+
 function sendMessageText(docType, client, url){
   if(docType==='bat'){
     return 'Hello, please review and approve the print proof for '+client+' before we start production. Check the artwork carefully — once approved, any change is re-invoiced.\n\n'+url;
@@ -1111,8 +1133,13 @@ async function sendApproval(channel){
     };
     // L'artwork n'est utile que pour le BAT — inutile de le re-joindre à un BL/bon d'enlèvement déjà approuvé
     if(docType==='bat'){
-      var art = getSendArtworkBase64(ev);
-      if(art){ payload.artwork_base64 = art; payload.artwork_filename = 'artwork'; }
+      var arts = getSendArtworks(ev);
+      if(arts){
+        payload.artworks = arts;
+      } else {
+        var art = getSendArtworkBase64(ev);
+        if(art){ payload.artwork_base64 = art; payload.artwork_filename = 'artwork'; }
+      }
     }
 
     var res = await fetch(APPROVAL_FN_URL, {
