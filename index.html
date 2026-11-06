@@ -497,9 +497,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
         <div class="fg"><label>Date received</label><input type="date" id="jdr" value="2026-06-08"></div>
         <div class="fg"><label>Delivery date</label><input type="date" id="jdl"></div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;margin:2px 0 10px;font-size:13px;font-weight:600;color:#784212;cursor:pointer">
-        <input type="checkbox" id="jnp" onchange="toggleNoPrintFields()" style="width:18px;height:18px;accent-color:#A6432B"> 🚫 No print — plain cups (nothing to print, stock still deducted when Done)
-      </label>
+      <div class="fg"><label>Print type</label><select id="jpt" onchange="toggleNoPrintFields()"><option>Screen printing</option><option>DTF UV</option><option>Heat labelling</option><option>No print</option></select></div>
       <!-- SIMPLE fields -->
       <div id="job-simple-fields">
         <div class="g3">
@@ -838,7 +836,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     </div>
     <div class="g2">
       <div class="fg"><label>Status</label><select id="est"><option>Draft</option><option>Scheduled</option><option>In progress</option><option>Done</option><option>On hold</option><option>Cancelled</option></select></div>
-      <div class="fg"><label>Print type</label><select id="ept" onchange="toggleNoPrintFields()"><option>Screen print</option><option>Digital</option><option>Foil</option><option>Mixed</option><option>No print</option></select></div>
+      <div class="fg"><label>Print type</label><select id="ept" onchange="toggleNoPrintFields()"><option>Screen printing</option><option>DTF UV</option><option>Heat labelling</option><option>No print</option></select></div>
     </div>
     <div class="fg"><label>Notes</label><textarea id="eno" rows="2"></textarea></div>
     <div class="fg" style="flex-direction:row;align-items:center;gap:10px;margin-bottom:10px">
@@ -1058,7 +1056,7 @@ function buildSendSnapshot(ev){
   if(ev.cup_size) snap.size = ev.cup_size;
   if(ev.cup_colour) snap.colour = ev.cup_colour;
   if(ev.qty_printed) snap.qty = ev.qty_printed;
-  if(ev.print_type) snap.print_type = ev.print_type;
+  if(ev.print_type) snap.print_type = normPrintType(ev.print_type);
   if(ev.print_colour) snap.print_colour = ev.print_colour;
   if(ev.num_colours) snap.num_colours = ev.num_colours;
   if(ev.delivery_address) snap.delivery_address = ev.delivery_address;
@@ -1819,6 +1817,8 @@ var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,del
 // Slim columns for print_schedule lists/calendars — EXCLUDES heavy base64 blobs (artwork_url, items, product_photo)
 // Jobs brouillons (Atelier) : status 'Draft', sans date. Exclus de toutes les vues sauf l'onglet Jobs (section Drafts).
 // Jobs sans impression (gobelets vierges) : print_type 'No print' + no_print=true, 0 couleur
+// Types d'impression des jobs. Anciennes valeurs traduites à la lecture.
+function normPrintType(t){return {'Screen print':'Screen printing','Digital':'DTF UV'}[t]||t||'Screen printing';}
 function noPrintJob(o){return !!o&&(o.no_print===true||o.print_type==='No print');}
 function printLabel(o){return noPrintJob(o)?'🚫 No print':((o.print_colour||'—')+' · '+(o.num_colours||1)+' col.');}
 function isDraftJob(j){return !!j&&j.status==='Draft';}
@@ -2430,13 +2430,13 @@ function cancelJobPanel(){
 }
 // Masque les champs d'impression quand le job est « sans impression » (formulaire de création + fenêtre d'édition)
 function toggleNoPrintFields(){
-  var jnp=document.getElementById('jnp'), jr=document.getElementById('j-print-row');
-  if(jnp&&jr)jr.style.display=jnp.checked?'none':'';
+  var jpt=document.getElementById('jpt'), jr=document.getElementById('j-print-row');
+  if(jpt&&jr)jr.style.display=jpt.value==='No print'?'none':'';
   var ept=document.getElementById('ept'), np=ept&&ept.value==='No print';
   ['e-print-row','e-print-title'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=np?'none':'';});
 }
 function resetJobPanel(){
-  var _jnp=document.getElementById('jnp');if(_jnp){_jnp.checked=false;toggleNoPrintFields();}
+  setSel('jpt','Screen printing');toggleNoPrintFields();
   jobEditId=null;
   document.getElementById('pjob-title').textContent='New client order';
   document.getElementById('jsave-btn').textContent='Save order';
@@ -2500,13 +2500,9 @@ async function saveJob(){
     };
   }
   // Sans impression : gobelets vierges, aucune donnée d'impression
-  var jnp=document.getElementById('jnp');
-  if(jnp&&jnp.checked){
-    rec.no_print=true;rec.print_type='No print';rec.num_colours=0;rec.print_colour='';rec.artwork='None';
-  } else {
-    rec.no_print=false;
-    if(jobEditId&&window['j_'+jobEditId]&&window['j_'+jobEditId].print_type==='No print')rec.print_type=null;
-  }
+  rec.print_type=document.getElementById('jpt').value;
+  rec.no_print=rec.print_type==='No print';
+  if(rec.no_print){rec.num_colours=0;rec.print_colour='';rec.artwork='None';}
   var res;
   if(jobEditId){
     rec.last_edited_by=role;
@@ -2545,7 +2541,7 @@ function openJobEdit(ev){
     document.getElementById('jpc').value=ev.print_colour||'';
     setSel('jar',ev.artwork||'New');
   }
-  var _jnp=document.getElementById('jnp');if(_jnp){_jnp.checked=noPrintJob(ev);toggleNoPrintFields();}
+  setSel('jpt',noPrintJob(ev)?'No print':normPrintType(ev.print_type));toggleNoPrintFields();
   document.getElementById('pjob').classList.add('op');
   document.getElementById('bajob').style.display='none';
 }
@@ -3234,7 +3230,7 @@ function openEditNew(prefill){
   document.getElementById('epc').value='';
   document.getElementById('eno').value='';
   document.getElementById('ecalc').textContent='Stock: —';
-  setSel('esz','500ml');setSel('ecol','Frosted');setSel('enc','1');setSel('est','Scheduled');setSel('ept','Screen print');setSel('ear','New');
+  setSel('esz','500ml');setSel('ecol','Frosted');setSel('enc','1');setSel('est','Scheduled');setSel('ept','Screen printing');setSel('ear','New');
   toggleNoPrintFields();
   document.getElementById('edt').value='';document.getElementById('eda').value='';
   document.getElementById('ecn').value='';document.getElementById('ecp').value='';
@@ -3384,7 +3380,7 @@ async function openEdit(ev){
   document.getElementById('ecalc').textContent=ev.qty_printed?'Stock: '+Math.round(ev.qty_printed*1.05).toLocaleString()+' units':'Stock: —';
   setSel('esz',ev.cup_size||'500ml');setSel('ecol',ev.cup_colour||'Frosted');
   setSel('enc',String(ev.num_colours||1));setSel('est',ev.status||'Scheduled');
-  setSel('ept',noPrintJob(ev)?'No print':(ev.print_type||'Screen print'));setSel('ear',ev.artwork||'New');
+  setSel('ept',noPrintJob(ev)?'No print':normPrintType(ev.print_type));setSel('ear',ev.artwork||'New');
   toggleNoPrintFields();
   pendingArtworkFile = null;
   document.getElementById('artwork-file').value = '';
@@ -3869,7 +3865,7 @@ async function downloadJobCard(ev) {
 
     // Details grid
     + '<div class="grid">'
-    + '<div class="field"><div class="lb">Print type</div><div class="vl">'+(ev.print_type||'Screen print')+'</div></div>'
+    + '<div class="field"><div class="lb">Print type</div><div class="vl">'+normPrintType(ev.print_type)+'</div></div>'
     + '<div class="field"><div class="lb">Artwork</div><div class="vl">'+(ev.artwork||'—')+' artwork</div></div>'
     + '<div class="field"><div class="lb">Print date</div><div class="vl">'+(ev.print_date||'—')+'</div></div>'
     + '<div class="field"><div class="lb">Delivery date</div><div class="vl">'+(ev.delivery_date||'—')+'</div></div>'
@@ -5237,7 +5233,7 @@ function qQty(q){
   if(q.qty_500)p.push('500ml ×'+Number(q.qty_500).toLocaleString());
   return p.join(' · ');
 }
-function qPrint(t){return {screen:'Screen print',dtf:'DTF',label:'Heat label',unknown:''}[t]||'';}
+function qPrint(t){return {screen:'Screen printing',dtf:'DTF UV',uv:'DTF UV',label:'Heat labelling',unknown:''}[t]||'';}
 function qDays(iso){return iso?Math.floor((Date.now()-new Date(iso).getTime())/86400000):null;}
 function qFmt(iso){return iso?new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'';}
 function qFilterSet(f){qFilter=f;renderQuotes();}
