@@ -2222,6 +2222,13 @@ async function loadJobs(){
       blsndb.style.marginTop='4px';
       (function(jid){blsndb.addEventListener('click',function(){openSendApproval(window['j_'+jid],'quick');});})(o.id);
       d.querySelector('div:last-child').appendChild(blsndb);
+      if(role==='owner'||role==='fred'){
+        var tqjb=document.createElement('button');
+        tqjb.className='btn bs bsm';tqjb.textContent='🚚 Transport';
+        tqjb.style.marginTop='4px';
+        (function(jid){tqjb.addEventListener('click',function(){openTransportQuote(window['j_'+jid]);});})(o.id);
+        d.querySelector('div:last-child').appendChild(tqjb);
+      }
     }
     el.appendChild(d);
   }
@@ -2671,6 +2678,7 @@ async function loadAlerts(){
   var rs=await DB().from('stock').select('*');
   var rp=await DB().from('purchase_orders').select(PO_COLS);
   var rj=await psNoDraft(DB().from('print_schedule').select(PS_COLS));
+  await loadJobPieces();
   if(!rs.data||!rp.data||!rj.data)return;
   var el=document.getElementById('alist');el.innerHTML='';
 
@@ -2702,12 +2710,13 @@ async function loadAlerts(){
   var demandMap={}; // same key -> needed stock
   rj.data.forEach(function(j){
     if(j.status==='Done'||j.status==='Cancelled')return;
-    var sz=(j.cup_size||'').toLowerCase();
-    var col=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
-    var k=sz+'||'+col;
-    if(!demandMap[k])demandMap[k]={needed:0,clients:[]};
-    demandMap[k].needed+=Math.round((j.qty_printed||0)*1.05);
-    if(demandMap[k].clients.indexOf(j.client)===-1)demandMap[k].clients.push(j.client);
+    // Jobs Multi dépliés : chaque taille / couleur compte dans son propre besoin
+    jobPieces(j).forEach(function(pc){
+      var k=(pc.size||'').toLowerCase()+'||'+normCupColour(pc.colour);
+      if(!demandMap[k])demandMap[k]={needed:0,clients:[]};
+      demandMap[k].needed+=Math.round((pc.qty||0)*1.05);
+      if(demandMap[k].clients.indexOf(j.client)===-1)demandMap[k].clients.push(j.client);
+    });
   });
 
   // ── Compare stock vs demand ──
@@ -2804,8 +2813,38 @@ function weekJobs(mon){
   });
 }
 
+// Détail taille / couleur / quantité de chaque job (jobs Multi dépliés), lu dans la vue stock_needs (sans les visuels lourds)
+var jobPiecesMap={};
+async function loadJobPieces(){
+  try{
+    var r=await DB().from('stock_needs').select('job_id,size,colour,qty');
+    if(r&&r.data){var m={};r.data.forEach(function(n){(m[n.job_id]=m[n.job_id]||[]).push({size:n.size,colour:n.colour,qty:n.qty||0});});jobPiecesMap=m;}
+  }catch(e){}
+}
+function jobPieces(j){
+  var p=jobPiecesMap[j.id];
+  if(p&&p.length)return p;
+  return [{size:j.cup_size,colour:j.cup_colour,qty:j.qty_printed||0}];
+}
+function normCupColour(c){return (c||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');}
+// Stock (×1,05) déjà engagé pour une taille + couleur par les jobs des semaines AVANT la semaine affichée
+function committedBefore(size,colour,viewMon){
+  var tot=0,sz=(size||'').toLowerCase(),col=normCupColour(colour);
+  (prints||[]).forEach(function(j){
+    if(j.status==='Done'||j.status==='Cancelled')return;
+    var jMon=parseMonday(j.date_period);
+    if(!jMon||jMon>=viewMon)return;
+    jobPieces(j).forEach(function(pc){
+      if((pc.size||'').toLowerCase()===sz&&normCupColour(pc.colour)===col)tot+=Math.round((pc.qty||0)*1.05);
+    });
+  });
+  return tot;
+}
+
 async function loadCalData(){
+  var _pc=loadJobPieces();
   var r=await psNoDraft(DB().from('print_schedule').select(PS_COLS).order('id'));
+  await _pc;
   if(r&&r.data){
     prints=r.data;
     // Rebuild window cache from fresh data
@@ -3015,13 +3054,16 @@ function renderCal(){
       var sizeOrder2=['500ml','330ml','250ml'];
       var grouped={};
       weekJobs2.forEach(function(j){
-        var sz=j.cup_size||'Unknown';
-        var col=(j.cup_colour||'Unknown');
-        var key=sz+'||'+col;
-        if(!grouped[key])grouped[key]={size:sz,colour:col,qty:0,stock:0,jobs:[]};
-        grouped[key].qty+=(j.qty_printed||0);
-        grouped[key].stock+=Math.round((j.qty_printed||0)*1.05);
-        grouped[key].jobs.push(j.client);
+        // Jobs Multi : chaque taille / couleur va dans sa propre ligne (250 / 330 / 500 ml)
+        jobPieces(j).forEach(function(pc){
+          var sz=pc.size||'Unknown';
+          var col=(pc.colour||'Unknown');
+          var key=sz+'||'+col;
+          if(!grouped[key])grouped[key]={size:sz,colour:col,qty:0,stock:0,jobs:[]};
+          grouped[key].qty+=(pc.qty||0);
+          grouped[key].stock+=Math.round((pc.qty||0)*1.05);
+          if(grouped[key].jobs.indexOf(j.client)===-1)grouped[key].jobs.push(j.client);
+        });
       });
       // Sort by size order then colour
       var rows2=Object.values(grouped).sort(function(a,b){
@@ -3051,22 +3093,7 @@ function renderCal(){
         var incoming=srow?(pendByProduct[srow.product]||0):0;
 
         // Deduct stock already committed to jobs in PREVIOUS weeks (before this viewed week)
-        var viewMon=getMon(calOff);
-        var alreadyCommitted=0;
-        (prints||[]).forEach(function(j){
-          if(j.status==='Done'||j.status==='Cancelled')return;
-          // Only jobs scheduled BEFORE the viewed week
-          var jMon=parseMonday(j.date_period);
-          if(!jMon||jMon>=viewMon)return;
-          // Same size+colour (normalized)
-          var jSz=(j.cup_size||'').toLowerCase();
-          var jCol=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
-          var rSz=r.size.toLowerCase();
-          var rCol=r.colour.toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
-          if(jSz===rSz&&jCol===rCol){
-            alreadyCommitted+=Math.round((j.qty_printed||0)*1.05);
-          }
-        });
+        var alreadyCommitted=committedBefore(r.size,r.colour,getMon(calOff));
 
         var afterDelivery=Math.max(0,available+incoming-alreadyCommitted);
         var needed=r.stock;
@@ -3095,32 +3122,14 @@ function renderCal(){
           var srow2=(stock||[]).find(function(s){return (s.size===r.size)&&((s.colour||'').toLowerCase()===r.colour.toLowerCase());});
           var avail2=srow2?Math.max(0,(srow2.physical_stock||0)+(srow2.total_received||0)-(srow2.total_outgoing||0)):0;
           var inc2=srow2?(pendByProduct[srow2.product]||0):0;
-          var viewMon2=getMon(calOff);
-          var comm2=0;
-          (prints||[]).forEach(function(j){
-            if(j.status==='Done'||j.status==='Cancelled')return;
-            var jMon2=parseMonday(j.date_period);
-            if(!jMon2||jMon2>=viewMon2)return;
-            var jSz=(j.cup_size||'').toLowerCase();
-            var jCol=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
-            if(jSz===r.size.toLowerCase()&&jCol===r.colour.toLowerCase())comm2+=Math.round((j.qty_printed||0)*1.05);
-          });
+          var comm2=committedBefore(r.size,r.colour,getMon(calOff));
           var af2=Math.max(0,avail2+inc2-comm2);
           return r.stock>af2;
         }).map(function(r){
           var srow2=(stock||[]).find(function(s){return (s.size===r.size)&&((s.colour||'').toLowerCase()===r.colour.toLowerCase());});
           var avail2=srow2?Math.max(0,(srow2.physical_stock||0)+(srow2.total_received||0)-(srow2.total_outgoing||0)):0;
           var inc2=srow2?(pendByProduct[srow2.product]||0):0;
-          var viewMon2=getMon(calOff);
-          var comm2=0;
-          (prints||[]).forEach(function(j){
-            if(j.status==='Done'||j.status==='Cancelled')return;
-            var jMon2=parseMonday(j.date_period);
-            if(!jMon2||jMon2>=viewMon2)return;
-            var jSz=(j.cup_size||'').toLowerCase();
-            var jCol=(j.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
-            if(jSz===r.size.toLowerCase()&&jCol===r.colour.toLowerCase())comm2+=Math.round((j.qty_printed||0)*1.05);
-          });
+          var comm2=committedBefore(r.size,r.colour,getMon(calOff));
           var af2=Math.max(0,avail2+inc2-comm2);
           return r.size+' '+r.colour+': <strong>'+(r.stock-af2).toLocaleString()+' short</strong>';
         }).join('<br>');
@@ -3283,6 +3292,76 @@ function cardBoxes(ev){
   Object.keys(qtyBySize).forEach(function(sz){var per=CLIENT_BOX[sz]||0;if(per&&qtyBySize[sz]>0)out.push({size:sz,boxes:Math.ceil(qtyBySize[sz]/per),qty:qtyBySize[sz]});});
   return out;
 }
+// ── DEMANDE DE DEVIS TRANSPORTEUR (Tragar) ── e-mail préparé dans la messagerie de Seb, jamais envoyé automatiquement
+var TRANSPORT_TO=['wendy@tragar.co.za','controltower@tragar.co.za'];
+var TRANSPORT_CC=['admin@swigcups.co.za','warda@blink.africa'];
+var TRANSPORT_PICKUP='Blink printing solutions\nUnit 21 Theta business park\n4 amethyst street\nTheta Ext 7\nOrmonde 2091 Johannesburg\nContact person: Warda\nContact No. +27 84 550 1106';
+function tqEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function tqGuessCity(addr){
+  var parts=String(addr||'').split(/[\n,]+/).map(function(s){return s.trim();}).filter(Boolean);
+  for(var i=parts.length-1;i>=0;i--){var p=parts[i].replace(/\b\d{4}\b/g,'').trim();if(p&&!/^(south africa|rsa|za)$/i.test(p))return p;}
+  return '';
+}
+function tqFmtDate(iso){if(!iso)return 'TBC';var d=new Date(iso+'T00:00:00');return isNaN(d)?iso:d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});}
+async function openTransportQuote(ev){
+  if(!ev)return;
+  ev=await loadFullJob(ev);
+  var boxes=cardBoxes(ev), totBoxes=boxes.reduce(function(s,b){return s+b.boxes;},0);
+  var boxTxt=boxes.length?boxes.map(function(b){return b.boxes+' box'+(b.boxes>1?'es':'')+' of '+b.size+' cups ('+b.qty.toLocaleString('en-GB')+' cups)';}).join('\n')+(boxes.length>1?'\nTotal: '+totBoxes+' boxes':''):'';
+  var old=document.getElementById('tq-modal');if(old)old.remove();
+  var ov=document.createElement('div');ov.id='tq-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  function fld(id,label,val,type){return '<div class="fg"><label>'+label+'</label>'+(type==='area'?'<textarea id="'+id+'" rows="3">'+tqEsc(val)+'</textarea>':'<input type="'+(type||'text')+'" id="'+id+'" value="'+tqEsc(val)+'">')+'</div>';}
+  ov.innerHTML='<div style="background:#fff;border-radius:12px;padding:18px;max-width:640px;width:100%;max-height:92vh;overflow:auto" onclick="event.stopPropagation()">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong style="color:#0E6655;font-size:15px">🚚 Transport quote — '+tqEsc(ev.client)+'</strong>'+
+    '<button class="btn bs bsm" onclick="document.getElementById(\'tq-modal\').remove()">✖</button></div>'+
+    '<div class="g2">'+fld('tq-contact','Client name',ev.contact_name||'')+fld('tq-company','Company',ev.client||'')+'</div>'+
+    fld('tq-boxes','Boxes (calculated, editable)',boxTxt,'area')+
+    '<div style="font-size:11px;color:#888;margin:-4px 0 10px">Client boxes: 500ml = 200 · 330ml = 270 · 250ml = 240 cups</div>'+
+    '<div class="g2">'+fld('tq-coll','Collection date','','date')+fld('tq-deliv','Delivery date',ev.delivery_date||'','date')+'</div>'+
+    fld('tq-addr','Delivery address',ev.delivery_address||'','area')+
+    '<div class="g3">'+fld('tq-city','Delivery city',tqGuessCity(ev.delivery_address))+fld('tq-dname','Delivery contact',ev.contact_name||'')+fld('tq-dphone','Contact phone',ev.contact_phone||'')+'</div>'+
+    '<label style="display:flex;align-items:center;gap:8px;font-size:12px;margin:4px 0 10px;cursor:pointer"><input type="checkbox" id="tq-save" checked style="width:16px;height:16px"> Save delivery date, address and contact to the job</label>'+
+    '<div style="font-size:11px;color:#666;margin-bottom:10px">To: '+TRANSPORT_TO.join(', ')+'<br>Cc: '+TRANSPORT_CC.join(', ')+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn bp" onclick="sendTransportQuote('+ev.id+',\'mail\')">✉️ Open e-mail</button>'+
+    '<button class="btn bs" onclick="sendTransportQuote('+ev.id+',\'copy\')">📋 Copy text</button></div>'+
+    '<div id="tq-msg" style="font-size:12px;color:#C0392B;margin-top:8px"></div></div>';
+  document.body.appendChild(ov);
+}
+function transportQuoteText(){
+  var v=function(id){return (document.getElementById(id).value||'').trim();};
+  var city=v('tq-city'), company=v('tq-company');
+  var subject=company+(city?' - '+city:'');
+  var body='Hi Wendy,\n\nPlease could you quote for the collection and delivery below.\n\n'+
+    'Client: '+(v('tq-contact')||'-')+'\nCompany: '+(company||'-')+'\n\n'+
+    'Boxes:\n'+(v('tq-boxes')||'TBC')+'\n\n'+
+    'Please confirm the collection address:\n*Collection Address*\n'+TRANSPORT_PICKUP+'\n\n'+
+    'Collection date: '+tqFmtDate(v('tq-coll'))+'\nDelivery date: '+tqFmtDate(v('tq-deliv'))+'\n\n'+
+    '*Delivery Address*\n'+(v('tq-addr')||'TBC')+'\nContact person: '+(v('tq-dname')||'TBC')+'\nContact No. '+(v('tq-dphone')||'TBC')+'\n\n'+
+    'Thank you,\nSebastien\nSwig Cups';
+  return {subject:subject,body:body};
+}
+async function sendTransportQuote(id,mode){
+  var msg=document.getElementById('tq-msg');msg.textContent='';
+  if(!document.getElementById('tq-addr').value.trim()){msg.textContent='Add the delivery address first.';return;}
+  var m=transportQuoteText();
+  if(document.getElementById('tq-save').checked){
+    var up={delivery_address:document.getElementById('tq-addr').value.trim()||null,contact_name:document.getElementById('tq-dname').value.trim()||null,contact_phone:document.getElementById('tq-dphone').value.trim()||null,last_edited_by:role};
+    var dd=document.getElementById('tq-deliv').value;if(dd)up.delivery_date=dd;
+    var r=await DB().from('print_schedule').update(up).eq('id',id);
+    if(r.error){msg.textContent='Job not updated: '+r.error.message;}
+    else{var j=window['j_'+id]||window['ev_'+id];if(j)Object.assign(j,up);}
+  }
+  if(mode==='copy'){
+    try{await navigator.clipboard.writeText('Subject: '+m.subject+'\n\n'+m.body);toast('📋 E-mail text copied','ok');}catch(e){prompt('Copy the e-mail text:',m.body);}
+    return;
+  }
+  var href='mailto:'+TRANSPORT_TO.join(',')+'?cc='+encodeURIComponent(TRANSPORT_CC.join(','))+'&subject='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);
+  window.location.href=href;
+  toast('✉️ E-mail ready in your mail app — check and send','ok');
+}
+
 function parseItems(ev){if(!ev||!ev.items)return null;try{var a=JSON.parse(ev.items);return (a&&a.length)?a:null;}catch(e){return null;}}
 function renderJobItems(ev,forPrint){
   var items=parseItems(ev);
@@ -3347,6 +3426,11 @@ async function openEvDetail(ev){
   var blb=document.createElement('button');blb.className='btn bs';blb.style.flex='1';blb.textContent='✍️ Sign link';
   blb.addEventListener('click',function(){openSendApproval(null,'quick');});
   act.appendChild(blb);
+  if(role==='owner'||role==='fred'){
+    var tqb=document.createElement('button');tqb.className='btn bs';tqb.style.flex='1';tqb.textContent='🚚 Transport quote';
+    tqb.addEventListener('click',function(){closeOv('evov');openTransportQuote(curEv);});
+    act.appendChild(tqb);
+  }
   var cb=document.createElement('button');cb.className='btn bs';cb.textContent='Close';
   cb.addEventListener('click',function(){closeOv('evov');});
   act.appendChild(cb);
