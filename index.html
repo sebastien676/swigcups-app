@@ -3295,6 +3295,8 @@ function cardBoxes(ev){
 // ── DEMANDE DE DEVIS TRANSPORTEUR (Tragar) ── e-mail préparé dans la messagerie de Seb, jamais envoyé automatiquement
 var TRANSPORT_TO=['wendy@tragar.co.za','controltower@tragar.co.za'];
 var TRANSPORT_CC=['admin@swigcups.co.za','warda@blink.africa'];
+// Carton client : dimensions et poids (un carton plein)
+var TRANSPORT_BOX={'500ml':{dims:'65 x 44 x 18 cm',kg:11},'330ml':{dims:'45 x 30 x 30 cm',kg:10},'250ml':{dims:'45 x 30 x 30 cm',kg:8}};
 var TRANSPORT_PICKUP='Blink printing solutions\nUnit 21 Theta business park\n4 amethyst street\nTheta Ext 7\nOrmonde 2091 Johannesburg\nContact person: Warda\nContact No. +27 84 550 1106';
 function tqEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function tqGuessCity(addr){
@@ -3307,7 +3309,11 @@ async function openTransportQuote(ev){
   if(!ev)return;
   ev=await loadFullJob(ev);
   var boxes=cardBoxes(ev), totBoxes=boxes.reduce(function(s,b){return s+b.boxes;},0);
-  var boxTxt=boxes.length?boxes.map(function(b){return b.boxes+' box'+(b.boxes>1?'es':'')+' of '+b.size+' cups ('+b.qty.toLocaleString('en-GB')+' cups)';}).join('\n')+(boxes.length>1?'\nTotal: '+totBoxes+' boxes':''):'';
+  var totKg=boxes.reduce(function(s,b){return s+b.boxes*((TRANSPORT_BOX[b.size]||{}).kg||0);},0);
+  var boxTxt=boxes.length?boxes.map(function(b){
+    var spec=TRANSPORT_BOX[b.size];
+    return b.boxes+' box'+(b.boxes>1?'es':'')+' of '+b.size+' cups ('+b.qty.toLocaleString('en-GB')+' cups)'+(spec?' — '+spec.dims+', '+spec.kg+' kg each':'');
+  }).join('\n')+'\nTotal: '+totBoxes+' box'+(totBoxes>1?'es':'')+(totKg?', approx. '+totKg+' kg':''):'';
   var old=document.getElementById('tq-modal');if(old)old.remove();
   var ov=document.createElement('div');ov.id='tq-modal';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
