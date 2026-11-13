@@ -380,7 +380,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div style="font-size:48px">🥤</div>
     <h1>Swig Cups</h1>
     <p>Stock & Print Manager</p>
-    <select id="who" style="width:100%;padding:12px;margin-bottom:10px;border-radius:8px;font-size:16px"><option value="owner">Seb</option><option value="fred">Fred</option><option value="warda">Warda / Blink</option><option value="emilie">Emilie</option></select>
+    <select id="who" style="width:100%;padding:12px;margin-bottom:10px;border-radius:8px;font-size:16px"><option value="owner">Seb</option><option value="fred">Fred</option><option value="warda">Warda / Blink</option><option value="emilie">Emilie</option><option value="alsworth">Alsworth</option></select>
     <input type="password" id="pw" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="sb" onclick="doLogin()">Sign in</button>
     <div class="le" id="le">Wrong password. Try again.</div>
@@ -1174,14 +1174,15 @@ async function sendApproval(channel){
     btn.disabled=false; btn.textContent=origText;
   }
 }
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','messages','approvals','quotes','stats','analytics','alerts'],fred:['stock','jobs','print','cal','deliveries','messages','approvals'],warda:['stock','myjobs','cal','deliveries','messages'],emilie:['stock','pos','cal','deliveries','quotes','stats','analytics']};
-var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink',emilie:'Emilie'};
+// Onglets Messages et Alerts retirés (11/11/2026, à la demande de Seb). Les données restent dans la table messages.
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','approvals','quotes','stats','analytics'],fred:['stock','jobs','print','cal','deliveries','approvals'],warda:['stock','myjobs','cal','deliveries'],emilie:['stock','pos','cal','deliveries','quotes','stats','analytics'],alsworth:['jobs','cal']};
+var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink',emilie:'Emilie',alsworth:'Alsworth'};
 var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},pendDetail={},delCalOff=0,delCalSelectedDate=null,delCalView='week';
 
 // South Africa public holidays
 var SA_HOLIDAYS={"2026-01-01":"New Years Day","2026-03-21":"Human Rights Day","2026-04-03":"Good Friday","2026-04-06":"Family Day","2026-04-27":"Freedom Day","2026-05-01":"Workers Day","2026-06-16":"Youth Day","2026-08-09":"Womens Day","2026-08-10":"Womens Day (obs.)","2026-09-24":"Heritage Day","2026-12-16":"Day of Reconciliation","2026-12-25":"Christmas Day","2026-12-26":"Day of Goodwill"};
 
-var LOGIN_EMAILS={owner:'seb@swigcups.co.za',fred:'fred@swigcups.co.za',warda:'warda@swigcups.co.za',emilie:'emilie@swigcups.co.za'};
+var LOGIN_EMAILS={owner:'seb@swigcups.co.za',fred:'fred@swigcups.co.za',warda:'warda@swigcups.co.za',emilie:'emilie@swigcups.co.za',alsworth:'alsworth@swigcups.co.za'};
 function roleFromEmail(e){e=(e||'').toLowerCase();for(var k in LOGIN_EMAILS)if(LOGIN_EMAILS[k]===e)return k;return null;}
 function startApp(r){
   role=r;
@@ -1214,7 +1215,9 @@ function initRole(r){
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
   if(r==='owner'){document.getElementById('badd').style.display='flex';}
-  if(r==='owner'||r==='fred'){document.getElementById('bajob').style.display='flex';}
+  if(r==='owner'||r==='fred'||r==='alsworth'){document.getElementById('bajob').style.display='flex';}
+  // Alsworth : Jobs + Calendar uniquement, ouvre directement sur Jobs
+  if(r==='alsworth'){showTab('jobs',document.querySelectorAll('nav button')[2]);}
   var _wpd=document.getElementById('warda-print-date');if(_wpd){var _t=new Date();_wpd.value=_t.getFullYear()+'-'+String(_t.getMonth()+1).padStart(2,'0')+'-'+String(_t.getDate()).padStart(2,'0');}
   // Load data in parallel — owner loads everything, Fred/Warda load lighter set
   if(r==='owner'){
@@ -1226,7 +1229,7 @@ function initRole(r){
     // Fred: load essentials first, defer POs
     Promise.all([loadStock(), loadCalData(), loadJobs(), loadPrint()]);
   }
-  setTimeout(checkUnreadMessages, 2000);
+  // setTimeout(checkUnreadMessages, 2000); — onglet Messages retiré
   if(r==='owner'||r==='fred')setTimeout(loadApprovals, 2500);
   if(r==='owner'||r==='emilie')setTimeout(loadQuotes, 3500); // Quotes : owner uniquement (Fred plus tard)
 }
