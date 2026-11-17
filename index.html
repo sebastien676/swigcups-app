@@ -426,7 +426,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
         <div class="fg"><label>Product</label><select id="dp">
           <option>500ml Frosted cups</option><option>500ml Black cups</option><option>500ml Red cups</option>
           <option>500ml Pink cups</option><option>500ml White cups</option><option>500ml Purple cups</option>
-          <option>500ml Blue cups</option><option>500ml Yellow cups</option>
+          <option>500ml Dark Blue cups</option><option>500ml Light Blue cups</option><option>500ml Yellow cups</option>
           <option>330ml Frosted cups</option><option>330ml Red cups</option><option>330ml Yellow cups</option>
         </select></div>
         <div class="fg"><label>Boxes</label><input type="number" id="dbx" placeholder="e.g. 28" oninput="calcDel()"></div>
@@ -503,7 +503,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div id="job-simple-fields">
         <div class="g3">
           <div class="fg"><label>Cup size ★</label><select id="jsz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-          <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option><option>Orange</option><option>Dark Blue</option></select></div>
+          <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Light Blue</option><option>Dark Blue</option><option>Yellow</option><option>Green</option><option>Orange</option></select></div>
           <div class="fg"><label>Qty ★</label><input type="number" id="jq" placeholder="e.g. 2000" oninput="this.nextElementSibling.textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"><span class="hint"></span></div>
         </div>
         <div class="g3" id="j-print-row">
@@ -818,7 +818,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="es">Cup details</div>
     <div class="g3">
       <div class="fg"><label>Size ★</label><select id="esz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-      <div class="fg"><label>Colour ★</label><select id="ecol"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option><option>Orange</option><option>Dark Blue</option></select></div>
+      <div class="fg"><label>Colour ★</label><select id="ecol"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Light Blue</option><option>Dark Blue</option><option>Yellow</option><option>Green</option><option>Orange</option></select></div>
       <div class="fg"><label>Qty ★</label><input type="number" id="eq" oninput="document.getElementById('ecalc').textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"></div>
     </div>
     <div class="hint" id="ecalc">Stock: —</div>
@@ -875,7 +875,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="fg"><label>Client ★</label><input type="text" id="qac" placeholder="Client name"></div>
     <div class="g3">
       <div class="fg"><label>Size</label><select id="qas"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-      <div class="fg"><label>Colour</label><select id="qacl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Blue</option><option>Yellow</option><option>Green</option></select></div>
+      <div class="fg"><label>Colour</label><select id="qacl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Light Blue</option><option>Dark Blue</option><option>Yellow</option><option>Green</option></select></div>
       <div class="fg"><label>Qty</label><input type="number" id="qaq" placeholder="2000"></div>
     </div>
     <div class="g2">
@@ -1381,7 +1381,7 @@ async function loadStock(){
   // ── Alert: printing needs (next 14 days) vs stock + incoming ──
   var needRows=(rneed&&rneed.data)||[];
   function nSize(s){var m=(s||'').match(/(\d+)/);return m?m[1]:'';}
-  function nCol(c){return (c||'').toLowerCase().trim().replace('washed frosted','frosted').replace('new frosted','frosted').replace('dark blue','blue');}
+  function nCol(c){return (c||'').toLowerCase().trim().replace('washed frosted','frosted').replace('new frosted','frosted');}
   var alertCount=0;
   merged.forEach(function(p){
     var k=nSize(p.size)+'|'+nCol(p.colour);
@@ -1417,7 +1417,7 @@ async function loadStock(){
 
   var cupColours={
     'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63',
-    'blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE',
+    'blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE',
     'green':'#43A047','orange':'#FF9800'
   };
 
@@ -1665,7 +1665,7 @@ async function loadAPDeliveries(){
       '<div class="mt"><div class="lb">Total ordered</div><div class="vl">'+totalOrdered.toLocaleString()+'</div><div class="sb2">all POs</div></div>';
   }
 
-  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE','green':'#43A047','orange':'#FF9800','turquoise':'#1ABC9C'};
+  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE','green':'#43A047','orange':'#FF9800','turquoise':'#1ABC9C'};
   function dotFor(product){
     var pl=(product||'').toLowerCase();
     var col='#888';
@@ -1818,7 +1818,7 @@ async function loadAPDeliveries(){
 }
 // ── PURCHASE ORDERS ──
 // Columns WITHOUT payment_proof (base64 blob) — fetched on demand only, keeps lists fast
-var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name,payment_proof_2_name,qty_received';
+var PO_COLS='id,po_number,po_date,product,size,colour,qty_ordered,unit_price,delivery_date,status,notes,created_at,paid,paid_date,invoice_number,supplier,payment_proof_name,payment_proof_2_name,payment_proof_3_name,payment_proof_4_name,payment_amount_1,payment_amount_2,payment_amount_3,payment_amount_4,qty_received';
 // Slim columns for print_schedule lists/calendars — EXCLUDES heavy base64 blobs (artwork_url, items, product_photo)
 // Jobs brouillons (Atelier) : status 'Draft', sans date. Exclus de toutes les vues sauf l'onglet Jobs (section Drafts).
 // Jobs sans impression (gobelets vierges) : print_type 'No print' + no_print=true, 0 couleur
@@ -1845,13 +1845,13 @@ async function loadPOs(){
   var nd=r.data.filter(function(p){return p.status==='Not delivered';}).length;
   // Amount outstanding = ALL unpaid POs regardless of delivery status
   var owed=r.data.filter(function(p){return !p.paid;});
-  var owedTotal=owed.reduce(function(s,p){return s+(p.qty_ordered||0)*(p.unit_price||0)*1.15;},0);
+  var owedTotal=owed.reduce(function(s,p){return s+Math.max(0,poTotal(p)-poPaidSum(p));},0);
   document.getElementById('pmets').innerHTML=
     '<div class="mt"><div class="lb">Total ordered</div><div class="vl">'+tot.toLocaleString()+'</div></div>'+
     '<div class="mt"><div class="lb">Total value</div><div class="vl" style="font-size:14px;padding-top:4px">ZAR '+Math.round(val).toLocaleString()+'</div></div>'+
     '<div class="mt or"><div class="lb">Pending/Partial</div><div class="vl">'+pend+'</div></div>'+
     '<div class="mt '+(nd>0?'rd':'gn')+'"><div class="lb">Not delivered</div><div class="vl">'+nd+'</div></div>'+
-    '<div class="mt '+(owedTotal>0?'rd':'gn')+'"><div class="lb">💳 I owe</div><div class="vl" style="font-size:14px;padding-top:4px">ZAR '+Math.round(owedTotal).toLocaleString()+'</div><div class="sb2">unpaid delivered</div></div>';
+    '<div class="mt '+(owedTotal>0?'rd':'gn')+'"><div class="lb">💳 I owe</div><div class="vl" style="font-size:14px;padding-top:4px">ZAR '+Math.round(owedTotal).toLocaleString()+'</div><div class="sb2">unpaid, part-payments deducted</div></div>';
 
   var SBG={'Delivered':'#D5F5E3','Over-delivered':'#D5F5E3','Partial':'#FDEBD0','Not delivered':'#FADBD8','To verify':'#FEF9E7','Pending':'#D6EAF8'};
   var SICO={'Delivered':'✅','Over-delivered':'✅','Partial':'⚠️','Not delivered':'❌','To verify':'❓','Pending':'🔜'};
@@ -1902,7 +1902,7 @@ async function loadPOs(){
       if(role==='owner'){
         paidCellHtml=p.paid
           ?('<td style="white-space:nowrap"><span style="color:#1E8449;font-weight:700;font-size:11px">✅ '+(p.paid_date||'Paid')+'</span> <button class="btn bs bsm" style="font-size:10px;padding:1px 5px;color:#D35400" onclick="markPaid('+p.id+',true)">↩</button></td>')
-          :('<td><button class="btn bs bsm" style="font-size:11px;padding:3px 7px" onclick="markPaid('+p.id+',false)">💳 Mark paid</button></td>');
+          :('<td style="white-space:nowrap">'+(poPaidSum(p)>0?'<div style="font-size:10px;line-height:1.3;margin-bottom:2px"><span style="color:#1E8449">Paid '+zar(poPaidSum(p))+'</span><br><span style="color:#C0392B;font-weight:700">Due '+zar(Math.max(0,tot2-poPaidSum(p)))+'</span></div>':'')+'<button class="btn bs bsm" style="font-size:11px;padding:3px 7px" onclick="markPaid('+p.id+',false)">💳 Mark paid</button></td>');
       } else {
         paidCellHtml='<td style="font-size:11px;color:'+(p.paid?'#1E8449':'#aaa')+'">'+(p.paid?'✅ '+(p.paid_date||'Paid'):'—')+'</td>';
       }
@@ -1913,9 +1913,9 @@ async function loadPOs(){
             :'<td><button class="btn bs bsm btn-inv" style="font-size:10px;padding:2px 6px" onclick="editInvoice('+p.id+')">+</button></td>')
           :'<td style="font-size:11px;color:#666">'+(p.invoice_number||'—')+'</td>')
         :'<td></td>';
-      var proofCell;
-      if(p.payment_proof_name){
-        proofCell='<td style="white-space:nowrap"><button class="btn bs bsm btn-proof" style="font-size:12px;padding:2px 6px;color:#fff;background:#1E8449;border-color:#1E8449" onclick="viewProof('+p.id+')" title="'+(p.payment_proof_name+(p.payment_proof_2_name?' + '+p.payment_proof_2_name:'')).replace(/"/g,'&quot;')+'">👍'+(p.payment_proof_2_name?'<sup style="font-size:9px;font-weight:700"> 2</sup>':'')+'</button></td>';
+      var proofCell, _pc=proofCount(p);
+      if(_pc){
+        proofCell='<td style="white-space:nowrap"><button class="btn bs bsm btn-proof" style="font-size:12px;padding:2px 6px;color:#fff;background:#1E8449;border-color:#1E8449" onclick="viewProof('+p.id+')" title="'+_pc+' proof(s) · paid '+zar(poPaidSum(p))+'">👍'+(_pc>1?'<sup style="font-size:9px;font-weight:700"> '+_pc+'</sup>':'')+'</button></td>';
       } else {
         proofCell=role==='owner'
           ?'<td><button class="btn bs bsm btn-proof" style="font-size:10px;padding:2px 6px;color:#888" onclick="uploadProof('+p.id+')" title="Upload proof of payment">📎</button></td>'
@@ -1951,7 +1951,7 @@ async function loadPOs(){
     // Fred/Warda: simple view — PO# + product + qty only
     var simpleRows='';
     r.data.forEach(function(p){
-      var cupColours2={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE','green':'#43A047','orange':'#FF9800'};
+      var cupColours2={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE','green':'#43A047','orange':'#FF9800'};
       var bc=cupColours2[(p.colour||'').toLowerCase()]||'#888';
       var dot='<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+bc+';margin-right:6px;vertical-align:middle"></span>';
       simpleRows+='<tr><td style="font-weight:700;color:#1F4E79">'+p.po_number+'</td>'+
@@ -2037,10 +2037,33 @@ async function receiveDelivery(id, totalOrdered){
 }
 
 // ── PROOF OF PAYMENT ──
-// Jusqu'à 2 preuves par ligne de PO : emplacement 1 = payment_proof, emplacement 2 = payment_proof_2
-function proofCols(slot){return slot===2?{d:'payment_proof_2',n:'payment_proof_2_name'}:{d:'payment_proof',n:'payment_proof_name'};}
+// Jusqu'à 4 preuves de paiement par ligne de PO, chacune avec le montant payé (déduit du total TTC)
+// Emplacement 1 = payment_proof / payment_proof_name / payment_amount_1 ; 2..4 = payment_proof_N / payment_proof_N_name / payment_amount_N
+var PROOF_MAX=4;
+function proofCols(slot){slot=Math.min(PROOF_MAX,Math.max(1,parseInt(slot)||1));return slot===1?{d:'payment_proof',n:'payment_proof_name',a:'payment_amount_1'}:{d:'payment_proof_'+slot,n:'payment_proof_'+slot+'_name',a:'payment_amount_'+slot};}
+function proofCount(p){var n=0;for(var s=1;s<=PROOF_MAX;s++){if(p[proofCols(s).n])n=s;}return n;}
+function poPaidSum(p){var t=0;for(var s=1;s<=PROOF_MAX;s++){t+=Number(p[proofCols(s).a])||0;}return t;}
+function poTotal(p){return (p.qty_ordered||0)*(p.unit_price||0)*1.15;}
+function zar(n){return 'R '+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+function askAmount(def){
+  var v=prompt('Amount paid with this proof (ZAR, incl. VAT) — leave empty if unknown:',def!=null?String(def):'');
+  if(v===null)return undefined;
+  v=v.replace(/[^\d.,-]/g,'').replace(',','.');
+  return v===''?null:(isNaN(parseFloat(v))?null:Math.round(parseFloat(v)*100)/100);
+}
+// Marque la ligne payée quand les montants couvrent le total TTC
+async function autoMarkPaidIfCovered(id){
+  var r=await DB().from('purchase_orders').select(PO_COLS).eq('id',id).single();
+  var p=r.data;if(!p||p.paid)return;
+  var tot=poTotal(p);
+  if(tot>0&&poPaidSum(p)>=tot-0.5){
+    var d=new Date(),ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    await DB().from('purchase_orders').update({paid:true,paid_date:ds}).eq('id',id);
+    toast('✅ Fully paid — PO marked as paid','ok');
+  }
+}
 function uploadProof(id,slot){
-  slot=slot===2?2:1;
+  slot=Math.min(PROOF_MAX,Math.max(1,parseInt(slot)||1));
   var inp=document.createElement('input');
   inp.type='file';
   inp.accept='application/pdf,image/*';
@@ -2048,82 +2071,98 @@ function uploadProof(id,slot){
     var file=inp.files[0];
     if(!file)return;
     if(file.size>4*1024*1024){toast('File too big (max 4 MB) — compress it first','err');return;}
+    var amt=askAmount(null);
+    if(amt===undefined)return;
     var reader=new FileReader();
     reader.onload=async function(e){
-      var b64=e.target.result;
-      var c=proofCols(slot),upd={};upd[c.d]=b64;upd[c.n]=file.name;
+      var c=proofCols(slot),upd={};upd[c.d]=e.target.result;upd[c.n]=file.name;upd[c.a]=amt;
       var r=await DB().from('purchase_orders').update(upd).eq('id',id);
       if(r.error){toast('Upload failed: '+r.error.message,'err');return;}
-      toast('📎 Proof of payment '+slot+' saved','ok');
+      toast('📎 Proof of payment '+slot+' saved'+(amt?' — '+zar(amt):''),'ok');
+      await autoMarkPaidIfCovered(id);
       loadPOs();
     };
     reader.readAsDataURL(file);
   };
   inp.click();
 }
-async function viewProof(id,slot){
-  slot=slot===2?2:1;
+async function editProofAmount(id,slot){
   var c=proofCols(slot);
-  var r=await DB().from('purchase_orders').select('po_number,payment_proof_name,payment_proof_2_name,'+c.d).eq('id',id).single();
+  var r=await DB().from('purchase_orders').select(c.a).eq('id',id).single();
+  var amt=askAmount(r.data?r.data[c.a]:null);
+  if(amt===undefined)return;
+  var upd={};upd[c.a]=amt;
+  await DB().from('purchase_orders').update(upd).eq('id',id);
+  toast('💰 Amount updated','ok');
+  await autoMarkPaidIfCovered(id);
+  var m=document.getElementById('proof-modal');if(m)m.remove();
+  loadPOs();viewProof(id,slot);
+}
+async function viewProof(id,slot){
+  slot=Math.min(PROOF_MAX,Math.max(1,parseInt(slot)||1));
+  var c=proofCols(slot);
+  var r=await DB().from('purchase_orders').select(PO_COLS+','+c.d).eq('id',id).single();
   if(!r.data||!r.data[c.d]){toast('No proof found','err');return;}
-  var p={po_number:r.data.po_number,payment_proof:r.data[c.d],payment_proof_name:r.data[c.n]};
-  var has2=!!r.data.payment_proof_2_name;
+  var row=r.data, n=proofCount(row), tot=poTotal(row), paidSum=poPaidSum(row);
   var old=document.getElementById('proof-modal');if(old)old.remove();
   var ov=document.createElement('div');
   ov.id='proof-modal';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
   ov.onclick=function(e){if(e.target===ov)ov.remove();};
-  var body;
-  if(p.payment_proof.indexOf('data:image')===0){
-    body='<img src="'+p.payment_proof+'" style="max-width:100%;max-height:60vh;border-radius:8px;display:block;margin:0 auto">';
-  } else {
-    body='<iframe src="'+p.payment_proof+'" style="width:100%;height:60vh;border:none;border-radius:8px"></iframe>';
+  var data=row[c.d];
+  var body=data.indexOf('data:image')===0
+    ?'<img src="'+data+'" style="max-width:100%;max-height:55vh;border-radius:8px;display:block;margin:0 auto">'
+    :'<iframe src="'+data+'" style="width:100%;height:55vh;border:none;border-radius:8px"></iframe>';
+  var name=(row[c.n]||'proof').replace(/</g,'&lt;');
+  var tabs='';
+  for(var s=1;s<=n;s++){
+    var cs=proofCols(s);if(!row[cs.n])continue;
+    tabs+='<button class="btn bs bsm" style="'+(s===slot?'background:#0E6655;color:#fff':'')+'" onclick="viewProof('+id+','+s+')">Proof '+s+(row[cs.a]?' · '+zar(row[cs.a]):'')+'</button>';
   }
-  var name=(p.payment_proof_name||'proof').replace(/</g,'&lt;');
+  if(role==='owner'&&n<PROOF_MAX)tabs+='<button class="btn bs bsm" onclick="uploadProof('+id+','+(n+1)+');document.getElementById(\'proof-modal\').remove()">➕ Add proof '+(n+1)+'</button>';
+  var due=Math.max(0,tot-paidSum);
   ov.innerHTML='<div style="background:#fff;border-radius:12px;padding:20px;max-width:720px;width:100%;max-height:90vh;overflow:auto" onclick="event.stopPropagation()">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">'
-    +'<strong style="color:#0E6655">📎 '+p.po_number+' — '+name+'</strong>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap">'
+    +'<strong style="color:#0E6655">📎 '+row.po_number+' — '+name+'</strong>'
     +'<span style="white-space:nowrap">'
     +'<button class="btn bs bsm" style="margin-right:6px" onclick="downloadProof('+id+','+slot+')">⬇️ Download</button>'
+    +(role==='owner'?'<button class="btn bs bsm" style="margin-right:6px" onclick="editProofAmount('+id+','+slot+')">💰 Amount</button>':'')
     +(role==='owner'?'<button class="btn bs bsm" style="margin-right:6px;color:#D35400" onclick="uploadProof('+id+','+slot+');document.getElementById(\'proof-modal\').remove()">🔄 Replace</button>':'')
     +(role==='owner'?'<button class="btn bs bsm" style="margin-right:6px;color:#C0392B" onclick="deleteProof('+id+','+slot+')">🗑️</button>':'')
     +'<button class="btn bs bsm" onclick="document.getElementById(\'proof-modal\').remove()">✖</button>'
     +'</span></div>'
-    // Choix de la preuve 1 / 2, ou ajout d'une 2e preuve
-    +'<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">'
-    +(has2
-      ?'<button class="btn bs bsm" style="'+(slot===1?'background:#0E6655;color:#fff':'')+'" onclick="viewProof('+id+',1)">Proof 1</button>'
-       +'<button class="btn bs bsm" style="'+(slot===2?'background:#0E6655;color:#fff':'')+'" onclick="viewProof('+id+',2)">Proof 2</button>'
-      :(role==='owner'?'<button class="btn bs bsm" onclick="uploadProof('+id+',2);document.getElementById(\'proof-modal\').remove()">➕ Add 2nd proof</button>':''))
-    +'</div>'+body+'</div>';
+    +'<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;background:#F4F8F7;border-radius:8px;padding:8px 10px;margin-bottom:10px">'
+    +'<span>Total incl. VAT: <strong>'+zar(tot)+'</strong></span>'
+    +'<span style="color:#1E8449">Paid: <strong>'+zar(paidSum)+'</strong></span>'
+    +'<span style="color:'+(due>0.5?'#C0392B':'#1E8449')+'">Balance due: <strong>'+zar(due)+'</strong></span></div>'
+    +'<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">'+tabs+'</div>'+body+'</div>';
   document.body.appendChild(ov);
 }
 async function downloadProof(id,slot){
-  slot=slot===2?2:1;
   var c=proofCols(slot);
   var r=await DB().from('purchase_orders').select('po_number,'+c.d+','+c.n).eq('id',id).single();
   if(!r.data||!r.data[c.d]){toast('No proof found','err');return;}
   var a=document.createElement('a');
   a.href=r.data[c.d];
-  a.download=r.data[c.n]||(r.data.po_number+'-proof'+(slot===2?'-2':''));
+  a.download=r.data[c.n]||(r.data.po_number+'-proof-'+slot);
   document.body.appendChild(a);a.click();a.remove();
 }
 async function deleteProof(id,slot){
-  slot=slot===2?2:1;
-  if(!confirm('Delete proof of payment '+slot+'?'))return;
-  if(slot===2){
-    await DB().from('purchase_orders').update({payment_proof_2:null,payment_proof_2_name:null}).eq('id',id);
-  } else {
-    // Si une 2e preuve existe, elle devient la preuve 1
-    var r=await DB().from('purchase_orders').select('payment_proof_2,payment_proof_2_name').eq('id',id).single();
-    var d=r.data||{};
-    await DB().from('purchase_orders').update({payment_proof:d.payment_proof_2||null,payment_proof_name:d.payment_proof_2_name||null,payment_proof_2:null,payment_proof_2_name:null}).eq('id',id);
+  slot=Math.min(PROOF_MAX,Math.max(1,parseInt(slot)||1));
+  if(!confirm('Delete proof of payment '+slot+' (and its amount)?'))return;
+  // Les preuves suivantes remontent d'un cran (pas de trou)
+  var cols=[];for(var s=1;s<=PROOF_MAX;s++){var c=proofCols(s);cols.push(c.d,c.n,c.a);}
+  var r=await DB().from('purchase_orders').select(cols.join(',')).eq('id',id).single();
+  var d=r.data||{},upd={};
+  for(var k=slot;k<=PROOF_MAX;k++){
+    var to=proofCols(k),from=k<PROOF_MAX?proofCols(k+1):null;
+    upd[to.d]=from?(d[from.d]||null):null;upd[to.n]=from?(d[from.n]||null):null;upd[to.a]=from?(d[from.a]==null?null:d[from.a]):null;
   }
+  await DB().from('purchase_orders').update(upd).eq('id',id);
   var m=document.getElementById('proof-modal');if(m)m.remove();
   toast('🗑️ Proof deleted','ok');
   loadPOs();
 }
-
 async function markPaid(id,alreadyPaid){
   if(alreadyPaid){
     if(!confirm('Undo payment for this PO?'))return;
@@ -2298,7 +2337,7 @@ async function placeDraftOnCalendar(id){
 var jobMode='simple';
 var jobEditId=null;
 var JLINE_SIZES=['500ml','330ml','250ml'];
-var JLINE_COLOURS=['Frosted','Black','Red','Pink','White','Purple','Blue','Dark Blue','Yellow','Green','Orange'];
+var JLINE_COLOURS=['Frosted','Black','Red','Pink','White','Purple','Light Blue','Dark Blue','Yellow','Green','Orange'];
 
 function setJobMode(m){
   jobMode=m;
@@ -3056,7 +3095,7 @@ function renderCal(){
       swBody.innerHTML='<div style="color:#aaa;font-size:13px;padding:8px 0">No jobs this week</div>';
     } else {
       // Group by size then colour
-      var cupColours2={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
+      var cupColours2={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
       var sizeOrder2=['500ml','330ml','250ml'];
       var grouped={};
       weekJobs2.forEach(function(j){
@@ -3287,7 +3326,7 @@ async function saveQA(){
 }
 
 // ── JOB ITEMS RENDER (shared) ──
-var JOB_CUP_DOT={'frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00'};
+var JOB_CUP_DOT={'frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00'};
 function jobCupDot(c){return JOB_CUP_DOT[(c||'').toLowerCase().trim()]||'#95a5a6';}
 var CLIENT_BOX={'500ml':200,'330ml':270,'250ml':240};
 function cardBoxes(ev){
@@ -3820,7 +3859,7 @@ async function applyStockDelta(job,amount,sign){
   for(var pi=0;pi<parts.length;pi++){
     var jb=parts[pi];
     var used=Math.round((jb.qty_printed||0)*factor*1.05);
-    var jobColourNorm=(jb.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted').replace('dark blue','blue');
+    var jobColourNorm=(jb.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
     var isFrosted=jobColourNorm==='frosted';
     var delta=ns==='Done'?used:-used;
 
@@ -3871,7 +3910,7 @@ async function downloadJobCard(ev) {
   var complexItems=parseItems(ev);
 
   // Cup colour dot
-  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
+  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
   var cupDotColor=cupColours[(ev.cup_colour||'').toLowerCase()]||'#0E6655';
   var barColor=ev.cup_size&&ev.cup_size.indexOf('500')>-1?'#43A047':ev.cup_size&&ev.cup_size.indexOf('330')>-1?'#FDD835':'#1E88E5';
 
@@ -4603,7 +4642,7 @@ async function downloadDeliveryCard(ev){
     +'</div>';
 
   // Cup colour dot
-  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
+  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
   var cupDotColor=cupColours[(ev.cup_colour||'').toLowerCase()]||'#0E6655';
 
   // Artwork section
@@ -4864,7 +4903,7 @@ async function downloadWardaDayList(){
   // SA holiday check
   var phLabel=typeof SA_HOLIDAYS!=='undefined'&&SA_HOLIDAYS[dateVal]?'🇿🇦 '+SA_HOLIDAYS[dateVal]:'';
 
-  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
+  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
 
   var totalCups=jobs.reduce(function(s,j){return s+(j.qty_printed||0);},0);
   var totalPrints=jobs.reduce(function(s,j){return s+(j.qty_printed||0)*(noPrintJob(j)?0:(j.num_colours||1));},0);
@@ -5733,7 +5772,7 @@ async function openApprovalDetail(id){
 
 // ── WARDA CAPACITY STATS ──
 // ── ORDER ANALYTICS ──
-var AN_COL={'frosted':'#7FB3A6','washed frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00'};
+var AN_COL={'frosted':'#7FB3A6','washed frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00'};
 var AN_SIZECOL={'500ml':'#0E6655','330ml':'#E67E22','250ml':'#8E44AD'};
 function anColour(c){return AN_COL[(c||'').toLowerCase().trim()]||'#95a5a6';}
 function anNum(n){return (n||0).toLocaleString('fr-FR');}
