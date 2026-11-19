@@ -526,7 +526,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       </div>
     </div>
     <div class="card" style="margin-top:14px">
-      <div class="ch"><span class="ct">All orders</span><button class="btn bs bsm" onclick="loadJobs()">↻</button></div>
+      <div class="ch"><span class="ct">All orders</span><span style="display:flex;gap:6px"><button class="btn bs bsm" id="pc-link-btn" style="display:none" onclick="copyPrintCheckLink()">📸 Print check link</button><button class="btn bs bsm" onclick="loadJobs()">↻</button></span></div>
       <div id="jlist"><div class="ld"><div class="sp"></div></div></div>
     </div>
   </div>
@@ -1216,7 +1216,7 @@ function initRole(r){
   var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','approvals','quotes','stats','analytics','alerts'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
-  if(r==='owner'){document.getElementById('badd').style.display='flex';}
+  if(r==='owner'){document.getElementById('badd').style.display='flex';var _pcb=document.getElementById('pc-link-btn');if(_pcb)_pcb.style.display='';}
   if(r==='owner'||r==='fred'||r==='alsworth'){document.getElementById('bajob').style.display='flex';}
   // Alsworth : Jobs + Calendar uniquement, ouvre directement sur Jobs
   if(r==='alsworth'){showTab('jobs',document.querySelectorAll('nav button')[2]);}
@@ -2206,7 +2206,9 @@ async function editPO(id){
 
 // ── JOBS ──
 async function loadJobs(){
+  var _pcc=loadPrintCheckCounts();
   var r=await DB().from('print_schedule').select(PS_COLS).order('id',{ascending:false});
+  await _pcc;
   if(!r.data)return;
   document.getElementById('jt').textContent=r.data.filter(function(o){return !isDraftJob(o);}).length;
   document.getElementById('js').textContent=r.data.filter(function(o){return o.status==='Scheduled';}).length;
@@ -2236,6 +2238,7 @@ async function loadJobs(){
     var _isComplex=o.job_type==='complex';
     var _nLines=o.n_items||0;
     var _badge=_isComplex?' <span style="font-size:10px;background:#E8DAEF;color:#6C3483;padding:1px 7px;border-radius:9px;font-weight:700">🧩 '+(_nLines?_nLines+' lines':'multi')+'</span>':'';
+    if(pcCounts[o.id])_badge+=' <span style="font-size:10px;background:#D5F5E3;color:#0B5E2F;padding:1px 7px;border-radius:9px;font-weight:700" title="Photo of the first printed cup — open the job to compare">📸 '+pcCounts[o.id]+'</span>';
     if(noPrintJob(o))_badge+=' <span style="font-size:10px;background:#FDEBD0;color:#784212;padding:1px 7px;border-radius:9px;font-weight:700">🚫 NO PRINT</span>';
     d.innerHTML='<div style="flex:1">'+
       '<div style="font-weight:600;font-size:14px">'+o.client+_badge+'</div>'+
@@ -3437,6 +3440,41 @@ function renderJobItems(ev,forPrint){
   return h;
 }
 
+// ── PRINT CHECK : photos du 1er gobelet imprimé (page check.html) ──
+var PRINT_CHECK_PAGE='https://sebastien676.github.io/swigcups-app/check.html';
+var pcCounts={};
+async function loadPrintCheckCounts(){
+  try{var r=await DB().from('print_checks').select('job_id');var m={};(r.data||[]).forEach(function(x){m[x.job_id]=(m[x.job_id]||0)+1;});pcCounts=m;}catch(e){}
+}
+async function loadJobPrintChecks(ev){
+  var el=document.getElementById('ev-pc');if(!el)return;
+  try{
+    var r=await DB().from('print_checks').select('photo_path,taken_by,note,created_at').eq('job_id',ev.id).order('created_at',{ascending:false});
+    var rows=r.data||[];
+    if(!rows.length){el.innerHTML='<div class="mr"><span class="ml">Print check</span><span style="color:#aaa">No photo of the first cup yet</span></div>';return;}
+    var s=await DB().storage.from('print-checks').createSignedUrls(rows.map(function(x){return x.photo_path;}),3600);
+    var urls={};((s&&s.data)||[]).forEach(function(u){urls[u.path]=u.signedUrl;});
+    var art=ev.artwork_url&&ev.artwork_url.indexOf('data:image')===0?ev.artwork_url:null;
+    var h='<div style="margin-top:10px;border-top:1px dashed #e0e0e0;padding-top:10px"><div style="font-size:11px;font-weight:700;color:#0E6655;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📸 Print check — first cup vs artwork</div>';
+    rows.forEach(function(x){
+      var u=urls[x.photo_path];
+      h+='<div style="display:grid;grid-template-columns:'+(art?'1fr 1fr':'1fr')+';gap:8px;margin-bottom:10px">'+
+        (u?'<a href="'+u+'" target="_blank"><img src="'+u+'" style="width:100%;border-radius:8px;border:1px solid #eee"></a>':'<div>Photo unavailable</div>')+
+        (art?'<img src="'+art+'" style="width:100%;border-radius:8px;border:1px solid #eee;background:#fafafa">':'')+
+        '<div style="grid-column:1/-1;font-size:11px;color:#666">'+String(x.taken_by||'?').replace(/</g,'&lt;')+' · '+new Date(x.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+(x.note?' · '+String(x.note).replace(/</g,'&lt;'):'')+'</div></div>';
+    });
+    el.innerHTML=h+'</div>';
+  }catch(e){el.innerHTML='';}
+}
+async function copyPrintCheckLink(){
+  var r=await DB().from('print_check_links').select('token').eq('active',true).order('id',{ascending:false}).limit(1);
+  var t=r.data&&r.data[0]&&r.data[0].token;
+  if(!t){toast('No active Print check link','err');return;}
+  var url=PRINT_CHECK_PAGE+'?t='+t;
+  try{await navigator.clipboard.writeText(url);}catch(e){}
+  prompt('Print check link (copied) — send it to the people who take the photos:',url);
+}
+
 // ── EVENT DETAIL ──
 async function openEvDetail(ev){
   if(!ev)return;
@@ -3458,7 +3496,9 @@ async function openEvDetail(ev){
     '<div class="mr"><span class="ml">POSIS</span><span style="color:#aaa">Not received yet</span></div>')+
     (ev.delivery_type?'<div class="mr"><span class="ml">Type</span><span>'+(ev.delivery_type==='Collection'?'📦 Collection':'🚚 Delivery')+'</span></div>':'')+ 
     (ev.delivery_address?'<div class="mr"><span class="ml">Address</span><span>'+ev.delivery_address+'</span></div>':'')+
-    (ev.notes?'<div class="mr"><span class="ml">Notes</span><span>'+ev.notes+'</span></div>':'');
+    (ev.notes?'<div class="mr"><span class="ml">Notes</span><span>'+ev.notes+'</span></div>':'')+
+    '<div id="ev-pc"></div>';
+  loadJobPrintChecks(ev);
   var act=document.getElementById('evact');
   act.innerHTML='';
   if(role!=='warda'){
