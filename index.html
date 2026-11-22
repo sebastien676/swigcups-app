@@ -1281,11 +1281,11 @@ async function clArtSet(aid,ok){
 }
 // Rattachement manuel des jobs de production (artworks) à un client
 async function clRefreshCard(cid){var st=clOpen[cid]||{};st.html=null;st.open=false;await toggleClient(cid);}
-async function clUnlink(cid,jobId){
+async function clUnlink(cid,jobId,card){
   if(!confirm('Remove this production job from this client?'))return;
   var r=await DB().from('client_print_jobs').update({methode:'rejete'}).eq('client_id',cid).eq('print_job_id',jobId);
   if(r.error){toast('Could not unlink: '+r.error.message,'er');return;}
-  toast('Job removed from this client');clRefreshCard(cid);
+  toast('Job removed from this client');clRefreshCard(card||cid);
 }
 async function clLinkPick(cid,a){
   var box=document.createElement('div');box.style.cssText='margin-top:6px';
@@ -1365,13 +1365,18 @@ async function toggleClient(id){
   st.open=true;el.style.display='block';
   if(st.html){el.innerHTML=st.html;return;}
   el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
+  // Groupe de sociétés (même client, plusieurs entités Xero) : la fiche montre tout le groupe
+  var g0=await DB().from('clients').select('id,groupe_id').eq('id',id).single();
+  var gid=(g0.data&&g0.data.groupe_id)||id;
+  var gm=await DB().from('clients').select('id,nom').or('id.eq.'+gid+',groupe_id.eq.'+gid);
+  var grp=gm.data||[{id:id}],ids=grp.map(function(x){return x.id;});
   var res=await Promise.all([
-    DB().from('client_contacts').select('nom,email,telephone,source').eq('client_id',id),
-    DB().from('commandes').select('numero_facture,type_doc,date_facture,reference,devis_numero,statut,total,montant_paye,montant_du,devise').eq('client_id',id).order('date_facture',{ascending:false}),
-    DB().from('client_print_jobs').select('methode,print_schedule(id,print_date,delivery_date,cup_size,cup_colour,qty_printed,status,artwork,artwork_url)').eq('client_id',id).neq('methode','rejete'),
+    DB().from('client_contacts').select('nom,email,telephone,source').in('client_id',ids),
+    DB().from('commandes').select('numero_facture,type_doc,date_facture,reference,devis_numero,statut,total,montant_paye,montant_du,devise').in('client_id',ids).order('date_facture',{ascending:false}),
+    DB().from('client_print_jobs').select('client_id,methode,print_schedule(id,print_date,delivery_date,cup_size,cup_colour,qty_printed,status,artwork,artwork_url)').in('client_id',ids).neq('methode','rejete'),
     DB().from('clients').select('adresse,notes').eq('id',id).single(),
-    DB().from('commandes').select('numero_facture,paiements(date_paiement,montant)').eq('client_id',id),
-    DB().from('artwork_candidates').select('id,source,file_name,folder_name,file_date,source_url,storage_path').eq('client_id',id).eq('statut','valide').order('file_date',{ascending:false})
+    DB().from('commandes').select('numero_facture,paiements(date_paiement,montant)').in('client_id',ids),
+    DB().from('artwork_candidates').select('id,source,file_name,folder_name,file_date,source_url,storage_path').in('client_id',ids).eq('statut','valide').order('file_date',{ascending:false})
   ]);
   var arts=res[5].data||[],aurl={},apaths=arts.map(function(a){return a.storage_path;}).filter(Boolean);
   if(apaths.length){var su=await DB().storage.from('artworks').createSignedUrls(apaths,3600);(su.data||[]).forEach(function(x){if(x.signedUrl)aurl[x.path]=x.signedUrl;});}
@@ -1382,7 +1387,7 @@ async function toggleClient(id){
       (a.source_url?'<a href="'+clEsc(a.source_url)+'" target="_blank" rel="noopener">open file</a>':'')+'</div>';
   }).join('')+'</div>':'<div style="font-size:12px;color:#888">No validated artwork yet.</div>';
   var payBy={};(res[4].data||[]).forEach(function(c){var ps=(c.paiements||[]).filter(function(p){return p.date_paiement;}).sort(function(a,b){return a.date_paiement<b.date_paiement?-1:1;});if(ps.length)payBy[c.numero_facture]=ps;});
-  var ct=res[0].data||[],inv=res[1].data||[],jobs=(res[2].data||[]).filter(function(x){return x.print_schedule;}).map(function(x){var p=x.print_schedule;p._m=x.methode;return p;}),cli=res[3].data||{};
+  var ct=res[0].data||[],inv=res[1].data||[],jobs=(res[2].data||[]).filter(function(x){return x.print_schedule;}).map(function(x){var p=x.print_schedule;p._m=x.methode;p._c=x.client_id;return p;}),cli=res[3].data||{};
   // Contacts (dédoublonnés)
   var seen={},chtml=ct.filter(function(x){var k=(x.nom||'')+'|'+(x.email||'')+'|'+(x.telephone||'');if(seen[k])return false;seen[k]=1;return true;}).map(function(x){
     return '<div style="font-size:13px;padding:4px 0;border-bottom:1px solid #f2f2f2">'+(x.nom?'<b>'+clEsc(x.nom)+'</b> · ':'')+
@@ -1405,10 +1410,11 @@ async function toggleClient(id){
     return '<div style="width:140px;font-size:11px">'+(p.artwork_url&&/^https?:/.test(p.artwork_url)?'<a href="'+clEsc(p.artwork_url)+'" target="_blank">'+img+'</a>':img)+
       '<div style="margin-top:4px"><b>'+clD(p.print_date||p.delivery_date)+'</b></div><div style="color:#666">'+clEsc([p.cup_size,p.cup_colour].filter(Boolean).join(' '))+(p.qty_printed?' · '+p.qty_printed:'')+'</div><div style="color:#999">'+clEsc(p.status||'')+'</div>'+
       (p._m==='facture_probable'||p._m==='nom_proche'?'<div style="color:#D35400;font-weight:600">auto-linked, to check</div>':'')+
-      '<a href="#" style="color:#C0392B" onclick="clUnlink(\''+id+'\','+p.id+');return false">✕ not this client</a></div>';
+      '<a href="#" style="color:#C0392B" onclick="clUnlink(\''+p._c+'\','+p.id+',\''+id+'\');return false">✕ not this client</a></div>';
   }).join('')+'</div>':'<div style="font-size:12px;color:#888">No production job linked yet.</div>';
   jhtml+='<div style="margin-top:8px"><a href="#" onclick="clLinkPick(\''+id+'\',this);return false">＋ Link a production job</a></div>';
   st.html='<div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px">'+
+    (grp.length>1?'<div style="font-size:12px;background:#EBF5FB;color:#1F618D;padding:6px 10px;border-radius:6px;margin-bottom:8px">👥 Group of companies — everything below covers: '+grp.map(function(x){return clEsc(x.nom);}).join(' · ')+'</div>':'')+
     (cli.adresse?'<div style="font-size:12px;color:#666;margin-bottom:8px">📍 '+clEsc(cli.adresse)+'</div>':'')+
     '<div style="font-weight:700;font-size:12px;margin:6px 0">👤 Contacts</div>'+chtml+
     '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">🧾 Invoices ('+inv.length+')</div>'+ihtml+
