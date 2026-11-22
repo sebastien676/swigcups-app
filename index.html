@@ -707,8 +707,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
   <div id="tab-clients" class="sec">
     <div class="ch" style="margin-bottom:14px">
       <div><h2 style="font-size:16px;font-weight:700">👥 Client records</h2>
-        <div style="font-size:11px;color:#888;margin-top:2px">Xero invoices since Feb 2025 · contacts · production jobs &amp; artworks</div></div>
-      <button class="btn bs bsm" onclick="loadClients(true)">↻</button>
+        <div style="font-size:11px;color:#888;margin-top:2px">Xero invoices since Feb 2025 · contacts · production jobs &amp; artworks · <span id="cl-sync-info">auto-sync every night 22:00</span></div></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn bs bsm" id="cl-art-btn" onclick="clArtOpen()">🎨 Artworks to validate <span id="cl-art-n"></span></button>
+        <button class="btn bs bsm" id="cl-sync-btn" onclick="clSync()">🔗 Sync Xero</button>
+        <button class="btn bs bsm" onclick="loadClients(true)">↻</button>
+      </div>
     </div>
     <div class="mts" id="cl-mets"></div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
@@ -726,6 +730,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
         <option value="nom">Sort: name</option>
       </select>
     </div>
+    <div id="cl-art" style="display:none"></div>
+    <datalist id="cl-names"></datalist>
     <div id="cl-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
   </div>
 
@@ -1215,7 +1221,7 @@ async function loadClients(force){
   var r=rr[0];CLX={};
   (rr[1].data||[]).concat(rr[2].data||[]).forEach(function(i){CLX[i.client_id]=(CLX[i.client_id]||'')+' '+(i.numero_facture+' '+(i.reference||'')).toLowerCase();});
   if(r.error){document.getElementById('cl-list').innerHTML='<div class="card" style="color:#C0392B">Could not load clients: '+clEsc(r.error.message)+'</div>';return;}
-  CL=r.data||[];clOpen={};
+  CL=r.data||[];clOpen={};clSyncInfo();clArtCount();
   var ca=0,du=0,rel=0,act=0;
   CL.forEach(function(c){ca+=Number(c.ca_total_zar||0);du+=Number(c.solde_du||0);var j=c.jours_sans_commande;if(j!=null&&j>=60&&j<=365)rel++;if(j!=null&&j<90)act++;});
   document.getElementById('cl-mets').innerHTML=
@@ -1224,6 +1230,102 @@ async function loadClients(force){
     '<div class="mt rd"><div class="lb">Balance owing</div><div class="vl">'+clR(du)+'</div><div class="sb2">unpaid invoices</div></div>'+
     '<div class="mt or"><div class="lb">To follow up</div><div class="vl">'+rel+'</div><div class="sb2">no order for 60–365 days</div></div>';
   renderClients();
+}
+// ---------- Artworks à valider (Drive / Gmail / Atelier) ----------
+async function clArtCount(){
+  try{var r=await DB().from('artwork_candidates').select('id',{count:'exact',head:true}).eq('statut','a_valider');
+    document.getElementById('cl-art-n').textContent=r.count?'('+r.count+')':'';}catch(e){}
+}
+function clArtClose(){document.getElementById('cl-art').style.display='none';document.getElementById('cl-list').style.display='';}
+async function clArtOpen(){
+  if(!CL)await loadClients();
+  var dl=document.getElementById('cl-names');if(!dl.options.length)dl.innerHTML=CL.map(function(c){return '<option value="'+clEsc(c.nom)+'">';}).join('');
+  var box=document.getElementById('cl-art');box.style.display='block';document.getElementById('cl-list').style.display='none';
+  box.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
+  var r=await DB().from('artwork_candidates').select('id,source,file_name,folder_name,sender,file_date,source_url,storage_path,score,suggested:clients!artwork_candidates_suggested_client_id_fkey(nom)').eq('statut','a_valider').order('score',{ascending:false,nullsFirst:false}).order('file_date',{ascending:false}).limit(40);
+  if(r.error){box.innerHTML='<div class="card" style="color:#C0392B">'+clEsc(r.error.message)+'</div>';return;}
+  var rows=r.data||[],urls={};
+  var paths=rows.map(function(a){return a.storage_path;}).filter(Boolean);
+  if(paths.length){var s=await DB().storage.from('artworks').createSignedUrls(paths,3600);(s.data||[]).forEach(function(x){if(x.signedUrl)urls[x.path]=x.signedUrl;});}
+  var head='<div class="card" style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'+
+    '<div><b>🎨 Artworks to validate</b><div style="font-size:11px;color:#888">Check the client, then ✓. Wrong client? Type another name. Client unknown? ? (set aside). Not a client artwork? ✕.</div></div>'+
+    '<button class="btn bsm" style="background:#eee" onclick="clArtClose()">← Back to clients</button></div>';
+  if(!rows.length){box.innerHTML=head+'<div class="card" style="color:#888">Nothing to validate. 🎉</div>';return;}
+  box.innerHTML=head+'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">'+rows.map(function(a){
+    var img=a.storage_path&&urls[a.storage_path]?'<img src="'+clEsc(urls[a.storage_path])+'" style="width:100%;height:150px;object-fit:contain;background:#fafafa;border-radius:6px">':'<div style="height:150px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-radius:6px;color:#bbb;font-size:11px">no preview</div>';
+    var sug=a.suggested&&a.suggested.nom||'';
+    return '<div class="card" id="art-'+a.id+'" style="padding:10px;margin:0">'+img+
+      '<div style="font-size:12px;font-weight:700;margin-top:6px;word-break:break-word">'+clEsc(a.folder_name||'')+'</div>'+
+      '<div style="font-size:11px;color:#666;word-break:break-word">'+clEsc(a.file_name||'')+'</div>'+
+      '<div style="font-size:11px;color:#999">'+(a.source==='gmail'?'✉️ Gmail':a.source==='drive'?'📁 Drive':'🎨 Atelier')+' · '+clD(a.file_date)+
+        (a.source_url?' · <a href="'+clEsc(a.source_url)+'" target="_blank" rel="noopener">open</a>':'')+'</div>'+
+      '<input list="cl-names" value="'+clEsc(sug)+'" placeholder="Client…" style="width:100%;margin-top:6px;padding:6px 8px;border:1px solid '+(sug?'#e0e0e0':'#E67E22')+';border-radius:6px;font-size:12px">'+
+      (sug?'<div style="font-size:10px;color:#999;margin-top:2px">suggested · match '+Math.round((a.score||0)*100)+'%</div>':'<div style="font-size:10px;color:#D35400;margin-top:2px">no suggestion — type the client</div>')+
+      '<div style="display:flex;gap:6px;margin-top:6px"><button class="btn bs bsm" style="flex:1" onclick="clArtSet(\''+a.id+'\',true)">✓ Validate</button><button class="btn bsm" title="Client unknown — set aside, to sort later with Claude" style="background:#FEF5E7;color:#D35400" onclick="clArtSet(\''+a.id+'\',\'unknown\')">?</button><button class="btn bsm" title="Not a client artwork" style="background:#FDEDEC;color:#C0392B" onclick="clArtSet(\''+a.id+'\',false)">✕</button></div></div>';
+  }).join('')+'</div><div style="text-align:center;margin:10px"><button class="btn bs bsm" onclick="clArtOpen()">Load more</button></div>';
+}
+async function clArtSet(aid,ok){
+  var card=document.getElementById('art-'+aid);if(!card)return;
+  var upd={statut:ok==='unknown'?'client_inconnu':ok?'valide':'rejete',validated_at:new Date().toISOString()};
+  if(ok===true){
+    var name=(card.querySelector('input').value||'').trim().toLowerCase();
+    var c=(CL||[]).filter(function(x){return (x.nom||'').toLowerCase()===name;})[0];
+    if(!c){toast('Pick a client from the list','er');card.querySelector('input').focus();return;}
+    upd.client_id=c.id;
+  }
+  var r=await DB().from('artwork_candidates').update(upd).eq('id',aid);
+  if(r.error){toast('Error: '+r.error.message,'er');return;}
+  card.style.opacity='.35';card.style.pointerEvents='none';
+  if(upd.client_id&&clOpen[upd.client_id])clOpen[upd.client_id].html=null;
+  clArtCount();
+}
+// Rattachement manuel des jobs de production (artworks) à un client
+async function clRefreshCard(cid){var st=clOpen[cid]||{};st.html=null;st.open=false;await toggleClient(cid);}
+async function clUnlink(cid,jobId){
+  if(!confirm('Remove this production job from this client?'))return;
+  var r=await DB().from('client_print_jobs').update({methode:'rejete'}).eq('client_id',cid).eq('print_job_id',jobId);
+  if(r.error){toast('Could not unlink: '+r.error.message,'er');return;}
+  toast('Job removed from this client');clRefreshCard(cid);
+}
+async function clLinkPick(cid,a){
+  var box=document.createElement('div');box.style.cssText='margin-top:6px';
+  box.innerHTML='<div class="ld"><div class="sp"></div>Loading jobs...</div>';a.parentNode.appendChild(box);a.style.display='none';
+  var r=await DB().from('v_jobs_non_relies').select('id,client,d,cup_size,qty_printed,has_art').order('d',{ascending:false}).limit(400);
+  if(r.error){box.innerHTML='<span style="color:#C0392B">'+clEsc(r.error.message)+'</span>';return;}
+  var jobs=r.data||[];
+  box.innerHTML='<input type="search" placeholder="Filter jobs…" style="width:100%;padding:7px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;margin-bottom:6px">'+
+    '<select size="8" style="width:100%;font-size:12px;border:1px solid #e0e0e0;border-radius:6px"></select>'+
+    '<div style="display:flex;gap:6px;margin-top:6px"><button class="btn bs bsm">Link selected job</button><button class="btn bsm" style="background:#eee">Cancel</button></div>';
+  var inp=box.querySelector('input'),sel=box.querySelector('select'),bs=box.querySelectorAll('button');
+  function fill(){var q=inp.value.trim().toLowerCase();sel.innerHTML=jobs.filter(function(j){return !q||(j.client||'').toLowerCase().indexOf(q)>-1;}).slice(0,200).map(function(j){
+    return '<option value="'+j.id+'">'+clEsc((j.d||'no date')+' · '+(j.client||'?')+(j.cup_size?' · '+j.cup_size:'')+(j.qty_printed?' · '+j.qty_printed:'')+(j.has_art?' 🎨':''))+'</option>';}).join('');}
+  inp.oninput=fill;fill();inp.focus();
+  bs[1].onclick=function(){box.remove();a.style.display='';};
+  bs[0].onclick=async function(){
+    var jid=Number(sel.value);if(!jid){toast('Pick a job first','er');return;}
+    var w=await DB().from('client_print_jobs').upsert({client_id:cid,print_job_id:jid,methode:'manuel'},{onConflict:'client_id,print_job_id'});
+    if(w.error){toast('Could not link: '+w.error.message,'er');return;}
+    toast('Job linked ✓');clRefreshCard(cid);
+  };
+}
+async function clSyncInfo(){
+  try{var r=await DB().from('sync_state').select('last_run,last_result').eq('key','clients_sync_last').maybeSingle();
+    var s=r.data;if(!s||!s.last_run)return;
+    var d=new Date(s.last_run),ok=s.last_result&&s.last_result.ok;
+    document.getElementById('cl-sync-info').innerHTML='last Xero sync '+d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toTimeString().slice(0,5)+(ok?' ✓':' <span style="color:#C0392B">⚠ failed</span>')+' · auto every night 22:00';
+  }catch(e){}
+}
+async function clSync(){
+  var b=document.getElementById('cl-sync-btn');b.disabled=true;b.textContent='⏳ Syncing…';
+  try{
+    var r=await DB().functions.invoke('clients-sync',{body:{}});
+    var d=r.data||{};
+    if(r.error||!d.ok){toast('Xero sync failed'+(d.error?': '+String(d.error).slice(0,80):''),'er');}
+    else{var i=d.invoices||{},c=d.credits||{},k=d.contacts||{};
+      toast('Xero sync ✓ '+(i.invoices||0)+' invoices, '+(i.payments||0)+' payments, '+(c.credits||0)+' credit notes, '+(k.phones||0)+' phones');
+      clOpen={};await loadClients(true);}
+  }catch(e){toast('Xero sync failed','er');}
+  b.disabled=false;b.textContent='🔗 Sync Xero';clSyncInfo();
 }
 function renderClients(){
   if(!CL)return;
@@ -1266,10 +1368,21 @@ async function toggleClient(id){
   var res=await Promise.all([
     DB().from('client_contacts').select('nom,email,telephone,source').eq('client_id',id),
     DB().from('commandes').select('numero_facture,type_doc,date_facture,reference,devis_numero,statut,total,montant_paye,montant_du,devise').eq('client_id',id).order('date_facture',{ascending:false}),
-    DB().from('client_print_jobs').select('print_schedule(id,print_date,delivery_date,cup_size,cup_colour,qty_printed,status,artwork,artwork_url)').eq('client_id',id),
-    DB().from('clients').select('adresse,notes').eq('id',id).single()
+    DB().from('client_print_jobs').select('methode,print_schedule(id,print_date,delivery_date,cup_size,cup_colour,qty_printed,status,artwork,artwork_url)').eq('client_id',id).neq('methode','rejete'),
+    DB().from('clients').select('adresse,notes').eq('id',id).single(),
+    DB().from('commandes').select('numero_facture,paiements(date_paiement,montant)').eq('client_id',id),
+    DB().from('artwork_candidates').select('id,source,file_name,folder_name,file_date,source_url,storage_path').eq('client_id',id).eq('statut','valide').order('file_date',{ascending:false})
   ]);
-  var ct=res[0].data||[],inv=res[1].data||[],jobs=(res[2].data||[]).map(function(x){return x.print_schedule;}).filter(Boolean),cli=res[3].data||{};
+  var arts=res[5].data||[],aurl={},apaths=arts.map(function(a){return a.storage_path;}).filter(Boolean);
+  if(apaths.length){var su=await DB().storage.from('artworks').createSignedUrls(apaths,3600);(su.data||[]).forEach(function(x){if(x.signedUrl)aurl[x.path]=x.signedUrl;});}
+  var ahtml=arts.length?'<div style="display:flex;flex-wrap:wrap;gap:8px">'+arts.map(function(a){
+    var u=a.storage_path&&aurl[a.storage_path];
+    return '<div style="width:140px;font-size:11px">'+(u?'<img src="'+clEsc(u)+'" style="width:100%;height:90px;object-fit:contain;background:#fafafa;border-radius:6px" loading="lazy">':'<div style="height:90px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-radius:6px;color:#bbb">no preview</div>')+
+      '<div style="margin-top:4px"><b>'+clD(a.file_date)+'</b> '+(a.source==='gmail'?'✉️':a.source==='drive'?'📁':'🎨')+'</div><div style="color:#666;word-break:break-word">'+clEsc(a.folder_name||a.file_name||'')+'</div>'+
+      (a.source_url?'<a href="'+clEsc(a.source_url)+'" target="_blank" rel="noopener">open file</a>':'')+'</div>';
+  }).join('')+'</div>':'<div style="font-size:12px;color:#888">No validated artwork yet.</div>';
+  var payBy={};(res[4].data||[]).forEach(function(c){var ps=(c.paiements||[]).filter(function(p){return p.date_paiement;}).sort(function(a,b){return a.date_paiement<b.date_paiement?-1:1;});if(ps.length)payBy[c.numero_facture]=ps;});
+  var ct=res[0].data||[],inv=res[1].data||[],jobs=(res[2].data||[]).filter(function(x){return x.print_schedule;}).map(function(x){var p=x.print_schedule;p._m=x.methode;return p;}),cli=res[3].data||{};
   // Contacts (dédoublonnés)
   var seen={},chtml=ct.filter(function(x){var k=(x.nom||'')+'|'+(x.email||'')+'|'+(x.telephone||'');if(seen[k])return false;seen[k]=1;return true;}).map(function(x){
     return '<div style="font-size:13px;padding:4px 0;border-bottom:1px solid #f2f2f2">'+(x.nom?'<b>'+clEsc(x.nom)+'</b> · ':'')+
@@ -1282,20 +1395,25 @@ async function toggleClient(id){
     inv.map(function(i){var av=i.type_doc==='avoir',due=Number(i.montant_du||0);
       return '<tr style="border-top:1px solid #f2f2f2'+(i.statut==='Draft'?';color:#aaa':'')+'"><td style="padding:4px;white-space:nowrap">'+clD(i.date_facture)+'</td><td style="white-space:nowrap">'+clEsc(i.numero_facture)+'</td><td>'+clEsc(i.reference||'')+'</td>'+
         '<td style="text-align:right;white-space:nowrap">'+(av?'−':'')+clR(i.total,i.devise)+'</td><td style="text-align:right;white-space:nowrap;color:'+(due>0.5?'#C0392B':'#999')+'">'+(due>0.5?clR(due,i.devise):'—')+'</td>'+
-        '<td>'+(av?'Credit note':i.statut==='Paid'?'<span style="color:#1E8449">Paid</span>':i.statut==='Awaiting Payment'?'<span style="color:#C0392B">Unpaid</span>':clEsc(i.statut||''))+'</td></tr>';
+        '<td>'+(av?'Credit note':i.statut==='Paid'?'<span style="color:#1E8449">Paid</span>':i.statut==='Awaiting Payment'?'<span style="color:#C0392B">'+(Number(i.montant_paye||0)>0.5?'Part paid':'Unpaid')+'</span>':clEsc(i.statut||''))+
+        (payBy[i.numero_facture]?'<div style="font-size:10px;color:#888">'+payBy[i.numero_facture].map(function(p){return clD(p.date_paiement)+' · '+clR(p.montant,i.devise);}).join('<br>')+'</div>':'')+'</td></tr>';
     }).join('')+'</table></div>':'<div style="font-size:12px;color:#888">No invoice.</div>';
   // Jobs & artworks
   jobs.sort(function(a,b){return (b.print_date||'')<(a.print_date||'')?-1:1;});
   var jhtml=jobs.length?'<div style="display:flex;flex-wrap:wrap;gap:8px">'+jobs.map(function(p){
     var img=p.artwork_url&&/^(https?:|data:image)/.test(p.artwork_url)?'<img src="'+clEsc(p.artwork_url)+'" style="width:100%;height:90px;object-fit:contain;background:#fafafa;border-radius:6px" loading="lazy">':'<div style="height:90px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-radius:6px;color:#bbb;font-size:11px">no artwork</div>';
     return '<div style="width:140px;font-size:11px">'+(p.artwork_url&&/^https?:/.test(p.artwork_url)?'<a href="'+clEsc(p.artwork_url)+'" target="_blank">'+img+'</a>':img)+
-      '<div style="margin-top:4px"><b>'+clD(p.print_date||p.delivery_date)+'</b></div><div style="color:#666">'+clEsc([p.cup_size,p.cup_colour].filter(Boolean).join(' '))+(p.qty_printed?' · '+p.qty_printed:'')+'</div><div style="color:#999">'+clEsc(p.status||'')+'</div></div>';
+      '<div style="margin-top:4px"><b>'+clD(p.print_date||p.delivery_date)+'</b></div><div style="color:#666">'+clEsc([p.cup_size,p.cup_colour].filter(Boolean).join(' '))+(p.qty_printed?' · '+p.qty_printed:'')+'</div><div style="color:#999">'+clEsc(p.status||'')+'</div>'+
+      (p._m==='facture_probable'||p._m==='nom_proche'?'<div style="color:#D35400;font-weight:600">auto-linked, to check</div>':'')+
+      '<a href="#" style="color:#C0392B" onclick="clUnlink(\''+id+'\','+p.id+');return false">✕ not this client</a></div>';
   }).join('')+'</div>':'<div style="font-size:12px;color:#888">No production job linked yet.</div>';
+  jhtml+='<div style="margin-top:8px"><a href="#" onclick="clLinkPick(\''+id+'\',this);return false">＋ Link a production job</a></div>';
   st.html='<div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px">'+
     (cli.adresse?'<div style="font-size:12px;color:#666;margin-bottom:8px">📍 '+clEsc(cli.adresse)+'</div>':'')+
     '<div style="font-weight:700;font-size:12px;margin:6px 0">👤 Contacts</div>'+chtml+
     '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">🧾 Invoices ('+inv.length+')</div>'+ihtml+
-    '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">🎨 Production jobs &amp; artworks ('+jobs.length+')</div>'+jhtml+'</div>';
+    '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">🎨 Artworks — Drive, Gmail, Atelier ('+arts.length+')</div>'+ahtml+
+    '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">🖨️ Production jobs ('+jobs.length+')</div>'+jhtml+'</div>';
   el.innerHTML=st.html;
 }
 var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','approvals','quotes','stats','analytics','clients'],fred:['stock','jobs','print','cal','deliveries','approvals'],warda:['stock','myjobs','cal','deliveries'],emilie:['stock','pos','cal','deliveries','quotes','stats','analytics'],alsworth:['jobs','cal']};
