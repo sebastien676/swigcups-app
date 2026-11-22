@@ -407,6 +407,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <button onclick="showTab('stats',this)">📊 Stats</button>
     <button onclick="showTab('analytics',this)">📈 Analytics</button>
     <button onclick="showTab('alerts',this)">🚨 Alerts <span class="ab" id="abn">!</span></button>
+    <button onclick="showTab('clients',this)">👥 Clients</button>
   </nav>
 
   <div id="tab-stock" class="sec act">
@@ -701,6 +702,31 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="mts" id="q-mets"></div>
     <div id="q-filters" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
     <div id="q-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
+  </div>
+
+  <div id="tab-clients" class="sec">
+    <div class="ch" style="margin-bottom:14px">
+      <div><h2 style="font-size:16px;font-weight:700">👥 Client records</h2>
+        <div style="font-size:11px;color:#888;margin-top:2px">Xero invoices since Feb 2025 · contacts · production jobs &amp; artworks</div></div>
+      <button class="btn bs bsm" onclick="loadClients(true)">↻</button>
+    </div>
+    <div class="mts" id="cl-mets"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <input id="cl-q" type="search" placeholder="Search a client, e-mail, invoice or QU-…" oninput="renderClients()" style="flex:1;min-width:200px;padding:9px 12px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px">
+      <select id="cl-f" onchange="renderClients()" style="padding:9px 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px">
+        <option value="all">All clients</option>
+        <option value="relance">To follow up (no order 60–365 days)</option>
+        <option value="du">Balance owing</option>
+        <option value="top">Top 50 by revenue</option>
+      </select>
+      <select id="cl-s" onchange="renderClients()" style="padding:9px 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px">
+        <option value="ca">Sort: revenue</option>
+        <option value="recent">Sort: last order</option>
+        <option value="du">Sort: balance owing</option>
+        <option value="nom">Sort: name</option>
+      </select>
+    </div>
+    <div id="cl-list"><div class="ld"><div class="sp"></div>Loading...</div></div>
   </div>
 
   <div id="tab-stats" class="sec">
@@ -1177,7 +1203,102 @@ async function sendApproval(channel){
   }
 }
 // Onglets Messages et Alerts retirés (11/11/2026, à la demande de Seb). Les données restent dans la table messages.
-var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','approvals','quotes','stats','analytics'],fred:['stock','jobs','print','cal','deliveries','approvals'],warda:['stock','myjobs','cal','deliveries'],emilie:['stock','pos','cal','deliveries','quotes','stats','analytics'],alsworth:['jobs','cal']};
+// ---------- Onglet Clients (fiches clients, owner uniquement — 22/11/2026) ----------
+var CL=null,CLX={},clOpen={};
+function clEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function clR(v,cur){if(v==null||isNaN(v))return '—';var n=Math.round(Number(v));return (cur&&cur!=='ZAR'?cur+' ':'R ')+n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,' ');}
+function clD(d){if(!d)return '—';var x=new Date(d+'T00:00:00');return x.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
+async function loadClients(force){
+  if(CL&&!force){renderClients();return;}
+  document.getElementById('cl-list').innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
+  var rr=await Promise.all([DB().from('v_fiches_clients').select('*'),DB().from('commandes').select('client_id,numero_facture,reference').range(0,999),DB().from('commandes').select('client_id,numero_facture,reference').range(1000,2999)]);
+  var r=rr[0];CLX={};
+  (rr[1].data||[]).concat(rr[2].data||[]).forEach(function(i){CLX[i.client_id]=(CLX[i.client_id]||'')+' '+(i.numero_facture+' '+(i.reference||'')).toLowerCase();});
+  if(r.error){document.getElementById('cl-list').innerHTML='<div class="card" style="color:#C0392B">Could not load clients: '+clEsc(r.error.message)+'</div>';return;}
+  CL=r.data||[];clOpen={};
+  var ca=0,du=0,rel=0,act=0;
+  CL.forEach(function(c){ca+=Number(c.ca_total_zar||0);du+=Number(c.solde_du||0);var j=c.jours_sans_commande;if(j!=null&&j>=60&&j<=365)rel++;if(j!=null&&j<90)act++;});
+  document.getElementById('cl-mets').innerHTML=
+    '<div class="mt"><div class="lb">Clients</div><div class="vl">'+CL.length+'</div><div class="sb2">'+act+' ordered in last 90 days</div></div>'+
+    '<div class="mt gn"><div class="lb">Revenue (ZAR)</div><div class="vl">'+clR(ca)+'</div><div class="sb2">since Feb 2025</div></div>'+
+    '<div class="mt rd"><div class="lb">Balance owing</div><div class="vl">'+clR(du)+'</div><div class="sb2">unpaid invoices</div></div>'+
+    '<div class="mt or"><div class="lb">To follow up</div><div class="vl">'+rel+'</div><div class="sb2">no order for 60–365 days</div></div>';
+  renderClients();
+}
+function renderClients(){
+  if(!CL)return;
+  var q=(document.getElementById('cl-q').value||'').trim().toLowerCase();
+  var f=document.getElementById('cl-f').value,s=document.getElementById('cl-s').value;
+  var list=CL.filter(function(c){
+    if(q&&((c.nom||'')+' '+(c.email||'')+' '+(CLX[c.id]||'')).toLowerCase().indexOf(q)<0)return false;
+    var j=c.jours_sans_commande;
+    if(f==='relance')return j!=null&&j>=60&&j<=365;
+    if(f==='du')return Number(c.solde_du||0)>0.5;
+    return true;
+  });
+  var key={ca:function(c){return -Number(c.ca_total_zar||0);},recent:function(c){return c.jours_sans_commande==null?99999:c.jours_sans_commande;},du:function(c){return -Number(c.solde_du||0);},nom:function(c){return (c.nom||'').toLowerCase();}}[f==='top'?'ca':s];
+  list.sort(function(a,b){var x=key(a),y=key(b);return x<y?-1:x>y?1:0;});
+  if(f==='top')list=list.slice(0,50);
+  if(!list.length){document.getElementById('cl-list').innerHTML='<div class="card" style="color:#888">No client found.</div>';return;}
+  var html=list.slice(0,200).map(function(c){
+    var j=c.jours_sans_commande,col=j==null?'#999':j<60?'#1E8449':j<=180?'#D35400':'#C0392B';
+    var du=Number(c.solde_du||0);
+    return '<div class="card" style="padding:12px 14px;margin-bottom:8px">'+
+      '<div onclick="toggleClient(\''+c.id+'\')" style="display:flex;gap:10px;align-items:center;cursor:pointer;flex-wrap:wrap">'+
+        '<div style="flex:1;min-width:180px"><div style="font-weight:700;font-size:14px">'+clEsc(c.nom)+'</div>'+
+        '<div style="font-size:11px;color:#888">'+clEsc(c.email||'no e-mail')+'</div></div>'+
+        '<div style="text-align:right;min-width:90px"><div style="font-weight:700">'+clR(c.ca_total_zar)+'</div><div style="font-size:11px;color:#888">'+(c.nb_commandes||0)+' invoice'+(c.nb_commandes==1?'':'s')+'</div></div>'+
+        '<div style="text-align:right;min-width:110px"><div style="font-size:12px;color:'+col+';font-weight:600">'+(j==null?'no order':j===0?'today':j+' days ago')+'</div><div style="font-size:11px;color:#888">'+clD(c.derniere_commande)+'</div></div>'+
+        (du>0.5?'<span style="background:#FDEDEC;color:#C0392B;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px">owes '+clR(du)+'</span>':'')+
+      '</div><div id="cl-d-'+c.id+'" style="display:none"></div></div>';
+  }).join('');
+  if(list.length>200)html+='<div style="text-align:center;color:#888;font-size:12px;padding:8px">'+(list.length-200)+' more — refine your search</div>';
+  document.getElementById('cl-list').innerHTML=html;
+  Object.keys(clOpen).forEach(function(id){if(clOpen[id].open&&clOpen[id].html){var el=document.getElementById('cl-d-'+id);if(el){el.innerHTML=clOpen[id].html;el.style.display='block';}}});
+}
+async function toggleClient(id){
+  var el=document.getElementById('cl-d-'+id);if(!el)return;
+  var st=clOpen[id]||(clOpen[id]={});
+  if(st.open){st.open=false;el.style.display='none';return;}
+  st.open=true;el.style.display='block';
+  if(st.html){el.innerHTML=st.html;return;}
+  el.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
+  var res=await Promise.all([
+    DB().from('client_contacts').select('nom,email,telephone,source').eq('client_id',id),
+    DB().from('commandes').select('numero_facture,type_doc,date_facture,reference,devis_numero,statut,total,montant_paye,montant_du,devise').eq('client_id',id).order('date_facture',{ascending:false}),
+    DB().from('client_print_jobs').select('print_schedule(id,print_date,delivery_date,cup_size,cup_colour,qty_printed,status,artwork,artwork_url)').eq('client_id',id),
+    DB().from('clients').select('adresse,notes').eq('id',id).single()
+  ]);
+  var ct=res[0].data||[],inv=res[1].data||[],jobs=(res[2].data||[]).map(function(x){return x.print_schedule;}).filter(Boolean),cli=res[3].data||{};
+  // Contacts (dédoublonnés)
+  var seen={},chtml=ct.filter(function(x){var k=(x.nom||'')+'|'+(x.email||'')+'|'+(x.telephone||'');if(seen[k])return false;seen[k]=1;return true;}).map(function(x){
+    return '<div style="font-size:13px;padding:4px 0;border-bottom:1px solid #f2f2f2">'+(x.nom?'<b>'+clEsc(x.nom)+'</b> · ':'')+
+      (x.email?'<a href="mailto:'+clEsc(x.email)+'">'+clEsc(x.email)+'</a>':'')+
+      (x.telephone?' · <a href="tel:'+clEsc(x.telephone)+'">'+clEsc(x.telephone)+'</a> · <a target="_blank" href="https://wa.me/'+clEsc(String(x.telephone).replace(/[^0-9]/g,'').replace(/^0/,'27'))+'">WhatsApp</a>':'')+
+      ' <span style="font-size:10px;color:#aaa">'+clEsc(x.source||'')+'</span></div>';
+  }).join('')||'<div style="font-size:12px;color:#888">No contact yet.</div>';
+  // Factures
+  var ihtml=inv.length?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="text-align:left;color:#666"><th style="padding:4px">Date</th><th>Invoice</th><th>Reference</th><th style="text-align:right">Total</th><th style="text-align:right">Owing</th><th>Status</th></tr>'+
+    inv.map(function(i){var av=i.type_doc==='avoir',due=Number(i.montant_du||0);
+      return '<tr style="border-top:1px solid #f2f2f2'+(i.statut==='Draft'?';color:#aaa':'')+'"><td style="padding:4px;white-space:nowrap">'+clD(i.date_facture)+'</td><td style="white-space:nowrap">'+clEsc(i.numero_facture)+'</td><td>'+clEsc(i.reference||'')+'</td>'+
+        '<td style="text-align:right;white-space:nowrap">'+(av?'−':'')+clR(i.total,i.devise)+'</td><td style="text-align:right;white-space:nowrap;color:'+(due>0.5?'#C0392B':'#999')+'">'+(due>0.5?clR(due,i.devise):'—')+'</td>'+
+        '<td>'+(av?'Credit note':i.statut==='Paid'?'<span style="color:#1E8449">Paid</span>':i.statut==='Awaiting Payment'?'<span style="color:#C0392B">Unpaid</span>':clEsc(i.statut||''))+'</td></tr>';
+    }).join('')+'</table></div>':'<div style="font-size:12px;color:#888">No invoice.</div>';
+  // Jobs & artworks
+  jobs.sort(function(a,b){return (b.print_date||'')<(a.print_date||'')?-1:1;});
+  var jhtml=jobs.length?'<div style="display:flex;flex-wrap:wrap;gap:8px">'+jobs.map(function(p){
+    var img=p.artwork_url&&/^(https?:|data:image)/.test(p.artwork_url)?'<img src="'+clEsc(p.artwork_url)+'" style="width:100%;height:90px;object-fit:contain;background:#fafafa;border-radius:6px" loading="lazy">':'<div style="height:90px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-radius:6px;color:#bbb;font-size:11px">no artwork</div>';
+    return '<div style="width:140px;font-size:11px">'+(p.artwork_url&&/^https?:/.test(p.artwork_url)?'<a href="'+clEsc(p.artwork_url)+'" target="_blank">'+img+'</a>':img)+
+      '<div style="margin-top:4px"><b>'+clD(p.print_date||p.delivery_date)+'</b></div><div style="color:#666">'+clEsc([p.cup_size,p.cup_colour].filter(Boolean).join(' '))+(p.qty_printed?' · '+p.qty_printed:'')+'</div><div style="color:#999">'+clEsc(p.status||'')+'</div></div>';
+  }).join('')+'</div>':'<div style="font-size:12px;color:#888">No production job linked yet.</div>';
+  st.html='<div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px">'+
+    (cli.adresse?'<div style="font-size:12px;color:#666;margin-bottom:8px">📍 '+clEsc(cli.adresse)+'</div>':'')+
+    '<div style="font-weight:700;font-size:12px;margin:6px 0">👤 Contacts</div>'+chtml+
+    '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">🧾 Invoices ('+inv.length+')</div>'+ihtml+
+    '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">🎨 Production jobs &amp; artworks ('+jobs.length+')</div>'+jhtml+'</div>';
+  el.innerHTML=st.html;
+}
+var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','approvals','quotes','stats','analytics','clients'],fred:['stock','jobs','print','cal','deliveries','approvals'],warda:['stock','myjobs','cal','deliveries'],emilie:['stock','pos','cal','deliveries','quotes','stats','analytics'],alsworth:['jobs','cal']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink',emilie:'Emilie',alsworth:'Alsworth'};
 var role=null,prints=[],stock=[],calOff=0,todayOff=0,dragId=null,curEv=null,qaWL='',qaP='',pendByProduct={},pendDetail={},delCalOff=0,delCalSelectedDate=null,delCalView='week';
 
@@ -1213,7 +1334,7 @@ function initRole(r){
   document.getElementById('rt').textContent=RLAB[r];
   var allowed=RTABS[r];
   var btns=document.querySelectorAll('nav button');
-  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','approvals','quotes','stats','analytics','alerts'];
+  var order=['stock','pos','jobs','print','cal','myjobs','deliveries','messages','approvals','quotes','stats','analytics','alerts','clients'];
   btns.forEach(function(b,i){b.style.display=allowed.indexOf(order[i])>-1?'':'none';});
   if(r==='warda'){document.getElementById('wmj').style.display='';showTab('myjobs',document.getElementById('wmj'));}
   if(r==='owner'){document.getElementById('badd').style.display='flex';var _pcb=document.getElementById('pc-link-btn');if(_pcb)_pcb.style.display='';}
@@ -1251,6 +1372,7 @@ function showTab(n,b){
   if(n==='quotes')loadQuotes();
   if(n==='stats')loadStats();
   if(n==='analytics')loadAnalytics();
+  if(n==='clients')loadClients();
 }
 
 function togglePnl(id){document.getElementById(id).classList.toggle('op');}
