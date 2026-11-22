@@ -1233,7 +1233,7 @@ async function loadClients(force){
 }
 // ---------- Artworks à valider (Drive / Gmail / Atelier) ----------
 async function clArtCount(){
-  try{var r=await DB().from('artwork_candidates').select('id',{count:'exact',head:true}).eq('statut','a_valider');
+  try{var r=await DB().from('v_artwork_groupes').select('gkey',{count:'exact',head:true});
     document.getElementById('cl-art-n').textContent=r.count?'('+r.count+')':'';}catch(e){}
 }
 function clArtClose(){document.getElementById('cl-art').style.display='none';document.getElementById('cl-list').style.display='';}
@@ -1242,13 +1242,15 @@ async function clArtOpen(){
   var dl=document.getElementById('cl-names');if(!dl.options.length)dl.innerHTML=CL.map(function(c){return '<option value="'+clEsc(c.nom)+'">';}).join('');
   var box=document.getElementById('cl-art');box.style.display='block';document.getElementById('cl-list').style.display='none';
   box.innerHTML='<div class="ld"><div class="sp"></div>Loading...</div>';
-  var r=await DB().from('artwork_candidates').select('id,source,file_name,folder_name,sender,file_date,source_url,storage_path,score,suggested:clients!artwork_candidates_suggested_client_id_fkey(nom)').eq('statut','a_valider').order('score',{ascending:false,nullsFirst:false}).order('file_date',{ascending:false}).limit(40);
+  // Une carte par dossier de job (Drive) / par e-mail (Gmail) / par design (Atelier) : un ✓ valide tous ses fichiers
+  var r=await DB().from('v_artwork_groupes').select('source,gkey,folder_name,n,ids,storage_path,file_name,source_url,file_date,suggested_client_id,score').order('score',{ascending:false,nullsFirst:false}).order('file_date',{ascending:false}).limit(40);
   if(r.error){box.innerHTML='<div class="card" style="color:#C0392B">'+clEsc(r.error.message)+'</div>';return;}
-  var rows=r.data||[],urls={};
+  var byId={};(CL||[]).forEach(function(c){byId[c.id]=c.nom;});
+  var rows=(r.data||[]).map(function(g,i){var k='g'+i;ARTG[k]=g.ids;return {id:k,source:g.source,folder_name:g.folder_name,file_name:(g.n>1?g.n+' files · ':'')+(g.file_name||''),file_date:g.file_date,source_url:g.source_url,storage_path:g.storage_path,score:g.score,suggested:g.suggested_client_id?{nom:byId[g.suggested_client_id]||''}:null};}),urls={};
   var paths=rows.map(function(a){return a.storage_path;}).filter(Boolean);
   if(paths.length){var s=await DB().storage.from('artworks').createSignedUrls(paths,3600);(s.data||[]).forEach(function(x){if(x.signedUrl)urls[x.path]=x.signedUrl;});}
   var head='<div class="card" style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'+
-    '<div><b>🎨 Artworks to validate</b><div style="font-size:11px;color:#888">Check the client, then ✓. Wrong client? Type another name. Client unknown? ? (set aside). Not a client artwork? ✕.</div></div>'+
+    '<div><b>🎨 Artworks to validate</b><div style="font-size:11px;color:#888">One card = one job folder (or e-mail / Atelier design): ✓ validates all its files. Check the client, then ✓. Wrong client? Type another name. Client unknown? ? (set aside). Not a client artwork? ✕.</div></div>'+
     '<button class="btn bsm" style="background:#eee" onclick="clArtClose()">← Back to clients</button></div>';
   if(!rows.length){box.innerHTML=head+'<div class="card" style="color:#888">Nothing to validate. 🎉</div>';return;}
   box.innerHTML=head+'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">'+rows.map(function(a){
@@ -1264,8 +1266,10 @@ async function clArtOpen(){
       '<div style="display:flex;gap:6px;margin-top:6px"><button class="btn bs bsm" style="flex:1" onclick="clArtSet(\''+a.id+'\',true)">✓ Validate</button><button class="btn bsm" title="Client unknown — set aside, to sort later with Claude" style="background:#FEF5E7;color:#D35400" onclick="clArtSet(\''+a.id+'\',\'unknown\')">?</button><button class="btn bsm" title="Not a client artwork" style="background:#FDEDEC;color:#C0392B" onclick="clArtSet(\''+a.id+'\',false)">✕</button></div></div>';
   }).join('')+'</div><div style="text-align:center;margin:10px"><button class="btn bs bsm" onclick="clArtOpen()">Load more</button></div>';
 }
+var ARTG={};
 async function clArtSet(aid,ok){
   var card=document.getElementById('art-'+aid);if(!card)return;
+  var ids=ARTG[aid]||[aid];
   var upd={statut:ok==='unknown'?'client_inconnu':ok?'valide':'rejete',validated_at:new Date().toISOString()};
   if(ok===true){
     var name=(card.querySelector('input').value||'').trim().toLowerCase();
@@ -1273,8 +1277,10 @@ async function clArtSet(aid,ok){
     if(!c){toast('Pick a client from the list','er');card.querySelector('input').focus();return;}
     upd.client_id=c.id;
   }
-  var r=await DB().from('artwork_candidates').update(upd).eq('id',aid);
-  if(r.error){toast('Error: '+r.error.message,'er');return;}
+  var r=null;
+  for(var i=0;i<ids.length;i+=100){r=await DB().from('artwork_candidates').update(upd).in('id',ids.slice(i,i+100));if(r.error)break;}
+  if(r&&r.error){toast('Error: '+r.error.message,'er');return;}
+  if(ids.length>1)toast(ids.length+' files '+(upd.statut==='valide'?'validated':'set aside'));
   card.style.opacity='.35';card.style.pointerEvents='none';
   if(upd.client_id&&clOpen[upd.client_id])clOpen[upd.client_id].html=null;
   clArtCount();
