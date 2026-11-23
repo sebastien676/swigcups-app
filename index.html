@@ -1382,16 +1382,20 @@ async function toggleClient(id){
     DB().from('client_print_jobs').select('client_id,methode,print_schedule(id,print_date,delivery_date,cup_size,cup_colour,qty_printed,status,artwork,artwork_url)').in('client_id',ids).neq('methode','rejete'),
     DB().from('clients').select('adresse,notes').eq('id',id).single(),
     DB().from('commandes').select('numero_facture,paiements(date_paiement,montant)').in('client_id',ids),
-    DB().from('artwork_candidates').select('id,source,file_name,folder_name,file_date,source_url,storage_path').in('client_id',ids).eq('statut','valide').order('file_date',{ascending:false})
+    DB().from('artwork_candidates').select('id,source,file_name,folder_name,file_date,source_url,storage_path,mime').in('client_id',ids).eq('statut','valide').order('file_date',{ascending:false})
   ]);
-  var arts=res[5].data||[],aurl={},apaths=arts.map(function(a){return a.storage_path;}).filter(Boolean);
+  // Proofs (images) en vignettes ; fichiers d'impression (PDF) en simples liens
+  var allArts=res[5].data||[],arts=allArts.filter(function(a){return !/pdf/i.test(a.mime||'');}),prints=allArts.filter(function(a){return /pdf/i.test(a.mime||'');});
+  var aurl={},apaths=arts.map(function(a){return a.storage_path;}).filter(Boolean);
   if(apaths.length){var su=await DB().storage.from('artworks').createSignedUrls(apaths,3600);(su.data||[]).forEach(function(x){if(x.signedUrl)aurl[x.path]=x.signedUrl;});}
   var ahtml=arts.length?'<div style="display:flex;flex-wrap:wrap;gap:8px">'+arts.map(function(a){
     var u=a.storage_path&&aurl[a.storage_path];
     return '<div style="width:140px;font-size:11px">'+(u?'<img src="'+clEsc(u)+'" style="width:100%;height:90px;object-fit:contain;background:#fafafa;border-radius:6px" loading="lazy">':'<div style="height:90px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-radius:6px;color:#bbb">no preview</div>')+
       '<div style="margin-top:4px"><b>'+clD(a.file_date)+'</b> '+(a.source==='gmail'?'✉️':a.source==='drive'?'📁':'🎨')+'</div><div style="color:#666;word-break:break-word">'+clEsc(a.folder_name||a.file_name||'')+'</div>'+
       (a.source_url?'<a href="'+clEsc(a.source_url)+'" target="_blank" rel="noopener">open file</a>':'')+'</div>';
-  }).join('')+'</div>':'<div style="font-size:12px;color:#888">No validated artwork yet.</div>';
+  }).join('')+'</div>':'<div style="font-size:12px;color:#888">No validated proof yet.</div>';
+  if(prints.length)ahtml+='<div style="font-size:11px;margin-top:8px;color:#666">🖨️ Print files: '+prints.map(function(a){
+    return a.source_url?'<a href="'+clEsc(a.source_url)+'" target="_blank" rel="noopener">'+clEsc(a.file_name||'file')+'</a>':clEsc(a.file_name||'');}).join(' · ')+'</div>';
   var payBy={};(res[4].data||[]).forEach(function(c){var ps=(c.paiements||[]).filter(function(p){return p.date_paiement;}).sort(function(a,b){return a.date_paiement<b.date_paiement?-1:1;});if(ps.length)payBy[c.numero_facture]=ps;});
   var ct=res[0].data||[],inv=res[1].data||[],jobs=(res[2].data||[]).filter(function(x){return x.print_schedule;}).map(function(x){var p=x.print_schedule;p._m=x.methode;p._c=x.client_id;return p;}),cli=res[3].data||{};
   // Contacts (dédoublonnés)
@@ -2167,7 +2171,8 @@ async function loadPOs(){
         :'<td></td>';
       var proofCell, _pc=proofCount(p);
       if(_pc){
-        proofCell='<td style="white-space:nowrap"><button class="btn bs bsm btn-proof" style="font-size:12px;padding:2px 6px;color:#fff;background:#1E8449;border-color:#1E8449" onclick="viewProof('+p.id+')" title="'+_pc+' proof(s) · paid '+zar(poPaidSum(p))+'">👍'+(_pc>1?'<sup style="font-size:9px;font-weight:700"> '+_pc+'</sup>':'')+'</button></td>';
+        proofCell='<td style="white-space:nowrap"><button class="btn bs bsm btn-proof" style="font-size:12px;padding:2px 6px;color:#fff;background:#1E8449;border-color:#1E8449" onclick="viewProof('+p.id+')" title="'+_pc+' proof(s) · paid '+zar(poPaidSum(p))+'">👍'+(_pc>1?'<sup style="font-size:9px;font-weight:700"> '+_pc+'</sup>':'')+'</button>'+
+          (role==='owner'?' <button class="btn bs bsm btn-proof" style="font-size:12px;padding:2px 6px" onclick="emailProofToSupplier('+p.id+')" title="E-mail this proof of payment to Africa Plastics">✉️</button>':'')+'</td>';
       } else {
         proofCell=role==='owner'
           ?'<td><button class="btn bs bsm btn-proof" style="font-size:10px;padding:2px 6px;color:#888" onclick="uploadProof('+p.id+')" title="Upload proof of payment">📎</button></td>'
@@ -2319,11 +2324,17 @@ function uploadProof(id,slot){
   var inp=document.createElement('input');
   inp.type='file';
   inp.accept='application/pdf,image/*';
-  inp.onchange=function(){
+  inp.onchange=async function(){
     var file=inp.files[0];
     if(!file)return;
     if(file.size>4*1024*1024){toast('File too big (max 4 MB) — compress it first','err');return;}
-    var amt=askAmount(null);
+    // Montant proposé par défaut : le reste dû de la ligne (= le total TTC si rien n'est encore payé)
+    var amt;
+    try{
+      var cur=await DB().from('purchase_orders').select(PO_COLS).eq('id',id).single();
+      var due=cur.data?Math.max(0,Math.round((poTotal(cur.data)-poPaidSum(cur.data))*100)/100):null;
+      amt=askAmount(due||null);
+    }catch(e){amt=askAmount(null);}
     if(amt===undefined)return;
     var reader=new FileReader();
     reader.onload=async function(e){
@@ -2398,6 +2409,30 @@ async function downloadProof(id,slot){
   a.href=r.data[c.d];
   a.download=r.data[c.n]||(r.data.po_number+'-proof-'+slot);
   document.body.appendChild(a);a.click();a.remove();
+}
+// ── E-mail de la preuve de paiement à Africa Plastics ── (mailto : rien n'est envoyé automatiquement)
+var SUPPLIER_PAY_TO=['accounts@africaplastics.co.za'];
+var SUPPLIER_PAY_CC=['admin@africaplastics.co.za'];
+async function emailProofToSupplier(id){
+  var r=await DB().from('purchase_orders').select(PO_COLS).eq('id',id).single();
+  var p=r.data;if(!p){toast('PO not found','err');return;}
+  var n=proofCount(p);if(!n){toast('No proof of payment on this line','err');return;}
+  var c=proofCols(n);
+  // Prépare l'e-mail dans la messagerie (la preuve est déjà sur l'ordinateur de Seb : pas de téléchargement)
+  var amt=p[c.a]!=null?Number(p[c.a]):poTotal(p);
+  var prod=(p.qty_ordered||0).toLocaleString('en-GB')+' x '+(p.product||'');
+  var subject='Proof of payment — '+p.po_number+(p.invoice_number?' — '+p.invoice_number:'');
+  var body='Hello Anne,\n\nPlease find attached the proof of payment for the order below.\n\n'+
+    'PO: '+p.po_number+'\n'+
+    (p.invoice_number?'Invoice: '+p.invoice_number+'\n':'')+
+    'Product: '+prod+'\n'+
+    'Amount paid: '+zar(amt)+' (incl. VAT)\n'+
+    (p.paid_date?'Payment date: '+p.paid_date+'\n':'')+
+    '\nThank you,\nSebastien\nSwig Cups';
+  setTimeout(function(){
+    window.location.href='mailto:'+SUPPLIER_PAY_TO.join(',')+'?cc='+encodeURIComponent(SUPPLIER_PAY_CC.join(','))+'&subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  },500);
+  toast('✉️ E-mail ready — attach the proof, then send','ok');
 }
 async function deleteProof(id,slot){
   slot=Math.min(PROOF_MAX,Math.max(1,parseInt(slot)||1));
