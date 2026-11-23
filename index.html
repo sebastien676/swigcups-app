@@ -419,6 +419,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div class="ch"><span class="ct">Stock by product</span><button class="btn bs bsm" onclick="loadStock()">↻</button></div>
       <div id="stbl"><div class="ld"><div class="sp"></div>Loading...</div></div>
     </div>
+    <div class="card" id="wash-card">
+      <div class="ch"><span class="ct">🧼 Washed cup stock (Frosted)</span><button class="btn bs bsm" onclick="loadWashedStock()">↻</button></div>
+      <div id="wtbl"><div class="ld"><div class="sp"></div>Loading...</div></div>
+    </div>
     <button class="badd" id="badd" style="display:none" onclick="togglePnl('pdel')">+ Record delivery</button>
     <div class="pnl" id="pdel">
       <h3>New delivery — Africa Plastics</h3>
@@ -1635,6 +1639,8 @@ async function loadStock(){
   function normKey(s){return (s||'').toLowerCase().replace(/\s+/g,' ').trim();}
   var consolidated={};
   var order=[];
+  // Gobelets lavés : section à part « Washed cup stock » (plus fusionnés dans le Frosted neuf)
+  r.data=r.data.filter(function(p){return normKey(p.product).indexOf('washed')===-1;});
   r.data.forEach(function(p){
     var prodName=STOCK_ALIASES_NORM[normKey(p.product)]||p.product;
     var colourName=p.colour;
@@ -1780,6 +1786,63 @@ async function loadStock(){
       '<td>'+pill(st==='ok'?'ok':st==='low'?'low':st==='warn'?'warn':'pend')+'</td>'+editBtn+'</tr>';
   });
   document.getElementById('stbl').innerHTML='<table><thead><tr><th>Product</th><th>Size</th><th class="nr">Physical</th><th class="nr">Incoming</th><th>Level</th><th>Status</th>'+(role==='owner'?'<th></th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>';
+  loadWashedStock();
+}
+
+// ── WASHED CUP STOCK ── entrées = lavages (saisis par Claude depuis les messages de l'usine), sorties = « − Used » (manuel)
+// Le déclencheur washed_moves met à jour la ligne « Washed Frosted » de la taille.
+var WASH_SIZES=['500ml','330ml','250ml'];
+function isoDay(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+async function loadWashedStock(){
+  var el=document.getElementById('wtbl');if(!el)return;
+  var now=new Date(), d7=isoDay(new Date(now.getTime()-6*86400000)), m1=isoDay(new Date(now.getFullYear(),now.getMonth(),1));
+  var res=await Promise.all([
+    DB().from('stock').select('id,product,size,physical_stock,total_received,total_outgoing,physical_date').ilike('product','%washed frosted%'),
+    DB().from('washed_moves').select('move_date,size,qty,kind,by_name').gte('move_date',m1<d7?m1:d7).order('move_date',{ascending:false})
+  ]);
+  var rows=res[0].data||[], moves=res[1].data||[];
+  var canEdit=role==='owner'||role==='fred';
+  var h='<table><thead><tr><th>Size</th><th class="nr">In stock</th><th class="nr">Washed 7 days</th><th class="nr">Washed this month</th><th class="nr">Used this month</th><th>Last wash</th>'+(canEdit?'<th></th>':'')+'</tr></thead><tbody>';
+  var tot=0;
+  WASH_SIZES.forEach(function(sz){
+    var s=rows.find(function(x){return x.size===sz;});
+    var cur=s?Math.max(0,(s.physical_stock||0)+(s.total_received||0)-(s.total_outgoing||0)):0;tot+=cur;
+    var w7=0,wm=0,um=0,last=null;
+    moves.forEach(function(m){
+      if(m.size!==sz)return;
+      if(m.kind==='washed'){if(m.move_date>=d7)w7+=m.qty;if(m.move_date>=m1)wm+=m.qty;if(!last||m.move_date>last)last=m.move_date;}
+      else if(m.move_date>=m1)um+=m.qty;
+    });
+    h+='<tr><td><strong>'+sz+' Washed Frosted</strong>'+(s&&s.physical_date?'<div style="font-size:10px;color:#999">counted '+s.physical_date+'</div>':'')+'</td>'+
+      '<td class="nr" style="font-weight:700;color:#0E6655">'+cur.toLocaleString()+'</td>'+
+      '<td class="nr">'+w7.toLocaleString()+'</td><td class="nr">'+wm.toLocaleString()+'</td>'+
+      '<td class="nr" style="color:#D35400">'+(um?'−'+um.toLocaleString():'0')+'</td>'+
+      '<td style="font-size:12px;color:#666">'+(last||'—')+'</td>'+
+      (canEdit?'<td style="white-space:nowrap"><button class="btn bs bsm" onclick="washedUsed(\''+sz+'\')">− Used</button>'+(role==='owner'&&s?' <button class="btn bs bsm" title="Physical count" onclick="washedCount('+s.id+',\''+sz+'\')">✏️</button>':'')+'</td>':'')+'</tr>';
+  });
+  h+='</tbody></table><div style="font-size:11px;color:#888;margin-top:6px">Total washed stock: <strong>'+tot.toLocaleString()+'</strong> cups · daily washes are recorded from the factory messages</div>';
+  el.innerHTML=h;
+}
+async function washedUsed(sz){
+  var v=prompt('How many '+sz+' washed cups were taken out of the washed stock?','');
+  if(v===null)return;
+  var q=parseInt(String(v).replace(/[^\d]/g,''))||0;
+  if(q<=0){toast('Enter a quantity','err');return;}
+  var note=prompt('What for? (optional — job name, reprint…)','');
+  var r=await DB().from('washed_moves').insert({move_date:isoDay(new Date()),size:sz,qty:q,kind:'used',by_name:RLAB[role]||role,note:note||null,source:'app'});
+  if(r.error){toast('Error: '+r.error.message,'err');return;}
+  toast('➖ '+q.toLocaleString()+' × '+sz+' washed cups used','ok');
+  loadWashedStock();
+}
+async function washedCount(id,sz){
+  var v=prompt('Physical count of '+sz+' washed cups today:','');
+  if(v===null)return;
+  var q=parseInt(String(v).replace(/[^\d]/g,''));
+  if(isNaN(q)||q<0){toast('Enter a number','err');return;}
+  var r=await DB().from('stock').update({physical_stock:q,physical_date:isoDay(new Date()),total_received:0,total_outgoing:0}).eq('id',id);
+  if(r.error){toast('Error: '+r.error.message,'err');return;}
+  toast('✅ '+sz+' washed stock set to '+q.toLocaleString(),'ok');
+  loadWashedStock();
 }
 
 // ── STOCK EDIT ──
