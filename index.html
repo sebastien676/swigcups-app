@@ -112,6 +112,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
 .ce.cup-white{background:#F5EFE6;color:#6D4C41;border-left:3px solid #C8B89A}
 .ce.cup-green{background:#E8F5E9;color:#1B5E20;border-left:3px solid #43A047}
 .ce.cup-orange{background:#FFF3E0;color:#E65100;border-left:3px solid #FF9800}
+.ce.cup-turquoise{background:#E0F7F4;color:#00695C;border-left:3px solid #1ABC9C}
+.ce.cup-light-blue{background:#E1F5FE;color:#01579B;border-left:3px solid #64B5F6}
+.ce.cup-dark-blue{background:#E8EAF6;color:#1A237E;border-left:3px solid #1A237E}
 .ce.slabel{background:#F8BBD0;color:#880E4F;border-left:3px solid #D81B60}
 /* Tooltip */
 .ce-tooltip{position:fixed;background:#1a1a1a;color:#fff;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.6;z-index:99999;pointer-events:none;opacity:0;transition:opacity .15s;min-width:180px;max-width:260px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
@@ -428,7 +431,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
           <option>500ml Frosted cups</option><option>500ml Black cups</option><option>500ml Red cups</option>
           <option>500ml Pink cups</option><option>500ml White cups</option><option>500ml Purple cups</option>
           <option>500ml Dark Blue cups</option><option>500ml Light Blue cups</option><option>500ml Yellow cups</option>
-          <option>330ml Frosted cups</option><option>330ml Red cups</option><option>330ml Yellow cups</option>
+          <option>330ml Frosted cups</option><option>330ml Red cups</option><option>330ml Yellow cups</option><option>330ml Turquoise cups</option>
         </select></div>
         <div class="fg"><label>Boxes</label><input type="number" id="dbx" placeholder="e.g. 28" oninput="calcDel()"></div>
         <div class="fg"><label>Units/box</label><input type="number" id="dub" placeholder="350" oninput="calcDel()"></div>
@@ -504,8 +507,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
       <div id="job-simple-fields">
         <div class="g3">
           <div class="fg"><label>Cup size ★</label><select id="jsz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-          <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Light Blue</option><option>Dark Blue</option><option>Yellow</option><option>Green</option><option>Orange</option></select></div>
-          <div class="fg"><label>Qty ★</label><input type="number" id="jq" placeholder="e.g. 2000" oninput="this.nextElementSibling.textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"><span class="hint"></span></div>
+          <div class="fg"><label>Cup colour ★</label><select id="jcl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Light Blue</option><option>Dark Blue</option><option>Yellow</option><option>Green</option><option>Orange</option><option>Turquoise</option></select></div>
+          <div class="fg"><label>Qty ★</label><input type="number" id="jq" placeholder="e.g. 2000" oninput="this.nextElementSibling.textContent='Stock: '+Math.round(this.value*WASTE).toLocaleString()+' units'"><span class="hint"></span></div>
         </div>
         <div class="g3" id="j-print-row">
           <div class="fg"><label># Colours</label><select id="jnc"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
@@ -566,6 +569,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
         <span><span class="cdot" style="background:#FFEBEE;border-left:3px solid #E53935"></span>Red</span>
         <span><span class="cdot" style="background:#ECEFF1;border-left:3px solid #455A64"></span>Black</span>
         <span><span class="cdot" style="background:#F3E5F5;border-left:3px solid #8E24AA"></span>Purple</span>
+        <span><span class="cdot" style="background:#E0F7F4;border-left:3px solid #1ABC9C"></span>Turquoise</span>
+        <span><span class="cdot" style="background:#E1F5FE;border-left:3px solid #64B5F6"></span>Light Blue</span>
+        <span><span class="cdot" style="background:#E8EAF6;border-left:3px solid #1A237E"></span>Dark Blue</span>
         <span><span class="cdot" style="background:#F5F5F5;border-left:3px solid #BDBDBD"></span>Done</span>
         <span><span class="cdot" style="background:#FADBD8;border-left:3px solid #C0392B"></span>Public holiday</span>
       </div>
@@ -850,8 +856,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="es">Cup details</div>
     <div class="g3">
       <div class="fg"><label>Size ★</label><select id="esz"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-      <div class="fg"><label>Colour ★</label><select id="ecol"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Light Blue</option><option>Dark Blue</option><option>Yellow</option><option>Green</option><option>Orange</option></select></div>
-      <div class="fg"><label>Qty ★</label><input type="number" id="eq" oninput="document.getElementById('ecalc').textContent='Stock: '+Math.round(this.value*1.05).toLocaleString()+' units'"></div>
+      <div class="fg"><label>Colour ★</label><select id="ecol"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Light Blue</option><option>Dark Blue</option><option>Yellow</option><option>Green</option><option>Orange</option><option>Turquoise</option></select></div>
+      <div class="fg"><label>Qty ★</label><input type="number" id="eq" oninput="document.getElementById('ecalc').textContent='Stock: '+Math.round(this.value*WASTE).toLocaleString()+' units'"></div>
     </div>
     <div class="hint" id="ecalc">Stock: —</div>
     <div class="es" id="e-print-title">Print details</div>
@@ -907,7 +913,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#0E6655;box-sh
     <div class="fg"><label>Client ★</label><input type="text" id="qac" placeholder="Client name"></div>
     <div class="g3">
       <div class="fg"><label>Size</label><select id="qas"><option>500ml</option><option>330ml</option><option>250ml</option></select></div>
-      <div class="fg"><label>Colour</label><select id="qacl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Light Blue</option><option>Dark Blue</option><option>Yellow</option><option>Green</option></select></div>
+      <div class="fg"><label>Colour</label><select id="qacl"><option>Frosted</option><option>Black</option><option>Red</option><option>Pink</option><option>White</option><option>Purple</option><option>Light Blue</option><option>Dark Blue</option><option>Yellow</option><option>Green</option><option>Orange</option><option>Turquoise</option></select></div>
       <div class="fg"><label>Qty</label><input type="number" id="qaq" placeholder="2000"></div>
     </div>
     <div class="g2">
@@ -1423,7 +1429,16 @@ async function toggleClient(id){
       '<a href="#" style="color:#C0392B" onclick="clUnlink(\''+p._c+'\','+p.id+',\''+id+'\');return false">✕ not this client</a></div>';
   }).join('')+'</div>':'<div style="font-size:12px;color:#888">No production job linked yet.</div>';
   jhtml+='<div style="margin-top:8px"><a href="#" onclick="clLinkPick(\''+id+'\',this);return false">＋ Link a production job</a></div>';
+  // Données de l'aperçu « vu par le client » (mêmes règles que le portail : noms + e-mails, montant par facture sans total, proofs validés)
+  var seenT={};
+  CLV[id]={
+    company:(CL||[]).filter(function(c){return c.id===id;}).map(function(c){return c.nom;})[0]||'',
+    team:ct.filter(function(x){return x.email&&(x.source==='xero'||x.source==='production');}).sort(function(a,b){return (a.nom?0:1)-(b.nom?0:1);}).filter(function(x){var k=x.email.toLowerCase();if(seenT[k])return false;seenT[k]=1;return true;}).map(function(x){return {name:x.nom,email:x.email};}),
+    invoices:inv.filter(function(i){return i.type_doc==='facture'&&(i.statut==='Paid'||i.statut==='Awaiting Payment');}).map(function(i){return {number:i.numero_facture,date:i.date_facture,quote:i.devis_numero,amount:i.total,currency:i.devise,status:i.statut==='Paid'?'paid':Number(i.montant_paye||0)>0.5?'part_paid':'unpaid'};}),
+    artworks:arts.filter(function(a){return a.storage_path&&aurl[a.storage_path];}).map(function(a){return {img:aurl[a.storage_path],title:a.folder_name||a.file_name,date:a.file_date};})
+  };
   st.html='<div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px">'+
+    '<div style="text-align:right;margin-bottom:6px"><button class="btn bs bsm" onclick="clClientView(\''+id+'\')">👁 See as the client</button></div>'+
     (grp.length>1?'<div style="font-size:12px;background:#EBF5FB;color:#1F618D;padding:6px 10px;border-radius:6px;margin-bottom:8px">👥 Group of companies — everything below covers: '+grp.map(function(x){return clEsc(x.nom);}).join(' · ')+'</div>':'')+
     (cli.adresse?'<div style="font-size:12px;color:#666;margin-bottom:8px">📍 '+clEsc(cli.adresse)+'</div>':'')+
     '<div style="font-weight:700;font-size:12px;margin:6px 0">👤 Contacts</div>'+chtml+
@@ -1431,6 +1446,37 @@ async function toggleClient(id){
     '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">🎨 Artworks — Drive, Gmail, Atelier ('+arts.length+')</div>'+ahtml+
     '<div style="font-weight:700;font-size:12px;margin:12px 0 6px">🖨️ Production jobs ('+jobs.length+')</div>'+jhtml+'</div>';
   el.innerHTML=st.html;
+}
+// ---------- Aperçu de l'espace client (même mise en page que le portail www.swigcups.africa/portal) ----------
+var CLV={};
+function clClientView(id){
+  var d=CLV[id];if(!d)return;
+  var ov=document.getElementById('clv-ov');
+  if(!ov){ov=document.createElement('div');ov.id='clv-ov';ov.style.cssText='position:fixed;inset:0;z-index:900;background:#F6EEDC;overflow:auto;font-family:Manrope,system-ui,sans-serif;color:#1E140B';document.body.appendChild(ov);}
+  function fd(s){if(!s)return '';var x=new Date(s+'T00:00:00');return x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
+  function chip(t,c){var st=c==='done'?'background:rgba(46,125,79,.12);color:#2e7d4f;border-color:rgba(46,125,79,.35)':c==='todo'?'background:rgba(226,150,46,.18);color:#B9770E;border-color:rgba(226,150,46,.5)':'background:#F6EEDC;color:#6b5a48;border-color:#e6dcc4';
+    return '<span style="display:inline-block;font-size:12px;font-weight:800;border-radius:99px;padding:3px 10px;border:1px solid;'+st+'">'+t+'</span>';}
+  function box(title,items,empty,grid){
+    var h='<section style="background:#fff;border:1px solid #e6dcc4;border-radius:16px;padding:16px 18px;box-shadow:0 1px 2px rgba(30,20,11,.06),0 6px 18px rgba(30,20,11,.06)"><h2 style="font-family:Anton,Impact,sans-serif;font-weight:400;font-size:20px;margin:0 0 10px">'+title+'</h2>';
+    if(!items.length)return h+'<div style="font-size:14px;color:#6b5a48">'+empty+'</div></section>';
+    h+='<div style="'+(grid?'display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px':'')+'">'+items.slice(0,3).join('')+'</div>';
+    if(items.length>3)h+='<div style="margin-top:8px;font-size:14px;color:#A6432B;font-weight:700;text-decoration:underline">See all ('+items.length+')</div>';
+    return h+'</section>';
+  }
+  var inv=d.invoices.map(function(i,k){var s=i.status==='paid'?['Paid','done']:i.status==='part_paid'?['Part paid','todo']:['Open','todo'];
+    return '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:9px 0;'+(k?'border-top:1px solid #e6dcc4':'')+'"><div><div style="font-weight:700;font-size:15px">Invoice '+clEsc(i.number)+'</div><div style="font-size:14px;color:#6b5a48">'+[fd(i.date),i.quote?'quote '+clEsc(i.quote):''].filter(Boolean).join(' · ')+'</div></div>'+
+      '<div style="text-align:right"><div style="font-weight:800;white-space:nowrap">'+(i.currency&&i.currency!=='ZAR'?i.currency+' ':'R ')+Math.round(i.amount||0).toLocaleString('en-ZA')+'</div>'+chip(s[0],s[1])+'</div></div>';});
+  var seenA={};
+  var arts=d.artworks.filter(function(a){var k=(a.title||'').toLowerCase();if(seenA[k])return false;seenA[k]=1;return true;}).map(function(a){return '<div>'+(a.img?'<img src="'+clEsc(a.img)+'" style="width:100%;height:120px;object-fit:contain;background:#F6EEDC;border:1px solid #e6dcc4;border-radius:12px">':'<div style="height:120px;background:#F6EEDC;border:1px solid #e6dcc4;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#6b5a48;font-size:12px">proof</div>')+'<div style="font-weight:700;font-size:13px;margin-top:6px;line-height:1.3">'+clEsc(a.title||'')+'</div><div style="font-size:12px;color:#6b5a48">'+fd(a.date)+'</div></div>';});
+  var team=d.team.length?d.team:[{name:null,email:'(no contact e-mail yet)'}];
+  ov.innerHTML='<div style="position:sticky;top:0;background:#1E140B;color:#fff;padding:8px 16px;display:flex;justify-content:space-between;align-items:center;font-size:13px;z-index:2"><span>👁 Preview — this is what <b>'+clEsc(d.company)+'</b> sees in its Swig workspace</span><button class="btn bsm" style="background:#fff;color:#1E140B" onclick="document.getElementById(\'clv-ov\').remove()">✕ Close preview</button></div>'+
+    '<div style="max-width:1040px;margin:0 auto;padding:0 16px 56px"><div style="display:flex;justify-content:space-between;align-items:center;padding:18px 0"><div style="font-family:Anton,Impact,sans-serif;font-size:30px;letter-spacing:1px;color:#A6432B;line-height:1">SWIG<div style="font-family:Manrope,sans-serif;font-size:10px;letter-spacing:3px;color:#E2962E;font-weight:800;margin-top:3px">AFRICA</div></div><div style="font-size:13px;color:#6b5a48">'+clEsc((d.team[0]&&d.team[0].email)||'')+' <u style="color:#A6432B;font-weight:700">Sign out</u></div></div>'+
+    '<div style="display:grid;grid-template-columns:minmax(0,300px) 1fr;gap:20px;align-items:start;margin-top:18px" class="clv-grid">'+
+      '<div style="background:#fff;border:1px solid #e6dcc4;border-radius:16px;padding:22px"><div style="font-family:Anton,Impact,sans-serif;font-size:26px;line-height:1.15;margin:0 0 4px;word-break:break-word">'+clEsc(d.company)+'</div><div style="font-size:14px;color:#6b5a48">'+(team.length>1?team.length+' people in your team':'Your contact')+'</div>'+
+      '<ul style="list-style:none;margin:14px 0 0;padding:0;display:grid;gap:10px">'+team.map(function(m){var l=(m.name||m.email||'?').trim();return '<li style="display:flex;gap:10px;align-items:center"><span style="flex:0 0 36px;width:36px;height:36px;border-radius:50%;background:#E2962E;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center">'+clEsc(l[0].toUpperCase())+'</span><div><div style="font-weight:700;font-size:15px">'+clEsc(m.name||m.email)+'</div>'+(m.name&&m.email?'<div style="font-size:13px;color:#6b5a48;word-break:break-all">'+clEsc(m.email)+'</div>':'')+'</div></li>';}).join('')+'</ul></div>'+
+      '<div style="display:grid;gap:16px">'+box('My invoices',inv,'Your invoices will appear here.')+box('My quotes',[],'Your quotes will appear here.')+box('My artworks',arts,'Your approved artworks will appear here.',true)+'</div>'+
+    '</div><p style="text-align:center;font-size:13px;color:#6b5a48;margin-top:20px">Need a copy of an invoice or a quote? Write to info@swigcups.co.za and mention the number.</p></div>';
+  if(window.innerWidth<760)ov.querySelector('.clv-grid').style.gridTemplateColumns='1fr';
 }
 var RTABS={owner:['stock','pos','jobs','print','cal','deliveries','approvals','quotes','stats','analytics','clients'],fred:['stock','jobs','print','cal','deliveries','approvals'],warda:['stock','myjobs','cal','deliveries'],emilie:['stock','pos','cal','deliveries','quotes','stats','analytics'],alsworth:['jobs','cal']};
 var RLAB={owner:'Owner',fred:'Fred',warda:'Warda / Blink',emilie:'Emilie',alsworth:'Alsworth'};
@@ -1523,7 +1569,11 @@ function pill(s){
   return '<span class="pl '+(m[s]||'pend')+'">'+s+'</span>';
 }
 
+var CUP_CLASS_COLOURS=['black','red','pink','blue','purple','yellow','white','green','orange','turquoise','light blue','dark blue'];
 function sc2(sz, col) {
+  // Gobelets de couleur : teinte du gobelet ; Frosted et Multi : couleur par taille
+  var c=(col||'').toLowerCase().trim();
+  if(CUP_CLASS_COLOURS.indexOf(c)>-1)return 'cup-'+c.replace(/\s+/g,'-');
   return sz&&sz.indexOf('500')>-1?'s5':sz&&sz.indexOf('330')>-1?'s3':'s2';
 }
 
@@ -1645,7 +1695,7 @@ async function loadStock(){
     needRows.forEach(function(n){
       if(!n.print_date||nSize(n.size)+'|'+nCol(n.colour)!==k)return;
       if(p.physical_date&&n.print_date<=p.physical_date)return; // already reflected in the count
-      var q=Math.round((n.qty||0)*1.05);
+      var q=Math.round((n.qty||0)*WASTE);
       n14+=q;if(n.print_date<=d7s)n7+=q;
     });
     p._need7=n7;p._need14=n14;
@@ -1674,7 +1724,7 @@ async function loadStock(){
   var cupColours={
     'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63',
     'blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE',
-    'green':'#43A047','orange':'#FF9800'
+    'green':'#43A047','orange':'#FF9800','turquoise':'#1ABC9C'
   };
 
   var rows='';
@@ -2085,6 +2135,8 @@ function noPrintJob(o){return !!o&&(o.no_print===true||o.print_type==='No print'
 function printLabel(o){return noPrintJob(o)?'🚫 No print':((o.print_colour||'—')+' · '+(o.num_colours||1)+' col.');}
 function isDraftJob(j){return !!j&&j.status==='Draft';}
 function psNoDraft(q){return q.then(function(r){if(r&&r.data)r.data=r.data.filter(function(j){return !isDraftJob(j);});return r;});}
+// Marge de rebut à l'impression : gobelets sortis du stock = quantité × WASTE (10 % depuis le 23/11/2026, taux de rejet mesuré oct.-nov. ; avant : 5 %)
+var WASTE=1.10;
 var PS_COLS='id,week_label,date_period,client,cup_size,cup_colour,qty_printed,print_colour,num_colours,artwork,status,notes,created_at,print_date,delivery_date,print_type,delivery_type,delivery_address,client_email,is_urgent,posis_received,contact_name,contact_phone,created_by,last_edited_by,delivery_done,delivery_status,job_type,n_items,qty_done,no_print';
 // Fetch the FULL row (with blobs) on demand, only when a card/detail/edit is opened
 async function loadFullJob(ev){
@@ -2208,7 +2260,7 @@ async function loadPOs(){
     // Fred/Warda: simple view — PO# + product + qty only
     var simpleRows='';
     r.data.forEach(function(p){
-      var cupColours2={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE','green':'#43A047','orange':'#FF9800'};
+      var cupColours2={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#90A4AE','green':'#43A047','orange':'#FF9800','turquoise':'#1ABC9C'};
       var bc=cupColours2[(p.colour||'').toLowerCase()]||'#888';
       var dot='<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+bc+';margin-right:6px;vertical-align:middle"></span>';
       simpleRows+='<tr><td style="font-weight:700;color:#1F4E79">'+p.po_number+'</td>'+
@@ -2532,7 +2584,7 @@ async function loadJobs(){
       '<div style="font-size:12px;color:#666;margin-top:3px;line-height:1.6">'+
       (o.cup_size||'—')+' · '+(o.cup_colour||'—')+' · <strong>'+(o.qty_printed||0).toLocaleString()+' cups</strong><br>'+
       printLabel(o)+' · '+(o.date_period||'—')+'<br>'+
-      'Stock: <strong>'+Math.round((o.qty_printed||0)*1.05).toLocaleString()+'</strong></div></div>'+
+      'Stock: <strong>'+Math.round((o.qty_printed||0)*WASTE).toLocaleString()+'</strong></div></div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'+
       pill(o.status||'Scheduled')+
       (o.posis_received?'<span style="font-size:10px;background:#D6EAF8;color:#1F4E79;padding:2px 7px;border-radius:10px;font-weight:700">✅ POSIS</span>':'')+'</div>';
@@ -2627,7 +2679,7 @@ async function placeDraftOnCalendar(id){
 var jobMode='simple';
 var jobEditId=null;
 var JLINE_SIZES=['500ml','330ml','250ml'];
-var JLINE_COLOURS=['Frosted','Black','Red','Pink','White','Purple','Light Blue','Dark Blue','Yellow','Green','Orange'];
+var JLINE_COLOURS=['Frosted','Black','Red','Pink','White','Purple','Light Blue','Dark Blue','Yellow','Green','Orange','Turquoise'];
 
 function setJobMode(m){
   jobMode=m;
@@ -2960,7 +3012,7 @@ async function loadPrint(){
         h.textContent=(p.print_date?'📅 '+p.print_date+' — '+(p.week_label||''):(p.week_label||'—')+' · '+(p.date_period||''));
         el.appendChild(h);lastW=wk;
       }
-      var used=Math.round((p.qty_printed||0)*1.05).toLocaleString();
+      var used=Math.round((p.qty_printed||0)*WASTE).toLocaleString();
       var bc=grey?'#ccc':(p.cup_size||'').indexOf('500')>-1?'#43A047':(p.cup_size||'').indexOf('330')>-1?'#FDD835':'#1E88E5';
       var row=document.createElement('div');
       row.style.cssText='display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #e0e0e0'+(grey?';opacity:0.42;background:#fafafa':'');
@@ -3049,7 +3101,7 @@ async function loadAlerts(){
     jobPieces(j).forEach(function(pc){
       var k=(pc.size||'').toLowerCase()+'||'+normCupColour(pc.colour);
       if(!demandMap[k])demandMap[k]={needed:0,clients:[]};
-      demandMap[k].needed+=Math.round((pc.qty||0)*1.05);
+      demandMap[k].needed+=Math.round((pc.qty||0)*WASTE);
       if(demandMap[k].clients.indexOf(j.client)===-1)demandMap[k].clients.push(j.client);
     });
   });
@@ -3170,7 +3222,7 @@ function committedBefore(size,colour,viewMon){
     var jMon=parseMonday(j.date_period);
     if(!jMon||jMon>=viewMon)return;
     jobPieces(j).forEach(function(pc){
-      if((pc.size||'').toLowerCase()===sz&&normCupColour(pc.colour)===col)tot+=Math.round((pc.qty||0)*1.05);
+      if((pc.size||'').toLowerCase()===sz&&normCupColour(pc.colour)===col)tot+=Math.round((pc.qty||0)*WASTE);
     });
   });
   return tot;
@@ -3385,7 +3437,7 @@ function renderCal(){
       swBody.innerHTML='<div style="color:#aaa;font-size:13px;padding:8px 0">No jobs this week</div>';
     } else {
       // Group by size then colour
-      var cupColours2={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
+      var cupColours2={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800','turquoise':'#1ABC9C'};
       var sizeOrder2=['500ml','330ml','250ml'];
       var grouped={};
       weekJobs2.forEach(function(j){
@@ -3396,7 +3448,7 @@ function renderCal(){
           var key=sz+'||'+col;
           if(!grouped[key])grouped[key]={size:sz,colour:col,qty:0,stock:0,jobs:[]};
           grouped[key].qty+=(pc.qty||0);
-          grouped[key].stock+=Math.round((pc.qty||0)*1.05);
+          grouped[key].stock+=Math.round((pc.qty||0)*WASTE);
           if(grouped[key].jobs.indexOf(j.client)===-1)grouped[key].jobs.push(j.client);
         });
       });
@@ -3527,7 +3579,7 @@ function renderCal(){
       wh.textContent=(ev.week_label||'—')+' · '+(ev.date_period||'');
       listEl.appendChild(wh);lastW2=ev.week_label;
     }
-    var used=Math.round((ev.qty_printed||0)*1.05).toLocaleString();
+    var used=Math.round((ev.qty_printed||0)*WASTE).toLocaleString();
     var row=document.createElement('div');
     row.style.cssText='display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e0e0e0;cursor:pointer';
     row.innerHTML='<div style="flex:1"><div style="font-weight:500">'+ev.client+'</div>'+
@@ -3616,7 +3668,7 @@ async function saveQA(){
 }
 
 // ── JOB ITEMS RENDER (shared) ──
-var JOB_CUP_DOT={'frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00'};
+var JOB_CUP_DOT={'frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00','turquoise':'#1ABC9C'};
 function jobCupDot(c){return JOB_CUP_DOT[(c||'').toLowerCase().trim()]||'#95a5a6';}
 var CLIENT_BOX={'500ml':200,'330ml':270,'250ml':240};
 function cardBoxes(ev){
@@ -3777,7 +3829,7 @@ async function openEvDetail(ev){
       ('<div class="mr"><span class="ml">Cup</span><span>'+(ev.cup_size||'—')+' · '+(ev.cup_colour||'—')+'</span></div>'+
        '<div class="mr"><span class="ml">Qty</span><span><strong>'+(ev.qty_printed||0).toLocaleString()+'</strong> units</span></div>'+
        '<div class="mr"><span class="ml">Print</span><span>'+printLabel(ev)+'</span></div>'))+
-    '<div class="mr"><span class="ml">Stock used</span><span><strong>'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+'</strong> units</span></div>'+
+    '<div class="mr"><span class="ml">Stock used</span><span><strong>'+Math.round((ev.qty_printed||0)*WASTE).toLocaleString()+'</strong> units</span></div>'+
     '<div class="mr"><span class="ml">Status</span><span>'+pill(ev.status||'Scheduled')+'</span></div>'+
     (ev.posis_received?'<div class="mr"><span class="ml">POSIS</span><span style="color:#1F4E79;font-weight:700">✅ Received</span></div>':
     '<div class="mr"><span class="ml">POSIS</span><span style="color:#aaa">Not received yet</span></div>')+
@@ -3839,7 +3891,7 @@ async function openEdit(ev){
   document.getElementById('eq').value=ev.qty_printed||'';
   document.getElementById('epc').value=ev.print_colour||'';
   document.getElementById('eno').value=ev.notes||'';
-  document.getElementById('ecalc').textContent=ev.qty_printed?'Stock: '+Math.round(ev.qty_printed*1.05).toLocaleString()+' units':'Stock: —';
+  document.getElementById('ecalc').textContent=ev.qty_printed?'Stock: '+Math.round(ev.qty_printed*WASTE).toLocaleString()+' units':'Stock: —';
   setSel('esz',ev.cup_size||'500ml');setSel('ecol',ev.cup_colour||'Frosted');
   setSel('enc',String(ev.num_colours||1));setSel('est',ev.status||'Scheduled');
   setSel('ept',noPrintJob(ev)?'No print':normPrintType(ev.print_type));setSel('ear',ev.artwork||'New');
@@ -4185,7 +4237,7 @@ async function applyStockDelta(job,amount,sign){
   else if(job){ parts.push(job); }
   for(var pi=0;pi<parts.length;pi++){
     var jb=parts[pi];
-    var used=Math.round((jb.qty_printed||0)*factor*1.05);
+    var used=Math.round((jb.qty_printed||0)*factor*WASTE);
     var jobColourNorm=(jb.cup_colour||'').toLowerCase().replace('washed frosted','frosted').replace('new frosted','frosted');
     var isFrosted=jobColourNorm==='frosted';
     var delta=ns==='Done'?used:-used;
@@ -4237,7 +4289,7 @@ async function downloadJobCard(ev) {
   var complexItems=parseItems(ev);
 
   // Cup colour dot
-  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
+  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800','turquoise':'#1ABC9C'};
   var cupDotColor=cupColours[(ev.cup_colour||'').toLowerCase()]||'#0E6655';
   var barColor=ev.cup_size&&ev.cup_size.indexOf('500')>-1?'#43A047':ev.cup_size&&ev.cup_size.indexOf('330')>-1?'#FDD835':'#1E88E5';
 
@@ -4317,7 +4369,7 @@ async function downloadJobCard(ev) {
     + '</div>'
     + '<div style="text-align:right">'
     + '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:3px">Stock to use</div>'
-    + '<div style="font-size:22px;font-weight:700;color:#0E6655">'+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+'</div>'
+    + '<div style="font-size:22px;font-weight:700;color:#0E6655">'+Math.round((ev.qty_printed||0)*WASTE).toLocaleString()+'</div>'
     + '<div style="font-size:11px;color:#999">units</div>'
     + '</div>'
     + '</div>'
@@ -4440,7 +4492,7 @@ async function downloadJobCard(ev) {
       ev.contact_name?('Contact: '+ev.contact_name+(ev.contact_phone?' / '+ev.contact_phone:'')):null,
       'Cups: '+(ev.qty_printed||0).toLocaleString()+' x '+(ev.cup_size||'')+' '+(ev.cup_colour||''),
       'Print colour: '+(ev.print_colour||'-')+' x '+(ev.num_colours||1)+' col.',
-      'Stock to pull: '+Math.round((ev.qty_printed||0)*1.05).toLocaleString()+' units'
+      'Stock to pull: '+Math.round((ev.qty_printed||0)*WASTE).toLocaleString()+' units'
     ];
     var msg=parts.filter(Boolean).join('%0A');
     genJobPng(function(err,canvas){
@@ -4969,7 +5021,7 @@ async function downloadDeliveryCard(ev){
     +'</div>';
 
   // Cup colour dot
-  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
+  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800','turquoise':'#1ABC9C'};
   var cupDotColor=cupColours[(ev.cup_colour||'').toLowerCase()]||'#0E6655';
 
   // Artwork section
@@ -5230,7 +5282,7 @@ async function downloadWardaDayList(){
   // SA holiday check
   var phLabel=typeof SA_HOLIDAYS!=='undefined'&&SA_HOLIDAYS[dateVal]?'🇿🇦 '+SA_HOLIDAYS[dateVal]:'';
 
-  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800'};
+  var cupColours={'frosted':'#0E6655','black':'#455A64','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#FDD835','white':'#C8B89A','green':'#43A047','orange':'#FF9800','turquoise':'#1ABC9C'};
 
   var totalCups=jobs.reduce(function(s,j){return s+(j.qty_printed||0);},0);
   var totalPrints=jobs.reduce(function(s,j){return s+(j.qty_printed||0)*(noPrintJob(j)?0:(j.num_colours||1));},0);
@@ -6099,7 +6151,7 @@ async function openApprovalDetail(id){
 
 // ── WARDA CAPACITY STATS ──
 // ── ORDER ANALYTICS ──
-var AN_COL={'frosted':'#7FB3A6','washed frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00'};
+var AN_COL={'frosted':'#7FB3A6','washed frosted':'#7FB3A6','black':'#2c3e50','red':'#E53935','pink':'#E91E63','blue':'#1E88E5','light blue':'#64B5F6','dark blue':'#1A237E','purple':'#8E24AA','yellow':'#F1C40F','white':'#B0BEC5','green':'#43A047','orange':'#FB8C00','turquoise':'#1ABC9C'};
 var AN_SIZECOL={'500ml':'#0E6655','330ml':'#E67E22','250ml':'#8E44AD'};
 function anColour(c){return AN_COL[(c||'').toLowerCase().trim()]||'#95a5a6';}
 function anNum(n){return (n||0).toLocaleString('fr-FR');}
